@@ -1,0 +1,20 @@
+# Zsh
+zsh/.zcompdump*
+zsh/.zsh_history
+
+# Neovim
+nvim/lazy-lock.json
+nvim/.netrwhist
+nvim/plugin/
+
+# General
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Hypr
+hypr/hyprland.log
+
+CLAUDE.md
