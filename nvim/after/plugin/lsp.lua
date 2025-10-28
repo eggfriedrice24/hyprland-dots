@@ -92,21 +92,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			vim.tbl_extend("force", opts, { desc = "Code actions" })
 		)
 		vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, vim.tbl_extend("force", opts, { desc = "Rename symbol" }))
-
-		-- Optional: Format document
-		vim.keymap.set("n", "<leader>f", function()
-			vim.lsp.buf.format({ async = true })
-		end, vim.tbl_extend("force", opts, { desc = "Format document" }))
 	end,
 })
 
--- -- Auto-show diagnostics popup on cursor hold
--- vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
--- 	group = vim.api.nvim_create_augroup("float_diagnostic", { clear = true }),
--- 	callback = function()
--- 		vim.diagnostic.open_float(nil, { focus = false })
--- 	end,
--- })
-
--- -- Faster diagnostic popup
--- vim.opt.updatetime = 250
