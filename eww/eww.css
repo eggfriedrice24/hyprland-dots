@@ -1,0 +1,84 @@
+* {
+  all: unset;
+}
+
+.bar {
+  font-family:
+    "Cartograph CF", "Symbols Nerd Font", "Symbols Nerd Font Mono", monospace;
+}
+
+.bar {
+  color: #cfd3da;
+  padding: 2px 5px;
+  font-size: 13px;
+}
+
+.segment {
+  background: #0f172b;
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.ws-btn {
+  min-width: 25px;
+  padding: 5px;
+  border-radius: 8px;
+}
+
+.ws-btn:hover,
+.ws-btn.active {
+  color: #000000;
+  background: #fcc800;
+}
+
+.metrics {
+  opacity: 0.95;
+}
+
+.metric {
+  padding: 0 6px;
+}
+
+/* Battery styles */
+.bat-ok {
+  color: #84cc16;
+}
+
+.bat-warn {
+  color: #f97316;
+}
+
+.bat-crit {
+  color: #e11d48;
+}
+
+.bat-charging {
+  color: #0ea5e9;
+}
+
+/* Network styles */
+.net-good {
+  color: #84cc16; /* green - good wifi/wired */
+}
+
+.net-fair {
+  color: #f97316; /* orange - fair wifi signal */
+}
+
+.net-weak {
+  color: #e11d48; /* red - weak wifi signal */
+}
+
+.net-wired {
+  color: #06b6d4; /* cyan - wired connection */
+}
+
+.net-disconnected {
+  color: #6b7280; /* gray - disconnected */
+}
+
+.timebox {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 5px;
+}

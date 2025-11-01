@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# Get active connection info
+ACTIVE_CONN=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active | head -1)
+CONN_NAME=$(echo "$ACTIVE_CONN" | cut -d: -f1)
+CONN_TYPE=$(echo "$ACTIVE_CONN" | cut -d: -f2)
+DEVICE=$(echo "$ACTIVE_CONN" | cut -d: -f3)
+
+# Get connection state
+STATE=$(nmcli -t -f STATE general status)
+
+icon() {
+    if [[ "$STATE" != "connected" ]]; then
+        echo "󰤭"  # disconnected
+        return
+    fi
+    
+    case "$CONN_TYPE" in
+        "wifi" | "wireless")
+            # Get signal strength for wifi
+            SIGNAL=$(nmcli -t -f IN-USE,SIGNAL dev wifi | grep "^\*" | cut -d: -f2)
+            if [[ -n "$SIGNAL" ]]; then
+                if   (( SIGNAL >= 80 )); then echo "󰤨"  # excellent
+                elif (( SIGNAL >= 60 )); then echo "󰤥"  # good  
+                elif (( SIGNAL >= 40 )); then echo "󰤢"  # fair
+                elif (( SIGNAL >= 20 )); then echo "󰤟"  # weak
+                else                         echo "󰤯"  # very weak
+                fi
+            else
+                echo "󰤨"  # default wifi icon
+            fi
+            ;;
+        "ethernet" | "802-3-ethernet")
+            echo "󰈀"  # ethernet
+            ;;
+        *)
+            echo "󰛳"  # generic network
+            ;;
+    esac
+}
+
+name() {
+    if [[ "$STATE" != "connected" ]]; then
+        echo "Offline"
+        return
+    fi
+    
+    if [[ ${#CONN_NAME} -gt 8 ]]; then
+        echo "${CONN_NAME:0:6}..."
+    else
+        echo "$CONN_NAME"
+    fi
+}
+
+signal() {
+    if [[ "$CONN_TYPE" == "wifi" || "$CONN_TYPE" == "wireless" ]]; then
+        SIGNAL=$(nmcli -t -f IN-USE,SIGNAL dev wifi | grep "^\*" | cut -d: -f2)
+        echo "${SIGNAL:-0}"
+    else
+        echo "100" 
+    fi
+}
+
+case "$1" in
+    --icon)     icon ;;
+    --name)     name ;;
+    --signal)   signal ;;
+    --type)     echo "$CONN_TYPE" ;;
+    --state)    echo "$STATE" ;;
+    *)          icon ;;
+esac

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+BATTERY="$(acpi | awk -F ' ' 'END {print $4}' | tr -d '%,')"
+CHARGE="$(acpi | awk -F ' ' 'END {print $3}' | tr -d ',')"
+
+icon() {
+  if [[ $CHARGE == *"Charging"* && $BATTERY -lt 100 ]]; then
+    echo ""
+  elif [[ $CHARGE == *"Full"* ]]; then
+    echo ""
+  else
+    if   (( BATTERY >= 90 )); then echo ""
+    elif (( BATTERY >= 70 )); then echo ""
+    elif (( BATTERY >= 50 )); then echo ""
+    else                         echo ""
+    fi
+  fi
+}
+
+case "$1" in
+  --icon)   icon ;;
+  --perc)   echo "${BATTERY}%" ;;
+  --level)  echo "${BATTERY}" ;;         # <— numeric only
+  --state)  echo "${CHARGE}" ;;          # Charging/Discharging/Full
+  *)        icon ;;
+esac
+
