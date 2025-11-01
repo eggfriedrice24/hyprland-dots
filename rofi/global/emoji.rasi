@@ -1,0 +1,64 @@
+configuration {
+    display-emoji: "😀";
+    show-icons: true;                 
+    me-select-entry: "";
+    me-accept-entry: "MousePrimary";
+    emoji-font: "Noto Color Emoji";
+}
+
+* {
+  font: "Noto Sans 11, Noto Color Emoji 14";
+	text-color: #eff0eb;
+	background-color: #1917244D;
+	border-color: #00000000;
+	width: 684px;
+	height: 477px;
+	location: 0;
+}
+
+inputbar {
+	border: 0 0 1px 0;
+	children: [prompt,entry];
+}
+
+prompt {
+	font: "Noto Sans 18";
+	vertical-align: 0.5;
+	padding: 0px 9px 0px 9px;
+	border: 0 1px 0 0;
+}
+
+entry {
+	padding: 12px;
+}
+
+textbox {
+	background-color: #1917244D;
+	border-color: #1917244D;
+	padding: 13px 13px;
+}
+
+listview {
+	cycle: false;
+	scrollbar: false;
+	columns: 9;
+	cycle: false;
+	dynamic: false;
+	layout: vertical;
+	padding: 8px 10px 10px 10px;
+}
+
+element {
+	border-radius: 3px;
+	padding: 14px 0px 40px 0px;
+}
+
+element-text {
+	font: "Noto Color Emoji 27";
+	expand: false;
+	text-color: #333333;
+}
+
+element selected {
+	background-color: #191724;
+}
