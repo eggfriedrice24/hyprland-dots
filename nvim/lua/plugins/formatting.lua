@@ -94,7 +94,8 @@ return {
 						return
 					end
 
-					lint.try_lint()
+					-- Safely try linting, ignore errors if linter not found
+					pcall(lint.try_lint)
 				end,
 			})
 
@@ -104,7 +105,7 @@ return {
 				callback = function()
 					-- Debounce linting
 					vim.defer_fn(function()
-						lint.try_lint()
+						pcall(lint.try_lint)
 					end, 500)
 				end,
 			})

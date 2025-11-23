@@ -2,6 +2,15 @@ return {
 	-- tools
 	{
 		"williamboman/mason.nvim",
+		cmd = "Mason",
+		build = ":MasonUpdate",
+		opts = {},
+	},
+
+	-- Auto-install Mason tools
+	{
+		"WhoIsSethDaniel/mason-tool-installer.nvim",
+		dependencies = { "williamboman/mason.nvim" },
 		opts = {
 			ensure_installed = {
 				-- Language Servers
