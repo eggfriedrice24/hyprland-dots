@@ -14,31 +14,41 @@ return {
 				desc = "Format buffer",
 			},
 		},
-		opts = {
-			formatters_by_ft = {
-				lua = { "stylua" },
-				python = { "isort", "black" },
-				javascript = { "prettier" },
-				typescript = { "prettier" },
-				javascriptreact = { "prettier" },
-				typescriptreact = { "prettier" },
-				vue = { "prettier" },
-				css = { "prettier" },
-				scss = { "prettier" },
-				less = { "prettier" },
-				html = { "prettier" },
-				json = { "prettier" },
-				jsonc = { "prettier" },
-				yaml = { "prettier" },
-				markdown = { "prettier" },
-				graphql = { "prettier" },
-				handlebars = { "prettier" },
-				go = { "goimports", "gofumpt" },
-				rust = { "rustfmt" },
-				sh = { "shfmt" },
-				bash = { "shfmt" },
-				zsh = { "shfmt" },
-			},
+		opts = function()
+			-- Helper: use eslint_d if ESLint config exists, otherwise prettier
+			local function js_formatter(bufnr)
+				local eslint_configs = { "eslint.config.mjs", "eslint.config.js", ".eslintrc.js", ".eslintrc.json", ".eslintrc" }
+				if vim.fs.find(eslint_configs, { path = vim.api.nvim_buf_get_name(bufnr), upward = true })[1] then
+					return { "eslint_d" }
+				end
+				return { "prettier" }
+			end
+
+			return {
+				formatters_by_ft = {
+					lua = { "stylua" },
+					python = { "isort", "black" },
+					javascript = js_formatter,
+					typescript = js_formatter,
+					javascriptreact = js_formatter,
+					typescriptreact = js_formatter,
+					vue = { "prettier" },
+					css = { "prettier" },
+					scss = { "prettier" },
+					less = { "prettier" },
+					html = { "prettier" },
+					json = { "prettier" },
+					jsonc = { "prettier" },
+					yaml = { "prettier" },
+					markdown = { "prettier" },
+					graphql = { "prettier" },
+					handlebars = { "prettier" },
+					go = { "goimports", "gofumpt" },
+					rust = { "rustfmt" },
+					sh = { "shfmt" },
+					bash = { "shfmt" },
+					zsh = { "shfmt" },
+				},
 			format_on_save = {
 				timeout_ms = 2000,
 				lsp_fallback = true,
@@ -51,7 +61,8 @@ return {
 					timeout_ms = 3000,
 				},
 			},
-		},
+		}
+		end,
 		init = function()
 			-- If you want the formatters to have priority over the LSP
 			-- you can set this option to true

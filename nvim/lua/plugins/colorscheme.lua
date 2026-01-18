@@ -1,7 +1,7 @@
 return {
 	{
-		"eggfriedrice24/eggfriedrice.nvim",
-		-- dir = "/home/eggfriedrice/p/eggfriedrice.nvim",
+		-- "eggfriedrice24/eggfriedrice.nvim",
+		dir = "/home/eggfriedrice/p/eggfriedrice.nvim",
 		priority = 1000,
 		lazy = false,
 		config = function()

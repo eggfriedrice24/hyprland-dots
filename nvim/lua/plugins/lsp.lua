@@ -15,6 +15,7 @@ return {
 			ensure_installed = {
 				-- Language Servers
 				"lua-language-server",
+				"gopls",
 				"typescript-language-server",
 				"css-lsp",
 				"tailwindcss-language-server",
@@ -104,6 +105,9 @@ return {
 					},
 				},
 			})
+
+			-- Go Language Server
+			lspconfig.gopls.setup({})
 
 			-- Lua Language Server
 			lspconfig.lua_ls.setup({

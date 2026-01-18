@@ -27,13 +27,13 @@ function notify_vol
 }
 
 case $1 in
-    i) pamixer -i 5
+    i) pactl set-sink-volume @DEFAULT_SINK@ +5%
         notify_vol
     ;;
-    d) pamixer -d 5
+    d) pactl set-sink-volume @DEFAULT_SINK@ -5%
         notify_vol
     ;;
-    m) pamixer -t
+    m) pactl set-sink-mute @DEFAULT_SINK@ toggle
         notify_vol
     ;;
     *) echo "volumecontrol.sh [action]"
