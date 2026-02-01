@@ -6,10 +6,14 @@
 (defpoll active_ws :interval "0.1s"
   "hyprctl -j activeworkspace | jq -r .id")
 
+(defpoll active_window :interval "0.3s"
+  "hyprctl -j activewindow | jq -r '.title // empty' | cut -c1-50")
+
 (defpoll time :interval "10s"
   "date '+%H:%M %b %d, %Y'")
 
-;; Battery
+;; Battery (only polls if battery exists)
+(defpoll HAS_BAT  :interval "1h" `test -d /sys/class/power_supply/BAT0 && echo true || echo false`)
 (defpoll BATICON  :interval "1m" `scripts/battery --icon`)
 (defpoll BATPERC  :interval "1m" `scripts/battery --perc`)
 (defpoll BATLVL   :interval "1m" `scripts/battery --level`)  ;; 0–100
@@ -29,17 +33,24 @@
 ;; -------- Root Bar --------
 (defwidget bar []
   (centerbox :class "bar" :orientation "h"
-    (left-segment)            ; left side
-    (box :hexpand true)       ; spacer
-    (right-segment)))         ; right side
+    (left-segment)
+    (center-segment)
+    (right-segment)))
 
 ;; -------- Left segment --------
 (defwidget left-segment []
   (box :class "segment left"
        :orientation "h"
        :halign "start" :valign "center"
-       :space-evenly false :spacing 6
+       :space-evenly false :spacing 4
        (workspaces)))
+
+;; -------- Center segment (active window) --------
+(defwidget center-segment []
+  (box :class "segment center"
+       :orientation "h"
+       :halign "center" :valign "center"
+    (label :class "window-title" :text active_window)))
 
 ;; -------- Right segment --------
 ;; Keep metrics + time together, aligned hard-right
@@ -60,8 +71,8 @@
     (box :class "metric"
       (label :text " ${round(EWW_RAM.used_mem_perc, 0)}%"))
 
-    ;; Battery
-    (box :class "metric"
+    ;; Battery (hidden on desktop)
+    (box :class "metric" :visible {HAS_BAT == "true"}
       (label
         :class { BATSTATE == "Charging" ? "bat bat-charging"
                : BATLVL   < 15         ? "bat bat-crit"
@@ -84,7 +95,7 @@
 
 ;; -------- Workspaces --------
 (defwidget workspaces []
-  (box :class "workspaces" :orientation "h" :spacing 6
+  (box :class "workspaces" :orientation "h" :spacing 4
     (button :class {active_ws == 1 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 1" 1)
     (button :class {active_ws == 2 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 2" 2)
     (button :class {active_ws == 3 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 3" 3)
@@ -105,8 +116,8 @@
   :layer "top"
   :exclusive true
   :focusable false
-  :geometry (geometry :x "0%" :y "0%"
-                      :width "100%" :height "36px"
+  :geometry (geometry :x "0px" :y "5px"
+                      :width "99.6%" :height "28px"
                       :anchor "top center")
   (bar))
 
@@ -115,8 +126,8 @@
   :layer "top"
   :exclusive true
   :focusable false
-  :geometry (geometry :x "0%" :y "0%"
-                      :width "100%" :height "36px"
+  :geometry (geometry :x "0px" :y "5px"
+                      :width "99.6%" :height "28px"
                       :anchor "top center")
   (bar))
 

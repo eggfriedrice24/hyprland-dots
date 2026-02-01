@@ -1,28 +1,25 @@
 * {
   all: unset;
+  font-family: "Cartograph CF", "Symbols Nerd Font", "Symbols Nerd Font Mono", monospace;
 }
 
 .bar {
-  font-family:
-    "Cartograph CF", "Symbols Nerd Font", "Symbols Nerd Font Mono", monospace;
-}
-
-.bar {
-  color: #cfd3da;
-  padding: 2px 5px;
-  font-size: 13px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 8px;
 }
 
 .segment {
-  background: #0f172b;
-  border-radius: 10px;
-  padding: 5px;
+  padding: 2px;
 }
 
 .ws-btn {
-  min-width: 25px;
-  padding: 5px;
-  border-radius: 8px;
+  min-width: 18px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 11px;
 }
 
 .ws-btn:hover,
@@ -80,5 +77,10 @@
 .timebox {
   font-weight: 600;
   letter-spacing: 0.3px;
-  padding: 5px;
+  padding: 0 5px;
+}
+
+.window-title {
+  color: #8a9199;
+  font-size: 12px;
 }
