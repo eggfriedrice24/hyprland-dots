@@ -11,8 +11,8 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 export GPG_TTY="${TTY:-$(tty)}"
 
-# SSH Agent
-eval "$(ssh-agent -s)" &>/dev/null
+# SSH Agent (keychain reuses existing agent across terminals)
+eval "$(keychain --eval --quiet efr)"
 
 # FNM (Fast Node Manager) - Auto-switch Node versions based on .nvmrc
 export PATH="$HOME/.local/share/fnm:$PATH"
