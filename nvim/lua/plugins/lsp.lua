@@ -21,6 +21,7 @@ return {
 				"tailwindcss-language-server",
 				"html-lsp",
 				"yaml-language-server",
+				"jdtls",
 
 				-- Formatters
 				"stylua",
@@ -30,6 +31,7 @@ return {
 				"gofumpt",
 				"goimports",
 				"rustfmt",
+				"google-java-format",
 
 				-- Linters
 				"luacheck",
@@ -108,6 +110,9 @@ return {
 
 			-- Go Language Server
 			lspconfig.gopls.setup({})
+
+			-- Java Language Server
+			lspconfig.jdtls.setup({})
 
 			-- Lua Language Server
 			lspconfig.lua_ls.setup({

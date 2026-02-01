@@ -48,6 +48,7 @@ return {
 					sh = { "shfmt" },
 					bash = { "shfmt" },
 					zsh = { "shfmt" },
+					java = { "google-java-format" },
 				},
 			format_on_save = {
 				timeout_ms = 2000,
