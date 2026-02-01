@@ -85,7 +85,7 @@ return {
 				typescriptreact = { "eslint_d" },
 				vue = { "eslint_d" },
 				python = { "flake8" },
-				lua = { "luacheck" },
+				lua = { "selene" },
 				go = { "golangci-lint" },
 				markdown = { "markdownlint" },
 				sh = { "shellcheck" },

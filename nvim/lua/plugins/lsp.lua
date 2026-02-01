@@ -30,11 +30,9 @@ return {
 				"isort",
 				"gofumpt",
 				"goimports",
-				"rustfmt",
 				"google-java-format",
 
 				-- Linters
-				"luacheck",
 				"selene",
 				"eslint_d",
 				"shellcheck",
