@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Get active connection info
 ACTIVE_CONN=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active | head -1)
@@ -10,7 +10,7 @@ DEVICE=$(echo "$ACTIVE_CONN" | cut -d: -f3)
 STATE=$(nmcli -t -f STATE general status)
 
 icon() {
-    if [[ "$STATE" != "connected" ]]; then
+    if [[ "$STATE" != connected* ]]; then
         echo "󰤭"  # disconnected
         return
     fi
@@ -40,7 +40,7 @@ icon() {
 }
 
 name() {
-    if [[ "$STATE" != "connected" ]]; then
+    if [[ "$STATE" != connected* ]]; then
         echo "Offline"
         return
     fi
@@ -66,6 +66,6 @@ case "$1" in
     --name)     name ;;
     --signal)   signal ;;
     --type)     echo "$CONN_TYPE" ;;
-    --state)    echo "$STATE" ;;
+    --state)    [[ "$STATE" == connected* ]] && echo "connected" || echo "disconnected" ;;
     *)          icon ;;
 esac

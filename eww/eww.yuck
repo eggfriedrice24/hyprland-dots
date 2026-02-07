@@ -104,7 +104,8 @@
     (button :class {active_ws == 6 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 6" 6)
     (button :class {active_ws == 7 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 7" 7)
     (button :class {active_ws == 8 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 8" 8)
-    (button :class {active_ws == 9 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 9" 9)))
+    (button :class {active_ws == 9 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 9" 9)
+    (button :class {active_ws == 10 ? "ws-btn active" : "ws-btn"} :onclick "hyprctl dispatch workspace 10" 0)))
 
 ;; -------- Time --------
 (defwidget timebox []
