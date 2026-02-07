@@ -33,8 +33,8 @@ return {
 				"google-java-format",
 
 				-- Linters
+				"eslint-lsp",
 				"selene",
-				"eslint_d",
 				"shellcheck",
 				"flake8",
 				"golangci-lint",
@@ -111,6 +111,33 @@ return {
 
 			-- Java Language Server
 			lspconfig.jdtls.setup({})
+
+			-- ESLint Language Server (linting + formatting for JS/TS)
+			lspconfig.eslint.setup({
+				settings = {
+					eslint = {
+						useFlatConfig = true,
+						run = "onSave",
+					},
+				},
+				on_attach = function(client, bufnr)
+					vim.api.nvim_buf_create_user_command(bufnr, "LspEslintFixAll", function()
+						client:request_sync("workspace/executeCommand", {
+							command = "eslint.applyAllFixes",
+							arguments = {
+								{
+									uri = vim.uri_from_bufnr(bufnr),
+									version = vim.lsp.util.buf_versions[bufnr],
+								},
+							},
+						}, 5000, bufnr)
+					end, {})
+					vim.api.nvim_create_autocmd("BufWritePre", {
+						buffer = bufnr,
+						command = "LspEslintFixAll",
+					})
+				end,
+			})
 
 			-- Lua Language Server
 			lspconfig.lua_ls.setup({
