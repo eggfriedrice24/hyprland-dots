@@ -1,10 +1,27 @@
 return {
-	-- copilot
+	-- copilot (disabled by default, toggle with <leader>cp)
 	{
 		"zbirenbaum/copilot.lua",
+		cmd = "Copilot",
+		keys = {
+			{
+				"<leader>cp",
+				function()
+					local ok, _ = pcall(require, "copilot")
+					if not ok then
+						vim.cmd("Copilot")
+					end
+					local suggestion = require("copilot.suggestion")
+					suggestion.toggle_auto_trigger()
+					local enabled = vim.b.copilot_suggestion_auto_trigger
+					vim.notify("Copilot " .. (enabled and "enabled" or "disabled"), vim.log.levels.INFO)
+				end,
+				desc = "Toggle Copilot",
+			},
+		},
 		opts = {
 			suggestion = {
-				auto_trigger = true,
+				auto_trigger = false,
 				keymap = {
 					accept = "<C-Right>",
 					accept_word = "<M-l>",

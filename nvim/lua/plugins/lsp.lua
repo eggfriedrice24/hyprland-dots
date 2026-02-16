@@ -10,6 +10,7 @@ return {
 	-- Auto-install Mason tools
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
+		event = { "BufReadPre", "BufNewFile" },
 		dependencies = { "williamboman/mason.nvim" },
 		opts = {
 			ensure_installed = {
@@ -45,6 +46,7 @@ return {
 	-- lsp servers
 	{
 		"neovim/nvim-lspconfig",
+		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
 			"williamboman/mason.nvim",
 			"williamboman/mason-lspconfig.nvim",
