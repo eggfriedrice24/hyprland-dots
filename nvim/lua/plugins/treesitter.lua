@@ -15,6 +15,7 @@ return {
 				"gitignore",
 				"go",
 				"graphql",
+				"html",
 				"http",
 				"java",
 				"php",
@@ -69,5 +70,11 @@ return {
 			})
 			vim.treesitter.language.register("markdown", "mdx")
 		end,
+	},
+
+	{
+		"windwp/nvim-ts-autotag",
+		event = { "BufReadPre", "BufNewFile" },
+		opts = {},
 	},
 }
