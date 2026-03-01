@@ -52,23 +52,14 @@ return {
 			"williamboman/mason-lspconfig.nvim",
 		},
 		config = function()
-			local lspconfig = require("lspconfig")
-
-			-- CSS Language Server
-			lspconfig.cssls.setup({})
-
 			-- Tailwind CSS Language Server
-			lspconfig.tailwindcss.setup({
-				root_dir = function(...)
-					return require("lspconfig.util").root_pattern(".git")(...)
-				end,
+			vim.lsp.config("tailwindcss", {
+				root_markers = { ".git" },
 			})
 
 			-- TypeScript Language Server
-			lspconfig.ts_ls.setup({
-				root_dir = function(...)
-					return require("lspconfig.util").root_pattern(".git")(...)
-				end,
+			vim.lsp.config("ts_ls", {
+				root_markers = { ".git" },
 				single_file_support = true,
 				settings = {
 					typescript = {
@@ -96,16 +87,13 @@ return {
 				},
 			})
 
-			-- HTML Language Server
-			lspconfig.html.setup({})
-
 			-- Emmet Language Server
-			lspconfig.emmet_language_server.setup({
+			vim.lsp.config("emmet_language_server", {
 				filetypes = { "html", "css", "scss", "javascriptreact", "typescriptreact", "svelte", "astro" },
 			})
 
 			-- YAML Language Server
-			lspconfig.yamlls.setup({
+			vim.lsp.config("yamlls", {
 				settings = {
 					yaml = {
 						keyOrdering = false,
@@ -113,14 +101,8 @@ return {
 				},
 			})
 
-			-- Go Language Server
-			lspconfig.gopls.setup({})
-
-			-- Java Language Server
-			lspconfig.jdtls.setup({})
-
 			-- ESLint Language Server (linting + formatting for JS/TS)
-			lspconfig.eslint.setup({
+			vim.lsp.config("eslint", {
 				settings = {
 					eslint = {
 						useFlatConfig = true,
@@ -147,7 +129,7 @@ return {
 			})
 
 			-- Lua Language Server
-			lspconfig.lua_ls.setup({
+			vim.lsp.config("lua_ls", {
 				single_file_support = true,
 				settings = {
 					Lua = {
@@ -210,6 +192,20 @@ return {
 						},
 					},
 				},
+			})
+
+			-- Enable all servers
+			vim.lsp.enable({
+				"cssls",
+				"tailwindcss",
+				"ts_ls",
+				"html",
+				"emmet_language_server",
+				"yamlls",
+				"gopls",
+				"jdtls",
+				"eslint",
+				"lua_ls",
 			})
 		end,
 	},
