@@ -70,7 +70,6 @@ return {
 			local lint = require("lint")
 
 			lint.linters_by_ft = {
-				python = { "flake8" },
 				lua = { "selene" },
 				go = { "golangci-lint" },
 				markdown = { "markdownlint" },

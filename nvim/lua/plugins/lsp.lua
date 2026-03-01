@@ -23,6 +23,7 @@ return {
 				"html-lsp",
 				"yaml-language-server",
 				"jdtls",
+				"basedpyright",
 
 				-- Formatters
 				"stylua",
@@ -37,7 +38,6 @@ return {
 				"eslint-lsp",
 				"selene",
 				"shellcheck",
-				"flake8",
 				"golangci-lint",
 				"markdownlint",
 			},
@@ -194,6 +194,18 @@ return {
 				},
 			})
 
+			-- Basedpyright Language Server
+			vim.lsp.config("basedpyright", {
+				settings = {
+					basedpyright = {
+						analysis = {
+							typeCheckingMode = "standard",
+							autoImportCompletions = true,
+						},
+					},
+				},
+			})
+
 			-- Enable all servers
 			vim.lsp.enable({
 				"cssls",
@@ -206,6 +218,7 @@ return {
 				"jdtls",
 				"eslint",
 				"lua_ls",
+				"basedpyright",
 			})
 		end,
 	},
