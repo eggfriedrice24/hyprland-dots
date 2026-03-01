@@ -99,6 +99,11 @@ return {
 			-- HTML Language Server
 			lspconfig.html.setup({})
 
+			-- Emmet Language Server
+			lspconfig.emmet_language_server.setup({
+				filetypes = { "html", "css", "scss", "javascriptreact", "typescriptreact", "svelte", "astro" },
+			})
+
 			-- YAML Language Server
 			lspconfig.yamlls.setup({
 				settings = {
