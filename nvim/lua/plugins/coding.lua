@@ -48,7 +48,7 @@ return {
 			local _99 = require("99")
 			_99.setup({
 				provider = _99.Providers.OpenCodeProvider,
-				model = "anthropic/claude-opus-4-6",
+				model = "openai/gpt-5.3-codex",
 				completion = {
 					source = "blink",
 				},
