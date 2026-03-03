@@ -52,6 +52,22 @@ return {
 				prettier = {
 					timeout_ms = 3000,
 					require_cwd = true,
+					condition = function(_, ctx)
+						return vim.fs.find({
+							".prettierrc",
+							".prettierrc.json",
+							".prettierrc.yml",
+							".prettierrc.yaml",
+							".prettierrc.json5",
+							".prettierrc.js",
+							".prettierrc.cjs",
+							".prettierrc.mjs",
+							".prettierrc.toml",
+							"prettier.config.js",
+							"prettier.config.cjs",
+							"prettier.config.mjs",
+						}, { path = ctx.dirname, upward = true })[1] ~= nil
+					end,
 				},
 			},
 		},
