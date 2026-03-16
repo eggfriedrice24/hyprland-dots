@@ -102,7 +102,18 @@ return {
 			})
 
 			-- ESLint Language Server (linting + formatting for JS/TS)
+			-- Only attaches when an ESLint config is found in the project
 			vim.lsp.config("eslint", {
+				root_markers = {
+					"eslint.config.js",
+					"eslint.config.mjs",
+					"eslint.config.cjs",
+					".eslintrc.json",
+					".eslintrc.js",
+					".eslintrc.yml",
+					".eslintrc.yaml",
+					".eslintrc",
+				},
 				settings = {
 					eslint = {
 						useFlatConfig = true,

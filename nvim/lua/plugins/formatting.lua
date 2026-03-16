@@ -18,10 +18,10 @@ return {
 			formatters_by_ft = {
 				lua = { "stylua" },
 				python = { "isort", "black" },
-				javascript = { "prettier" },
-				javascriptreact = { "prettier" },
-				typescript = { "prettier" },
-				typescriptreact = { "prettier" },
+				javascript = { "oxfmt", "prettier", stop_after_first = true },
+				javascriptreact = { "oxfmt", "prettier", stop_after_first = true },
+				typescript = { "oxfmt", "prettier", stop_after_first = true },
+				typescriptreact = { "oxfmt", "prettier", stop_after_first = true },
 				vue = { "prettier" },
 				css = { "prettier" },
 				scss = { "prettier" },
@@ -48,6 +48,16 @@ return {
 			formatters = {
 				shfmt = {
 					prepend_args = { "-i", "2" },
+				},
+				oxfmt = {
+					command = function(self, ctx)
+						return require("conform.util").from_node_modules("oxfmt")(self, ctx)
+					end,
+					args = { "--stdin-filepath", "$FILENAME" },
+					stdin = true,
+					condition = function(_, ctx)
+						return vim.fs.find(".oxfmtrc.json", { path = ctx.dirname, upward = true })[1] ~= nil
+					end,
 				},
 				prettier = {
 					timeout_ms = 3000,
@@ -109,6 +119,14 @@ return {
 
 					-- Safely try linting, ignore errors if linter not found
 					pcall(lint.try_lint)
+
+					-- Run oxlint for JS/TS when .oxlintrc.json exists in project
+					local ft = vim.bo.filetype
+					if vim.tbl_contains({ "javascript", "javascriptreact", "typescript", "typescriptreact" }, ft) then
+						if vim.fs.find(".oxlintrc.json", { path = vim.fn.expand("%:p:h"), upward = true })[1] then
+							pcall(lint.try_lint, "oxlint")
+						end
+					end
 				end,
 			})
 
