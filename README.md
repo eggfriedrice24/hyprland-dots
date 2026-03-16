@@ -45,6 +45,7 @@ ln -sf ~/.dotfiles/zsh ~/.config/zsh
 dotfiles/
 ├── hypr/          # Hyprland window manager
 ├── kitty/         # Terminal emulator
+├── ghostty/       # Terminal emulator (alternative)
 ├── nvim/          # Neovim editor
 ├── starship/      # Shell prompt
 └── zsh/           # Shell configuration
