@@ -15,6 +15,9 @@ window#waybar {
 #workspaces,
 #window,
 #clock,
+#cpu,
+#memory,
+#temperature,
 #network,
 #pulseaudio,
 #battery,
@@ -30,9 +33,9 @@ window#waybar {
 }
 
 #workspaces button {
-  padding: 0 5px;
-  margin: 6px 2px;
-  border-radius: 3px;
+  padding: 0 8px;
+  margin: 4px 2px;
+  border-radius: 4px;
   color: #070b14;
   background: #f0b100;
   border: none;
@@ -57,6 +60,25 @@ window#waybar {
   font-weight: 600;
 }
 
+/* CPU */
+#cpu {
+  color: #f0b100;
+}
+
+/* Memory */
+#memory {
+  color: #4ba3f7;
+}
+
+/* Temperature */
+#temperature {
+  color: #05df72;
+}
+
+#temperature.critical {
+  color: #f14d4c;
+}
+
 /* Network */
 #network {
   color: #05df72;
@@ -73,6 +95,12 @@ window#waybar {
 
 #pulseaudio.muted {
   color: #f14d4c;
+}
+
+/* Separator */
+#custom-separator {
+  color: #6b727e;
+  padding: 0 4px;
 }
 
 /* Battery */
@@ -94,9 +122,7 @@ window#waybar {
 
 /* System Tray - Rightmost */
 #tray {
-  padding-left: 12px;
-  margin-left: 4px;
-  border-left: 1px solid rgba(60, 65, 85, 0.5);
+  padding-left: 8px;
 }
 
 #tray>.passive {

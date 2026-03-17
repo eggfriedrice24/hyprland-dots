@@ -9,7 +9,7 @@
 
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["network", "pulseaudio", "battery", "tray"],
+    "modules-right": ["cpu", "temperature", "memory", "custom/separator#left", "network", "pulseaudio", "battery", "custom/separator#right", "tray"],
 
     "hyprland/workspaces": {
         "format": "{id}",
@@ -24,11 +24,11 @@
         "max-length": 40,
         "separate-outputs": true,
         "rewrite": {
-            "(.*) - Mozilla Firefox": " $1",
+            "(.*) - Mozilla Firefox": "󰈹 $1",
             "(.*) - nvim": " $1",
-            "kitty": " kitty",
-            "Spotify": " Spotify",
-            "thunar(.*)": " Files$1"
+            "kitty": "󰄛 kitty",
+            "Spotify": "󰓇 Spotify",
+            "thunar(.*)": "󰉋 Files$1"
         }
     },
 
@@ -39,24 +39,47 @@
         "calendar": {
             "mode": "month",
             "format": {
-                "today": "<span color='oklch(79.5% 0.184 86.047)'><b>{}</b></span>"
+                "today": "<span color='#f0b100'><b>{}</b></span>"
             }
         }
     },
 
+    "cpu": {
+        "interval": 2,
+        "format": "󰍛 {usage}%",
+        "tooltip": true,
+        "on-click": "kitty -e htop"
+    },
+
+    "memory": {
+        "interval": 2,
+        "format": "󰘚 {percentage}%",
+        "tooltip-format": "{used:0.1f}G / {total:0.1f}G used",
+        "on-click": "kitty -e htop"
+    },
+
+    "temperature": {
+        "hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon",
+        "input-filename": "temp1_input",
+        "critical-threshold": 80,
+        "format": "󰔏 {temperatureC}°C",
+        "format-critical": "󰔏 {temperatureC}°C",
+        "tooltip-format": "CPU Temp: {temperatureC}°C"
+    },
+
     "network": {
-        "format-wifi": " {essid}",
-        "format-ethernet": " Wired",
-        "format-disconnected": " Disconnected",
+        "format-wifi": "󰖩 {essid}",
+        "format-ethernet": "󰈀 Wired",
+        "format-disconnected": "󰖪 Disconnected",
         "tooltip-format-wifi": "{signalStrength}% | {ipaddr}",
         "on-click": "nm-connection-editor"
     },
 
     "pulseaudio": {
         "format": "{icon} {volume}%",
-        "format-muted": " Muted",
+        "format-muted": "󰝟 Muted",
         "format-icons": {
-            "default": ["", "", ""]
+            "default": ["󰕿", "󰖀", "󰕾"]
         },
         "on-click": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
         "on-scroll-up": "pactl set-sink-volume @DEFAULT_SINK@ +2%",
@@ -69,9 +92,21 @@
             "critical": 15
         },
         "format": "{icon} {capacity}%",
-        "format-charging": " {capacity}%",
-        "format-plugged": " {capacity}%",
-        "format-icons": ["", "", "", "", ""]
+        "format-charging": "󰂄 {capacity}%",
+        "format-plugged": "󰂄 {capacity}%",
+        "format-icons": ["󰂎", "󰁺", "󰁾", "󰂁", "󰁹"]
+    },
+
+    "custom/separator#left": {
+        "format": "|",
+        "interval": "once",
+        "tooltip": false
+    },
+
+    "custom/separator#right": {
+        "format": "|",
+        "interval": "once",
+        "tooltip": false
     },
 
     "tray": {
