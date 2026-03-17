@@ -7,6 +7,7 @@ Personal dotfiles for Arch Linux with Hyprland compositor.
 ## What's Included
 
 - **[Hyprland](https://hypr.land/)** - Wayland compositor configuration
+- **[Waybar](https://github.com/Alexays/Waybar)** - Wayland bar
 - **[Neovim](https://neovim.io/)** - Modern text editor with LSP support
 - **[Kitty](https://sw.kovidgoyal.net/kitty/)** - GPU-accelerated terminal emulator
 - **[Zsh](https://www.zsh.org/)** - Shell configuration with Zinit plugin manager
@@ -29,6 +30,7 @@ ln -sf ~/.dotfiles/hypr ~/.config/hypr
 ln -sf ~/.dotfiles/nvim ~/.config/nvim
 ln -sf ~/.dotfiles/kitty ~/.config/kitty
 ln -sf ~/.dotfiles/starship ~/.config/starship
+ln -sf ~/.dotfiles/waybar ~/.config/waybar
 ln -sf ~/.dotfiles/zsh ~/.config/zsh
 ```
 
@@ -44,6 +46,7 @@ ln -sf ~/.dotfiles/zsh ~/.config/zsh
 ```
 dotfiles/
 ├── hypr/          # Hyprland window manager
+├── waybar/        # Wayland bar
 ├── kitty/         # Terminal emulator
 ├── ghostty/       # Terminal emulator (alternative)
 ├── nvim/          # Neovim editor
