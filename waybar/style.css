@@ -120,9 +120,12 @@ window#waybar {
   color: #f14d4c;
 }
 
-/* System Tray - Rightmost */
+/* System Tray */
 #tray {
-  padding-left: 8px;
+  padding: 0 8px;
+  margin: 5px 30px 5px 0;
+  border: 1px solid rgba(60, 65, 85, 0.5);
+  border-radius: 6px;
 }
 
 #tray>.passive {
