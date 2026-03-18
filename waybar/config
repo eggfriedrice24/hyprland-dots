@@ -33,8 +33,7 @@
     },
 
     "clock": {
-        "format": "{:%H:%M}",
-        "format-alt": "{:%a, %b %d}",
+        "format": "{:%H:%M <span color='#6b727e'>· %a, %b %d</span>}",
         "tooltip-format": "<tt>{calendar}</tt>",
         "calendar": {
             "mode": "month",
