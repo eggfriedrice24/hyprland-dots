@@ -11,3 +11,7 @@ fzf
 ripgrep
 fd
 python
+node
+fnm
+pnpm
+bun

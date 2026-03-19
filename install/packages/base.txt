@@ -6,4 +6,11 @@ jq
 zsh
 acpi
 keychain
+openssh
 unzip
+networkmanager
+bluez
+bluez-utils
+xdg-desktop-portal
+xdg-utils
+libnotify

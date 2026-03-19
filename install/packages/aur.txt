@@ -1,5 +1,4 @@
 # AUR packages
 grimblast-git
 zen-browser-bin
-fnm-bin
-pnpm-bin
+slack-desktop

@@ -13,7 +13,6 @@ hypridle
 hyprpicker
 grim
 slurp
-wf-recorder
 brightnessctl
 ddcutil
 imagemagick

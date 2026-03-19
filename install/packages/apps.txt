@@ -1,4 +1,7 @@
 # Desktop applications
 kitty
 thunar
-firefox
+discord
+steam
+signal-desktop
+obs-studio
