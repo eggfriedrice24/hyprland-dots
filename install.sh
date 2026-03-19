@@ -38,14 +38,16 @@ source "${DOTFILES_DIR}/install/utils.sh"
 
 trap 'error "Installation failed at stage — check output above"' ERR
 
+DISPLAY_DIR="${DOTFILES_DIR/#$HOME/\~}"
+
 echo
-echo "  ┌──────────────────────────────────┐"
-echo "  │       dotfiles installer          │"
-echo "  ├──────────────────────────────────┤"
-printf "  │  Machine:  %-21s │\n" "$MACHINE"
-printf "  │  Dotfiles: %-21s │\n" "$DOTFILES_DIR"
-printf "  │  Dry run:  %-21s │\n" "$( [[ $DRY_RUN -eq 1 ]] && echo 'yes' || echo 'no' )"
-echo "  └──────────────────────────────────┘"
+echo "  ┌─────────────────────────────┐"
+echo "  │     dotfiles installer      │"
+echo "  ├─────────────────────────────┤"
+printf "  │  Machine:  %-16s │\n" "$MACHINE"
+printf "  │  Path:     %-16s │\n" "$DISPLAY_DIR"
+printf "  │  Dry run:  %-16s │\n" "$( [[ $DRY_RUN -eq 1 ]] && echo 'yes' || echo 'no' )"
+echo "  └─────────────────────────────┘"
 echo
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
