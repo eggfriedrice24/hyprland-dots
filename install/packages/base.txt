@@ -1,0 +1,9 @@
+# Base system packages
+git
+base-devel
+curl
+jq
+zsh
+acpi
+keychain
+unzip

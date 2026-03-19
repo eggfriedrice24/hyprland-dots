@@ -1,0 +1,13 @@
+# Development tools
+neovim
+go
+rustup
+lazygit
+tmux
+bat
+eza
+htop
+fzf
+ripgrep
+fd
+python

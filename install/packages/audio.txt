@@ -1,0 +1,6 @@
+# Audio stack
+pipewire
+wireplumber
+pipewire-pulse
+pipewire-alsa
+pamixer

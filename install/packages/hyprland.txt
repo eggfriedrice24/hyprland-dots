@@ -1,0 +1,19 @@
+# Hyprland and Wayland desktop
+hyprland
+waybar
+dunst
+rofi-wayland
+swww
+xdg-desktop-portal-hyprland
+polkit-kde-agent
+wl-clipboard
+cliphist
+hyprlock
+hypridle
+hyprpicker
+grim
+slurp
+wf-recorder
+brightnessctl
+ddcutil
+imagemagick

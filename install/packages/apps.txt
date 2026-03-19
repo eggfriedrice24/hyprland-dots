@@ -1,0 +1,4 @@
+# Desktop applications
+kitty
+thunar
+firefox
