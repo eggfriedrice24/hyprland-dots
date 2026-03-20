@@ -36,6 +36,14 @@ else
     warn "hypr/scripts directory not found"
 fi
 
+# Install Claude Code
+if command -v claude &>/dev/null; then
+    success "Claude Code already installed: $(claude --version 2>/dev/null)"
+else
+    info "Installing Claude Code..."
+    run curl -fsSL https://claude.ai/install.sh | bash
+fi
+
 success "=== Stage 5: Complete ==="
 echo
 info "Installation complete! Reboot and log in to start Hyprland."

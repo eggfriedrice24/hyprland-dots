@@ -2,3 +2,4 @@
 grimblast-git
 zen-browser-bin
 slack-desktop
+t3code-bin

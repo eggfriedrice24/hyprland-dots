@@ -15,3 +15,4 @@ node
 fnm
 pnpm
 bun
+openai-codex
