@@ -17,6 +17,7 @@ return {
 				-- Language Servers
 				"lua-language-server",
 				"gopls",
+				"json-lsp",
 				"typescript-language-server",
 				"css-lsp",
 				"tailwindcss-language-server",
@@ -52,6 +53,11 @@ return {
 			"williamboman/mason-lspconfig.nvim",
 		},
 		config = function()
+			-- JSON Language Server
+			vim.lsp.config("jsonls", {
+				single_file_support = true,
+			})
+
 			-- Tailwind CSS Language Server
 			vim.lsp.config("tailwindcss", {
 				root_markers = { ".git" },
@@ -224,6 +230,7 @@ return {
 				"ts_ls",
 				"html",
 				"emmet_language_server",
+				"jsonls",
 				"yamlls",
 				"gopls",
 				"jdtls",
