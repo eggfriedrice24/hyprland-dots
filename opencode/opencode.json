@@ -6,11 +6,35 @@
       "*": "allow",
       "*.env": "deny",
       "*.env.*": "deny",
-      "*.env.example": "allow"
+      "*.env.example": "allow",
+      "*.pem": "deny",
+      "*.key": "deny",
+      "*.p12": "deny",
+      "*.pfx": "deny",
+      "*credentials*": "deny",
+      "*secret*": "deny",
+      ".ssh/*": "deny",
+      ".gnupg/*": "deny"
     },
-    "skill" : "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "bash": {
+      "*": "ask",
+      "pwd": "allow",
+      "ls*": "allow",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "rm *": "deny",
+      "git push *": "deny"
+    },
+    "skill": {
+      "*": "ask",
+      "commit": "allow",
+      "fix-dashes": "allow"
+    },
     "lsp": "allow",
     "todowrite": "allow",
-    "question": "allow",
+    "question": "allow"
   }
 }
