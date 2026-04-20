@@ -44,6 +44,17 @@ else
     run curl -fsSL https://claude.ai/install.sh | bash
 fi
 
+# Install OpenCode plugin dependencies
+opencode_dir="${DOTFILES_DIR}/opencode"
+if [[ -f "$opencode_dir/package.json" ]]; then
+    if command -v bun &>/dev/null; then
+        info "Installing OpenCode plugin dependencies..."
+        run bun install --cwd "$opencode_dir" --frozen-lockfile
+    else
+        warn "bun not found, skipping OpenCode plugin dependencies"
+    fi
+fi
+
 success "=== Stage 5: Complete ==="
 echo
 info "Installation complete! Reboot and log in to start Hyprland."

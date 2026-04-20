@@ -10,6 +10,7 @@ Personal dotfiles for Arch Linux with Hyprland compositor.
 - **[Waybar](https://github.com/Alexays/Waybar)** - Wayland bar
 - **[Neovim](https://neovim.io/)** - Modern text editor with LSP support
 - **[Kitty](https://sw.kovidgoyal.net/kitty/)** - GPU-accelerated terminal emulator
+- **[OpenCode](https://opencode.ai/)** - AI coding assistant configuration
 - **[Zsh](https://www.zsh.org/)** - Shell configuration with Zinit plugin manager
 - **[Starship](https://starship.rs/)** - Cross-shell prompt
 
@@ -28,6 +29,7 @@ cd ~/.dotfiles
 # Example symlinking
 ln -sf ~/.dotfiles/hypr ~/.config/hypr
 ln -sf ~/.dotfiles/nvim ~/.config/nvim
+ln -sf ~/.dotfiles/opencode ~/.config/opencode
 ln -sf ~/.dotfiles/kitty ~/.config/kitty
 ln -sf ~/.dotfiles/starship ~/.config/starship
 ln -sf ~/.dotfiles/waybar ~/.config/waybar
@@ -48,6 +50,7 @@ dotfiles/
 ├── hypr/          # Hyprland window manager
 ├── waybar/        # Wayland bar
 ├── kitty/         # Terminal emulator
+├── opencode/      # OpenCode configuration
 ├── ghostty/       # Terminal emulator (alternative)
 ├── nvim/          # Neovim editor
 ├── starship/      # Shell prompt
