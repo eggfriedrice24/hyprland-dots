@@ -30,7 +30,8 @@ return {
 				json = { "prettier" },
 				jsonc = { "prettier" },
 				yaml = { "prettier" },
-				markdown = { "prettier" },
+				markdown = { "prettier_markdown" },
+				mdx = { "prettier_markdown" },
 				graphql = { "prettier" },
 				handlebars = { "prettier" },
 				go = { "goimports", "gofumpt" },
@@ -58,6 +59,11 @@ return {
 					condition = function(_, ctx)
 						return vim.fs.find(".oxfmtrc.json", { path = ctx.dirname, upward = true })[1] ~= nil
 					end,
+				},
+				prettier_markdown = {
+					command = "prettier",
+					args = { "--prose-wrap", "always", "--print-width", "120", "--parser", "markdown", "--stdin-filepath", "$FILENAME" },
+					stdin = true,
 				},
 				prettier = {
 					timeout_ms = 3000,
@@ -95,6 +101,10 @@ return {
 		config = function()
 			local lint = require("lint")
 
+			lint.linters.markdownlint.args = {
+				"--disable", "MD013", "--",
+			}
+
 			lint.linters_by_ft = {
 				lua = { "selene" },
 				go = { "golangci-lint" },
@@ -103,6 +113,19 @@ return {
 				bash = { "shellcheck" },
 				zsh = { "shellcheck" },
 			}
+
+			-- Resolve oxlint from nearest node_modules/.bin/ (monorepo-friendly)
+			local oxlint = lint.linters.oxlint
+			if oxlint then
+				local original_cmd = oxlint.cmd
+				oxlint.cmd = function()
+					local node_bin = vim.fs.find("node_modules/.bin/oxlint", {
+						path = vim.fn.expand("%:p:h"),
+						upward = true,
+					})[1]
+					return node_bin or original_cmd
+				end
+			end
 
 			-- Create autocommand which carries out the actual linting
 			-- on the specified events.
