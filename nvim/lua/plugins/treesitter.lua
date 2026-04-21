@@ -1,74 +1,60 @@
-return {
-	{ "nvim-treesitter/playground", cmd = "TSPlaygroundToggle" },
+local parsers = {
+	"astro",
+	"bash",
+	"c",
+	"cmake",
+	"cpp",
+	"css",
+	"gitignore",
+	"go",
+	"graphql",
+	"html",
+	"http",
+	"java",
+	"javascript",
+	"json",
+	"lua",
+	"markdown",
+	"markdown_inline",
+	"php",
+	"python",
+	"query",
+	"regex",
+	"rust",
+	"scss",
+	"sql",
+	"svelte",
+	"toml",
+	"tsx",
+	"typescript",
+	"vim",
+	"vimdoc",
+	"yaml",
+}
 
+return {
 	{
 		"nvim-treesitter/nvim-treesitter",
-		opts = {
-			highlight = {
-				enable = true,
-			},
-			ensure_installed = {
-				"astro",
-				"cmake",
-				"cpp",
-				"css",
-				"gitignore",
-				"go",
-				"graphql",
-				"html",
-				"http",
-				"java",
-				"php",
-				"rust",
-				"scss",
-				"sql",
-				"svelte",
-				"javascript",
-				"json",
-				"tsx",
-				"typescript",
-			},
-
-			-- matchup = {
-			-- 	enable = true,
-			-- },
-
-			-- https://github.com/nvim-treesitter/playground#query-linter
-			query_linter = {
-				enable = true,
-				use_virtual_text = true,
-				lint_events = { "BufWrite", "CursorHold" },
-			},
-
-			playground = {
-				enable = true,
-				disable = {},
-				updatetime = 25, -- Debounced time for highlighting nodes in the playground from source code
-				persist_queries = true, -- Whether the query persists across vim sessions
-				keybindings = {
-					toggle_query_editor = "o",
-					toggle_hl_groups = "i",
-					toggle_injected_languages = "t",
-					toggle_anonymous_nodes = "a",
-					toggle_language_display = "I",
-					focus_language = "f",
-					unfocus_language = "F",
-					update = "R",
-					goto_node = "<cr>",
-					show_help = "?",
-				},
-			},
-		},
-		config = function(_, opts)
-			require("nvim-treesitter.configs").setup(opts)
-
-			-- MDX
-			vim.filetype.add({
-				extension = {
-					mdx = "mdx",
-				},
+		branch = "main",
+		lazy = false,
+		build = ":TSUpdate",
+		config = function()
+			require("nvim-treesitter").setup({
+				install_dir = vim.fn.stdpath("data") .. "/site",
 			})
+			require("nvim-treesitter").install(parsers)
+
 			vim.treesitter.language.register("markdown", "mdx")
+
+			vim.api.nvim_create_autocmd("FileType", {
+				callback = function(ev)
+					local ft = vim.bo[ev.buf].filetype
+					local lang = vim.treesitter.language.get_lang(ft)
+					if lang and pcall(vim.treesitter.language.add, lang) then
+						pcall(vim.treesitter.start, ev.buf, lang)
+					end
+				end,
+			})
 		end,
 	},
 
