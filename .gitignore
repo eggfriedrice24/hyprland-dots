@@ -15,6 +15,9 @@ nvim/plugin/
 *~
 .DS_Store
 
+# OpenCode
+opencode/google-workspace.env
+
 # Hypr
 hypr/hyprland.log
 

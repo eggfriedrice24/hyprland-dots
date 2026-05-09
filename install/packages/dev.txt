@@ -11,6 +11,7 @@ fzf
 ripgrep
 fd
 python
+uv
 node
 fnm
 pnpm
