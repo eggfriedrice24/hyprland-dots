@@ -39,6 +39,9 @@
     },
     "glob": "allow",
     "grep": "allow",
+    "external_directory": {
+      "~/.opencode/**": "allow"
+    },
     "bash": {
       "*": "ask",
       "pwd": "allow",
