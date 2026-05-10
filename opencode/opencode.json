@@ -60,5 +60,10 @@
     "lsp": "allow",
     "todowrite": "allow",
     "question": "allow"
+  },
+  "compaction": {
+    "auto": false,
+    "prune": true,
+    "reserved": 10000
   }
 }
