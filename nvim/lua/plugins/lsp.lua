@@ -25,6 +25,7 @@ return {
 				"yaml-language-server",
 				"jdtls",
 				"basedpyright",
+				"rust-analyzer",
 
 				-- Formatters
 				"stylua",
@@ -34,6 +35,7 @@ return {
 				"gofumpt",
 				"goimports",
 				"google-java-format",
+				"rustfmt",
 
 				-- Linters
 				"eslint-lsp",
@@ -237,6 +239,7 @@ return {
 				"eslint",
 				"lua_ls",
 				"basedpyright",
+				"rust_analyzer",
 			})
 		end,
 	},
