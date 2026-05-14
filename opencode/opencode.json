@@ -65,5 +65,8 @@
     "auto": false,
     "prune": true,
     "reserved": 10000
-  }
+  },
+  "instructions": [
+    "~/.config/opencode/instructions/personal.md"
+  ]
 }
