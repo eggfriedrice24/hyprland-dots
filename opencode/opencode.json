@@ -61,11 +61,11 @@
     "todowrite": "allow",
     "question": "allow"
   },
-  "compaction": {
-    "auto": false,
-    "prune": true,
-    "reserved": 10000
-  },
+  // "compaction": {
+  //   "auto": false,
+  //   "prune": true,
+  //   "reserved": 10000
+  // },
   "instructions": [
     "~/.config/opencode/instructions/personal.md"
   ]
