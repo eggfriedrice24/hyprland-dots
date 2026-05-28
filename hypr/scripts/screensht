@@ -118,13 +118,10 @@ function main() {
 	_screenshot_command_="$1"
 	_notif_message_="$2"
 
-    $_screenshot_command_ $_SCREENSHOT_DIR_\/$_start_job_.png> /dev/null 2>&1
+    _target_file_="$_SCREENSHOT_DIR_/$_start_job_.png"
+
+    $_screenshot_command_ "$_target_file_" > /dev/null 2>&1
     check
-
-    get_latest_img
-    convert
-
-	mv $_LATEST_IMAGE_ $_ORIGINAL_DIR_
     
     _end_job_=$(date +%s)
     summary $_start_job_ $_end_job_
