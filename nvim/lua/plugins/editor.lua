@@ -40,6 +40,33 @@ return {
 				browse = "<Leader>go",
 			},
 		},
+		config = function(_, opts)
+			require("git").setup(opts)
+
+			vim.api.nvim_create_autocmd("BufWinEnter", {
+				group = vim.api.nvim_create_augroup("GitDiffKeymaps", { clear = true }),
+				callback = function(event)
+					vim.schedule(function()
+						if not vim.api.nvim_buf_is_valid(event.buf) then
+							return
+						end
+
+						local win = vim.fn.bufwinid(event.buf)
+						if win == -1 or not vim.wo[win].diff then
+							return
+						end
+
+						if vim.bo[event.buf].buftype ~= "nofile" or vim.bo[event.buf].bufhidden ~= "delete" then
+							return
+						end
+
+						vim.keymap.set("n", "q", function()
+							require("git.diff").close()
+						end, { buffer = event.buf, silent = true, desc = "Close git diff" })
+					end)
+				end,
+			})
+		end,
 	},
 
 	{
