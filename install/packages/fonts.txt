@@ -1,4 +1,5 @@
 # Fonts
 ttf-jetbrains-mono-nerd
+ttf-nerd-fonts-symbols-mono
 otf-font-awesome
 noto-fonts-emoji
