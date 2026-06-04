@@ -3,7 +3,7 @@ hyprland
 waybar
 dunst
 rofi-wayland
-swww
+awww
 xdg-desktop-portal-hyprland
 polkit-kde-agent
 wl-clipboard
