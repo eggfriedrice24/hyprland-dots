@@ -21,6 +21,9 @@
       "timeout": 30000
     }
   },
+  "tools": {
+    "websearch": true
+  },
   "permission": {
     "*": "ask",
     "read": {
@@ -58,6 +61,8 @@
       "commit": "allow",
       "fix-dashes": "allow"
     },
+    "webfetch": "ask",
+    "websearch": "ask",
     "lsp": "allow",
     "todowrite": "allow",
     "question": "allow"
