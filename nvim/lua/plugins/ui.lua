@@ -79,7 +79,15 @@ return {
 		opts = {
 			scroll = { enabled = false },
 		},
-		keys = {},
+		keys = {
+			{
+				"<leader>t",
+				function()
+					Snacks.terminal.toggle(nil, { win = { position = "bottom", height = 0.3 } })
+				end,
+				desc = "Toggle Terminal",
+			},
+		},
 	},
 
 	-- buffer line
