@@ -22,3 +22,9 @@ alias gcm='git commit -m'
 
 # Editor
 alias v='nvim'
+
+# Claude Code account switching
+# claude / claudep -> personal account (~/.claude, current login)
+# claudew          -> work account (~/.claude-work, separate login)
+claudep() { CLAUDE_CONFIG_DIR="$HOME/.claude" command claude "$@" }
+claudew() { CLAUDE_CONFIG_DIR="$HOME/.claude-work" command claude "$@" }
