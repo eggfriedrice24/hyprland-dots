@@ -1,5 +1,4 @@
--- █▀▀ ▀▄▀ █▀▀ █▀▀
--- ██▄ █░█ ██▄ █▄▄
+-- Autostart
 
 -- hl.exec_cmd spawns async processes, no need for "& disown"
 hl.on("hyprland.start", function()

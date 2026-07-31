@@ -1,5 +1,4 @@
--- █▀▀ █▄░█ █░█   █░█ ▄▀█ █▀█
--- ██▄ █░▀█ ▀▄▀   ▀▄▀ █▀█ █▀▄
+-- Hyprland config - Lua entry point
 
 require("startup")
 require("env")
@@ -7,18 +6,12 @@ require("windowrule")
 require("keybinds")
 -- Catppuccin palette lives in mocha.lua: local mocha = require("mocha")
 
--- █▀▄▀█ █▀█ █▄░█ █ ▀█▀ █▀█ █▀█
--- █░▀░█ █▄█ █░▀█ █ ░█░ █▄█ █▀▄
-
+-- Monitors
 hl.monitor({ output = "DP-3", mode = "2560x1440@240", position = "0x0", scale = 1 })
 hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 })
 -- hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
-
-
--- █ █▄░█ █▀█ █░█ ▀█▀
--- █ █░▀█ █▀▀ █▄█ ░█░
-
+-- Input
 hl.config({
   input = {
     kb_layout = "us,ge",
@@ -41,11 +34,7 @@ hl.config({
 hl.device({ name = "razer-razer-deathadder-essential", sensitivity = -0.85 })
 hl.device({ name = "razer-razer-deathadder-essential-1", sensitivity = -0.85 })
 
-
-
--- █▀▀ █▀▀ █▄░█ █▀▀ █▀█ ▄▀█ █░░
--- █▄█ ██▄ █░▀█ ██▄ █▀▄ █▀█ █▄▄
-
+-- General
 hl.config({
   general = {
     gaps_in = 5,
@@ -61,11 +50,7 @@ hl.config({
   },
 })
 
-
-
--- █▀▄▀█ █ █▀ █▀▀
--- █░▀░█ █ ▄█ █▄▄
-
+-- Misc
 hl.config({
   misc = {
     disable_hyprland_logo = true,
@@ -86,11 +71,7 @@ hl.on("window.active", function(w)
   end
 end)
 
-
-
--- █▀▄ █▀▀ █▀▀ █▀█ █▀█ ▄▀█ ▀█▀ █ █▀█ █▄░█
--- █▄▀ ██▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ █ █▄█ █░▀█
-
+-- Decoration
 hl.config({
   decoration = {
     rounding = 3,
@@ -107,11 +88,7 @@ hl.config({
   },
 })
 
-
-
--- ▄▀█ █▄░█ █ █▀▄▀█ ▄▀█ ▀█▀ █ █▀█ █▄░█
--- █▀█ █░▀█ █ █░▀░█ █▀█ ░█░ █ █▄█ █░▀█
-
+-- Animations
 hl.config({ animations = { enabled = true } })
 
 -- bezier curves
@@ -129,9 +106,7 @@ hl.animation({ leaf = "borderangle", enabled = true, speed = 30, bezier = "liner
 hl.animation({ leaf = "fade", enabled = true, speed = 10, bezier = "default" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "wind" })
 
--- █░░ ▄▀█ █▄█ █▀█ █░█ ▀█▀ █▀
--- █▄▄ █▀█ ░█░ █▄█ █▄█ ░█░ ▄█
-
+-- Layouts
 hl.config({
   dwindle = {
     preserve_split = true, -- you probably want this

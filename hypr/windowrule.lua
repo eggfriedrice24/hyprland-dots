@@ -1,7 +1,6 @@
--- █░█░█ █ █▄░█ █▀▄ █▀█ █░█░█   █▀█ █░█ █░░ █▀▀ █▀
--- ▀▄▀▄▀ █ █░▀█ █▄▀ █▄█ ▀▄▀▄▀   █▀▄ █▄█ █▄▄ ██▄ ▄█
+-- Window and layer rules
 
--- Layer Effects
+-- Layer effects
 hl.layer_rule({ match = { namespace = "^(rofi)$" }, blur = true, ignore_alpha = 0.20 })
 
 -- Opacity
