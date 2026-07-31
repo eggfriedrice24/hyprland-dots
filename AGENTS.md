@@ -37,13 +37,17 @@ echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
 
 All major components use a source/import pattern to split configs into logical modules:
 
-**Hyprland** - Main config at `hypr/hyprland.conf` sources:
+**Hyprland** - Lua config (0.55+ format), main config at `hypr/hyprland.lua` requires:
 
-- `startup.conf` - Autostart applications (XDG portal, polkit, pipewire, dunst, cliphist, swww, waybar)
-- `env.conf` - Environment variables
-- `windowrule.conf` - Window management rules
-- `keybinds.conf` - Keyboard shortcuts
-- `mocha.conf` - Catppuccin Mocha color scheme
+- `startup.lua` - Autostart applications (XDG portal, polkit, pipewire, dunst, cliphist, waybar)
+- `env.lua` - Environment variables
+- `windowrule.lua` - Window and layer rules
+- `keybinds.lua` - Keyboard shortcuts
+- `mocha.lua` - Catppuccin Mocha palette as a Lua module
+
+Legacy hyprlang configs are archived in `hypr.old/`. `hypr/hypridle.conf` and
+`hypr/hyprlock.conf` belong to hypridle/hyprlock (separate tools, still hyprlang).
+Lua API reference: `/usr/share/hypr/stubs/hl.meta.lua` (lua-ls picks it up via `hypr/.luarc.json`).
 
 **Zsh** - `.zshrc` dynamically sources modules in order:
 
@@ -158,15 +162,15 @@ The Neovim configuration supports these languages with full LSP/formatting/linti
 
 ### Hyprland Multi-Monitor Setup
 
-Configured in `hypr/hyprland.conf`:
+Configured in `hypr/hyprland.lua`:
 
-- Primary: eDP-1 (1920x1080@60Hz)
-- Secondary: HDMI-A-1 (2560x1440@60Hz)
+- Desktop: DP-3 (2560x1440@240Hz)
+- Laptop: eDP-1 (preferred mode)
 - Waybar on all outputs
 
 ### Keyboard Layouts
 
-Configured in `hypr/hyprland.conf`:
+Configured in `hypr/hyprland.lua`:
 
 - US + Georgian layouts
 - Caps Lock toggles between layouts
@@ -175,7 +179,7 @@ Configured in `hypr/hyprland.conf`:
 
 All components use unified colors:
 
-- Hyprland: Catppuccin Mocha colors in `hypr/mocha.conf`
+- Hyprland: Catppuccin Mocha colors in `hypr/mocha.lua`
 - Neovim: Halcyon colorscheme
 - Starship: Custom colors matching theme palette
 - FZF: Catppuccin Mocha colors in `zsh/env.zsh`
@@ -213,7 +217,7 @@ When making changes, preserve this exclusion pattern.
 
 ### File Reference Patterns
 
-- Hyprland configs reference each other with: `source = ~/.config/hypr/filename.conf`
+- Hyprland config modules are pulled in with Lua `require("filename")` from `hyprland.lua`
 - Zsh modules are sourced dynamically via the loop in `.zshrc`
 - Neovim plugins are auto-discovered in `lua/plugins/` directory
 - Hyprland scripts are centralized in `hypr/scripts/` directory
