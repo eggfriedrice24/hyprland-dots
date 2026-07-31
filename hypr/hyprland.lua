@@ -79,6 +79,13 @@ hl.config({
   },
 })
 
+-- raise windows when they gain focus, so overlapping ones don't stay buried
+hl.on("window.active", function(w)
+  if w ~= nil then
+    hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", window = w }))
+  end
+end)
+
 
 
 -- █▀▄ █▀▀ █▀▀ █▀█ █▀█ ▄▀█ ▀█▀ █ █▀█ █▄░█
