@@ -54,7 +54,8 @@ hl.bind("SUPER + SHIFT + Space", function()
   local ws = hl.get_active_workspace()
   if ws == nil then return end
   for _, w in ipairs(hl.get_workspace_windows(ws)) do
-    hl.dispatch(hl.dsp.window.float({ window = w }))
+    -- pcall in case a window expires mid-loop
+    pcall(function() hl.dispatch(hl.dsp.window.float({ window = w })) end)
   end
   hl.exec_cmd(notifycmd .. " 'Toggled All Float Mode'")
 end)
@@ -62,7 +63,7 @@ hl.bind("SUPER + SHIFT + P", function()
   local ws = hl.get_active_workspace()
   if ws == nil then return end
   for _, w in ipairs(hl.get_workspace_windows(ws)) do
-    hl.dispatch(hl.dsp.window.pseudo({ window = w }))
+    pcall(function() hl.dispatch(hl.dsp.window.pseudo({ window = w })) end)
   end
   hl.exec_cmd(notifycmd .. " 'Toggled All Pseudo Mode'")
 end)
