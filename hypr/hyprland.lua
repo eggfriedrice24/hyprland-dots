@@ -65,13 +65,12 @@ hl.config({
 })
 
 -- raise windows when they gain focus, so overlapping ones don't stay buried.
--- pcall because the window can be closed (object expired) between the event
--- firing and the dispatch
+-- dispatch executes asynchronously, so don't hold the event's window object
+-- (it can expire before execution) - with no window given, the dispatcher
+-- resolves the active window itself when it runs
 hl.on("window.active", function(w)
   if w == nil then return end
-  pcall(function()
-    hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", window = w }))
-  end)
+  hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top" }))
 end)
 
 -- Decoration
