@@ -3,3 +3,4 @@
 config-file = font
 config-file = appearance
 config-file = behavior
+config-file = keybinds
