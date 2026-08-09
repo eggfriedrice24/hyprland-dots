@@ -33,6 +33,9 @@ zinit light-mode for \
   zsh-users/zsh-autosuggestions \
   Aloxaf/fzf-tab
 
+# sudo & co in yolk yellow (fg=yellow -> palette 3 = #ffc940)
+FAST_HIGHLIGHT_STYLES[precommand]='fg=yellow'
+
 zinit ice wait'3' lucid atload'bindkey "^[[A" history-substring-search-up; bindkey "^[[B" history-substring-search-down'
 zinit light zsh-users/zsh-history-substring-search
 
