@@ -5,7 +5,10 @@ font-family-bold-italic = Cartograph CF Bold Italic
 font-size = 13
 adjust-cell-height = 20%
 
-# new windows always start at home, not the focused window's cwd
+# new windows always start at home, not the focused window's cwd -
+# one process per window, else windows join the running instance and
+# inherit its cwd regardless of working-directory
+gtk-single-instance = false
 working-directory = home
 
 # eggfriedrice.nvim palette (p/eggfriedrice.nvim)
