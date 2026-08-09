@@ -11,6 +11,7 @@ declare -A symlinks=(
     ["zsh"]="$HOME/.config/zsh"
     ["starship"]="$HOME/.config/starship"
     ["waybar"]="$HOME/.config/waybar"
+    ["dunst"]="$HOME/.config/dunst"
     ["rofi"]="$HOME/.config/rofi"
     ["tmux"]="$HOME/.config/tmux"
     ["lazygit"]="$HOME/.config/lazygit"
