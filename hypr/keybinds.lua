@@ -3,7 +3,7 @@
 local scriptsDir = "$HOME/.config/hypr/scripts"
 local notifycmd  = "notify-send -h string:x-canonical-private-synchronous:hypr-cfg -u low"
 
-local term        = "kitty"
+local term        = "ghostty"
 local volume      = scriptsDir .. "/volumecontrol.sh"
 local screenshot  = scriptsDir .. "/screensht"
 local colorpicker = scriptsDir .. "/colorpicker"

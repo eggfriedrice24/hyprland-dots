@@ -22,6 +22,6 @@ fi
 
 # Trigger upgrade
 if [ "$1" == "up" ] ; then
-    kitty --title systemupdate sh -c 'yay -Syu'
+    ghostty --title=systemupdate -e sh -c 'yay -Syu'
 fi
 

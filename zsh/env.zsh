@@ -19,7 +19,7 @@ export PATH="$HOME/.local/share/fnm:$PATH"
 eval "$(fnm env --use-on-cd)"
 
 export SUDO_PROMPT="passwd: "
-export TERMINAL="kitty"
+export TERMINAL="ghostty"
 export BROWSER="firefox"
 export VISUAL="nvim"
 export EDITOR="nvim"

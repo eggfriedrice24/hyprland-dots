@@ -42,9 +42,9 @@ ln -fs $CFGDIR/qt5ct/colors/${S_MODE}.conf $CFGDIR/qt5ct/colors/theme.conf
 ### rofi ###
 ln -fs $CFGDIR/rofi/${S_MODE}.rasi $CFGDIR/rofi/theme.rasi
 
-### kitty ###
-ln -fs $CFGDIR/kitty/${S_MODE}.conf $CFGDIR/kitty/theme.conf
-killall -SIGUSR1 kitty
+### ghostty ###
+ln -fs $CFGDIR/ghostty/${S_MODE}.conf $CFGDIR/ghostty/theme.conf
+killall -SIGUSR2 ghostty
 
 ### waybar ###
 ln -fs $CFGDIR/waybar/${S_MODE}.css $CFGDIR/waybar/style.css
