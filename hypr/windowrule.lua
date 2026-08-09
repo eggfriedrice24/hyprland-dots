@@ -2,6 +2,9 @@
 
 -- Layer effects
 hl.layer_rule({ match = { namespace = "^(rofi)$" }, blur = true, ignore_alpha = 0.20 })
+-- blur dunst notifications - pairs best with a lower alpha on the dunstrc
+-- backgrounds (e.g. #0d111acc) so the blur has something to show through
+-- hl.layer_rule({ match = { namespace = "^(notifications)$" }, blur = true, ignore_alpha = 0.20 })
 
 -- Opacity
 hl.window_rule({ match = { class = "^(Brave-browser)$" }, opacity = "0.90 0.90" })
