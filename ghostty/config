@@ -5,10 +5,13 @@ font-family-bold-italic = Cartograph CF Bold Italic
 font-size = 13
 adjust-cell-height = 20%
 
+# new windows always start at home, not the focused window's cwd
+working-directory = home
+
 # eggfriedrice.nvim palette (p/eggfriedrice.nvim)
 background = #0d111a
 foreground = #d8d3c3
-background-opacity = 0.7
+background-opacity = 0.75
 
 # Cursor / Visual, same as the nvim highlights
 cursor-color = #d8d3c3
