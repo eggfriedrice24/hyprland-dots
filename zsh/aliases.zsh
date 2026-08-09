@@ -28,3 +28,14 @@ alias v='nvim'
 # claudew          -> work account (~/.claude-work, separate login)
 claudep() { CLAUDE_CONFIG_DIR="$HOME/.claude" command claude "$@" }
 claudew() { CLAUDE_CONFIG_DIR="$HOME/.claude-work" command claude "$@" }
+
+# Socket Firewall (work projects) - w-suffixed so personal installs stay untouched
+if command -v sfw >/dev/null 2>&1; then
+  alias npmw="sfw npm"
+  alias npxw="sfw npx"
+  alias yarnw="sfw yarn"
+  alias pnpmw="sfw pnpm"
+  alias bunw="sfw bun"
+  alias gow="sfw go"
+  alias cargow="sfw cargo"
+fi
