@@ -1,0 +1,6 @@
+# Theme and window chrome
+theme = eggfriedrice
+background-opacity = 0.75
+
+# no size popup while hyprland retiles
+resize-overlay = never

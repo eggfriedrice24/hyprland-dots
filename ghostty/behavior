@@ -1,0 +1,5 @@
+# One process per window: a crash takes down a single terminal, and new
+# windows honor working-directory instead of the focused window's cwd
+gtk-single-instance = false
+window-inherit-working-directory = false
+working-directory = home

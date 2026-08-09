@@ -1,15 +1,5 @@
-font-family = Cartograph CF
-font-family-bold = Cartograph CF Bold
-font-family-italic = Cartograph CF Italic
-font-family-bold-italic = Cartograph CF Bold Italic
-font-size = 13
-adjust-cell-height = 20%
-
-# new windows always start at home, not the focused window's cwd -
-# one process per window, else windows join the running instance and
-# inherit its cwd regardless of working-directory
-gtk-single-instance = false
-working-directory = home
-
-theme = eggfriedrice
-background-opacity = 0.75
+# Modular config - ghostty loads included files after this one, in order,
+# so later files win conflicts. Keep this file includes-only.
+config-file = font
+config-file = appearance
+config-file = behavior
