@@ -9,7 +9,7 @@ Personal dotfiles for Arch Linux with Hyprland compositor.
 - **[Hyprland](https://hypr.land/)** - Wayland compositor configuration
 - **[Waybar](https://github.com/Alexays/Waybar)** - Wayland bar
 - **[Neovim](https://neovim.io/)** - Modern text editor with LSP support
-- **[Kitty](https://sw.kovidgoyal.net/kitty/)** - GPU-accelerated terminal emulator
+- **[Ghostty](https://ghostty.org/)** - GPU-accelerated terminal emulator
 - **[OpenCode](https://opencode.ai/)** - AI coding assistant configuration
 - **[Zsh](https://www.zsh.org/)** - Shell configuration with Zinit plugin manager
 - **[Starship](https://starship.rs/)** - Cross-shell prompt
@@ -30,7 +30,7 @@ cd ~/.dotfiles
 ln -sf ~/.dotfiles/hypr ~/.config/hypr
 ln -sf ~/.dotfiles/nvim ~/.config/nvim
 ln -sf ~/.dotfiles/opencode ~/.config/opencode
-ln -sf ~/.dotfiles/kitty ~/.config/kitty
+ln -sf ~/.dotfiles/ghostty ~/.config/ghostty
 ln -sf ~/.dotfiles/starship ~/.config/starship
 ln -sf ~/.dotfiles/waybar ~/.config/waybar
 ln -sf ~/.dotfiles/zsh ~/.config/zsh
@@ -49,9 +49,8 @@ ln -sf ~/.dotfiles/zsh ~/.config/zsh
 dotfiles/
 ├── hypr/          # Hyprland window manager
 ├── waybar/        # Wayland bar
-├── kitty/         # Terminal emulator
 ├── opencode/      # OpenCode configuration
-├── ghostty/       # Terminal emulator (alternative)
+├── ghostty/       # Terminal emulator
 ├── nvim/          # Neovim editor
 ├── starship/      # Shell prompt
 └── zsh/           # Shell configuration

@@ -12,7 +12,7 @@ modular architecture with a unified Catppuccin Mocha + Halcyon theme across all 
 ```bash
 ln -sf ~/.dotfiles/hypr ~/.config/hypr
 ln -sf ~/.dotfiles/nvim ~/.config/nvim
-ln -sf ~/.dotfiles/kitty ~/.config/kitty
+ln -sf ~/.dotfiles/ghostty ~/.config/ghostty
 ln -sf ~/.dotfiles/starship ~/.config/starship
 ln -sf ~/.dotfiles/zsh ~/.config/zsh
 ```
@@ -199,7 +199,7 @@ When making changes, preserve this exclusion pattern.
 - **OS:** Arch Linux
 - **Display Server:** Wayland
 - **Compositor:** Hyprland
-- **Terminal:** Kitty (primary), Ghostty (config available)
+- **Terminal:** Ghostty
 - **Shell:** Zsh
 - **Editor:** Neovim
 - **Font:** Cartograph CF with icon support
