@@ -26,3 +26,15 @@ palette = 12=#6cb8ff
 palette = 13=#ff7a95
 palette = 14=#93e8de
 palette = 15=#e4e0d5
+
+# search highlights: blend(yellow, bg) at the nvim theme's Search/scope ratios
+search-foreground = cell-foreground
+search-background = #564825
+search-selected-foreground = cell-foreground
+search-selected-background = #7a642b
+
+# fg_gutter
+split-divider-color = #46516c
+
+# derive palette 16-255 from the base 16 instead of the xterm defaults
+palette-generate = true
