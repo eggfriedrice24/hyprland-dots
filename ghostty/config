@@ -5,4 +5,5 @@ font-family-bold-italic = Cartograph CF Bold Italic
 font-size = 13
 adjust-cell-height = 20%
 
+background = #0d111a
 background-opacity = 0.7
