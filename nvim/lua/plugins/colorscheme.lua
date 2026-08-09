@@ -7,6 +7,13 @@ return {
 		config = function()
 			require("eggfriedrice").setup({
 				transparent = false,
+				on_highlights = function(hl, c)
+					-- rust-analyzer treats struct literal keys as uses, not
+					-- declarations, and would repaint them blue over the rose
+					-- from after/queries/rust/highlights.scm. Defer rust
+					-- property tokens to treesitter entirely.
+					hl["@lsp.type.property.rust"] = {}
+				end,
 			})
 
 			vim.cmd.colorscheme("eggfriedrice")
