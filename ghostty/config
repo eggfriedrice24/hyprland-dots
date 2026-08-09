@@ -4,3 +4,6 @@ config-file = font
 config-file = appearance
 config-file = behavior
 config-file = keybinds
+
+# per-machine overrides, untracked (e.g. laptop font size)
+config-file = ?local
