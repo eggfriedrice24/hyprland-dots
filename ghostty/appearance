@@ -4,3 +4,11 @@ background-opacity = 0.75
 
 # no size popup while hyprland retiles
 resize-overlay = never
+
+# tabs: full-width (flex-like), flat bar, eggfriedrice colors via custom css
+gtk-wide-tabs = true
+gtk-toolbar-style = flat
+window-theme = ghostty
+window-titlebar-background = #090c13
+window-titlebar-foreground = #d8d3c3
+gtk-custom-css = gtk.css

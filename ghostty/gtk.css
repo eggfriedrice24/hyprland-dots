@@ -1,0 +1,48 @@
+/* eggfriedrice tabs */
+
+tabbar .box {
+  background: #090c13;
+  padding: 0;
+  box-shadow: none;
+}
+
+tabbar tabbox {
+  padding: 0;
+  margin: 0;
+}
+
+tabbar tab {
+  background: transparent;
+  border-radius: 3px;
+  margin: 1px 2px;
+  padding: 1px 8px;
+  min-height: 20px;
+  color: #8695b7;
+}
+
+tabbar tab label {
+  font-family: "Cartograph CF";
+  font-size: 12px;
+}
+
+tabbar tab:hover {
+  background: #121722;
+}
+
+tabbar tab:selected {
+  background: #121722;
+  color: #d8d3c3;
+  box-shadow: inset 0 -2px 0 0 #ffc940;
+}
+
+tabbar tab button {
+  color: #46516c;
+  background: transparent;
+  min-height: 14px;
+  min-width: 14px;
+}
+
+tabbar tab button:hover {
+  color: #eb5757;
+  background: transparent;
+}
