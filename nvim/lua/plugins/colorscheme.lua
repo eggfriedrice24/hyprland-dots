@@ -6,7 +6,7 @@ return {
 		lazy = false,
 		config = function()
 			require("eggfriedrice").setup({
-				transparent = true,
+				transparent = false,
 			})
 
 			vim.cmd.colorscheme("eggfriedrice")
