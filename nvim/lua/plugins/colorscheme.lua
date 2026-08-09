@@ -6,7 +6,7 @@ return {
 		lazy = false,
 		config = function()
 			require("eggfriedrice").setup({
-				transparent = false,
+				transparent = true,
 				on_highlights = function(hl, c)
 					-- rust-analyzer treats struct literal keys as uses, not
 					-- declarations, and would repaint them blue over the rose
