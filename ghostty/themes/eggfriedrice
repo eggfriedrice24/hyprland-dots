@@ -1,0 +1,28 @@
+# eggfriedrice - terminal theme matching eggfriedrice.nvim
+# palette mirrors terminal() in p/eggfriedrice.nvim lua/eggfriedrice/init.lua
+
+background = #0d111a
+foreground = #d8d3c3
+
+cursor-color = #d8d3c3
+cursor-text = #0d111a
+
+selection-background = #2f3b54
+selection-foreground = cell-foreground
+
+palette = 0=#121722
+palette = 1=#eb5757
+palette = 2=#00c950
+palette = 3=#ffc940
+palette = 4=#6cb8ff
+palette = 5=#c678dd
+palette = 6=#78e2d6
+palette = 7=#d8d3c3
+palette = 8=#8695b7
+palette = 9=#eb5757
+palette = 10=#00c950
+palette = 11=#ffc940
+palette = 12=#6cb8ff
+palette = 13=#ff7a95
+palette = 14=#93e8de
+palette = 15=#e4e0d5
