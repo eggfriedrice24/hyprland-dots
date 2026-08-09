@@ -7,7 +7,6 @@ declare -A symlinks=(
     ["hypr"]="$HOME/.config/hypr"
     ["nvim"]="$HOME/.config/nvim"
     ["opencode"]="$HOME/.config/opencode"
-    ["kitty"]="$HOME/.config/kitty"
     ["ghostty"]="$HOME/.config/ghostty"
     ["zsh"]="$HOME/.config/zsh"
     ["starship"]="$HOME/.config/starship"
