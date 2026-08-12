@@ -9,6 +9,10 @@ require("keybinds")
 -- Monitors
 hl.monitor({ output = "DP-3", mode = "2560x1440@240", position = "0x0", scale = 1 })
 hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-2560x0", scale = 1 }) -- HP P27q, left of main
+-- HP in portrait (pivot): swap in for the line above when physically rotated.
+-- transform 1 = 90 deg clockwise, 3 = counter-clockwise; position centers the
+-- 2560-tall portrait against the 1440-tall main (y from -560 to 2000)
+-- hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-1440x-560", scale = 1, transform = 1 })
 hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 })
 -- hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
