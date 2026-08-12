@@ -114,6 +114,19 @@ hl.bind("SUPER + G", function()
   hl.exec_cmd(notifycmd .. " 'Toggled Group Mode'")
 end)
 
+-- Toggle HP monitor orientation (physical pivot: landscape <-> portrait)
+hl.bind("SUPER + O", function()
+  local m = hl.get_monitor("HDMI-A-1")
+  if m == nil then return end
+  if m.transform == 0 then
+    hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-1440x-560", scale = 1, transform = 1 })
+    hl.exec_cmd(notifycmd .. " 'HP: portrait'")
+  else
+    hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-2560x0", scale = 1, transform = 0 })
+    hl.exec_cmd(notifycmd .. " 'HP: landscape'")
+  end
+end)
+
 -- Special workspace
 hl.bind("SUPER + A", hl.dsp.workspace.toggle_special())
 hl.bind("SUPER + SHIFT + A", hl.dsp.window.move({ workspace = "special" }))
