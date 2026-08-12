@@ -119,10 +119,19 @@ hl.bind("SUPER + A", hl.dsp.workspace.toggle_special())
 hl.bind("SUPER + SHIFT + A", hl.dsp.window.move({ workspace = "special" }))
 hl.bind("SUPER + C", hl.dsp.window.center())
 
--- Workspaces: switch with SUPER+[0-9], move window with SUPER+SHIFT+[0-9]
+-- Workspaces: switch with SUPER+[0-9], move window with SUPER+SHIFT+[0-9].
+-- Switching always happens on the focused monitor: if the workspace lives on
+-- the other monitor it is pulled over first (focusworkspaceoncurrentmonitor)
 for i = 1, 10 do
   local key = i % 10 -- 10 maps to key 0
-  hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = i }))
+  hl.bind("SUPER + " .. key, function()
+    local mon = hl.get_active_monitor()
+    local ws = hl.get_workspace(i)
+    if mon ~= nil and ws ~= nil and ws.monitor ~= nil and ws.monitor.name ~= mon.name then
+      hl.dispatch(hl.dsp.workspace.move({ workspace = i, monitor = mon.name }))
+    end
+    hl.dispatch(hl.dsp.focus({ workspace = i }))
+  end)
   hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
 hl.bind("SUPER + ALT + up", hl.dsp.focus({ workspace = "e+1" }))
