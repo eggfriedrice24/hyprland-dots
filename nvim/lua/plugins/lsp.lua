@@ -225,6 +225,31 @@ return {
 				},
 			})
 
+			-- Rust Analyzer
+			-- rust-analyzer only indexes files inside a Cargo workspace (or a
+			-- rust-project.json). For a standalone .rs file, root at its directory
+			-- and load the .rs files there as detached files so completions and
+			-- diagnostics still work.
+			local rust_defaults = vim.lsp.config.rust_analyzer
+			local rust_markers = { "Cargo.toml", "rust-project.json" }
+			vim.lsp.config("rust_analyzer", {
+				root_dir = function(bufnr, on_dir)
+					local fname = vim.api.nvim_buf_get_name(bufnr)
+					if vim.fs.root(fname, rust_markers) then
+						return rust_defaults.root_dir(bufnr, on_dir)
+					end
+					on_dir(vim.fs.dirname(fname))
+				end,
+				before_init = function(params, config)
+					rust_defaults.before_init(params, config)
+					if not vim.fs.root(config.root_dir, rust_markers) then
+						params.initializationOptions = vim.tbl_extend("force", params.initializationOptions or {}, {
+							detachedFiles = vim.fn.glob(config.root_dir .. "/*.rs", true, true),
+						})
+					end
+				end,
+			})
+
 			-- Enable all servers
 			vim.lsp.enable({
 				"cssls",
