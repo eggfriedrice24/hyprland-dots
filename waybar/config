@@ -9,7 +9,7 @@
 
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["tray", "cpu", "temperature", "memory", "custom/separator#left", "pulseaudio", "network", "battery"],
+    "modules-right": ["tray", "upower#keyboard", "custom/separator#right", "cpu", "temperature", "memory", "custom/separator#left", "pulseaudio", "network", "battery"],
 
     "hyprland/workspaces": {
         "format": "{id}",
@@ -94,6 +94,20 @@
         "format-charging": "󰂄 {capacity}%",
         "format-plugged": "󰂄 {capacity}%",
         "format-icons": ["󰂎", "󰁺", "󰁾", "󰂁", "󰁹"]
+    },
+
+    "upower#keyboard": {
+        "native-path": "hid-dc:2c:26:15:d5:6a-battery-3",
+        "format": "󰌌 {percentage}",
+        "tooltip-format": "{model}: {percentage}",
+        "show-icon": false,
+        "hide-if-empty": true
+    },
+
+    "custom/separator#right": {
+        "format": "|",
+        "interval": "once",
+        "tooltip": false
     },
 
     "custom/separator#left": {

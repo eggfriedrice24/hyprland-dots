@@ -21,6 +21,7 @@ window#waybar {
 #network,
 #pulseaudio,
 #battery,
+#upower,
 #tray {
   padding: 0 12px;
   margin: 0;
@@ -118,6 +119,19 @@ window#waybar {
 }
 
 #battery.critical:not(.charging) {
+  color: #f14d4c;
+}
+
+/* Keyboard battery (Keychron K4 via UPower) */
+#upower {
+  color: #05df72;
+}
+
+#upower.charging {
+  color: #f0b100;
+}
+
+#upower.empty {
   color: #f14d4c;
 }
 
