@@ -7,7 +7,7 @@ require("keybinds")
 -- Catppuccin palette lives in mocha.lua: local mocha = require("mocha")
 
 -- Monitors
-hl.monitor({ output = "DP-3", mode = "2560x1440@240", position = "0x0", scale = 1 })
+hl.monitor({ output = "DP-3", mode = "2560x1440@240", position = "0x0", scale = 1, bitdepth = 10 }) -- 10bpc matches the boot console's link config, avoids a second DP retrain at login
 hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-2560x0", scale = 1 }) -- HP P27q, left of main
 -- HP in portrait (pivot): swap in for the line above when physically rotated.
 -- transform 1 = 90 deg clockwise, 3 = counter-clockwise; position centers the
