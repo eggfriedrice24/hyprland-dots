@@ -119,10 +119,10 @@ hl.bind("SUPER + O", function()
   local m = hl.get_monitor("HDMI-A-1")
   if m == nil then return end
   if m.transform == 0 then
-    hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-1440x-560", scale = 1, transform = 1 })
+    hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "2560x-560", scale = 1, transform = 1 })
     hl.exec_cmd(notifycmd .. " 'HP: portrait'")
   else
-    hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "-2560x0", scale = 1, transform = 0 })
+    hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "2560x0", scale = 1, transform = 0 })
     hl.exec_cmd(notifycmd .. " 'HP: landscape'")
   end
 end)
