@@ -114,7 +114,7 @@
   "upower#keyboard": {
     "native-path": "hid-dc:2c:26:15:d5:6a-battery-3",
     "format": "󰌌 {percentage}",
-    "tooltip-format": "{model}: {percentage}",
+    "tooltip-format": "{percentage}",
     "show-icon": false,
     "hide-if-empty": true
   },
