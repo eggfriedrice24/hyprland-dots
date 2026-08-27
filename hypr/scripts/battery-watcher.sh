@@ -1,32 +1,37 @@
 #!/usr/bin/env sh
-# Battery watcher using acpi + dunst
-# Thresholds: caution <35%, critical <25%. Only fires when discharging.
+# Laptop battery watcher using sysfs + dunst
+# Thresholds: caution <35%, critical <25%. Only fires when discharging on battery.
+# Only real batteries (BAT*) are considered, so peripherals that also show up
+# under /sys/class/power_supply (e.g. a Bluetooth keyboard) are ignored.
+# Exits immediately on machines without a battery (desktop).
 
+PS=${PS_DIR:-/sys/class/power_supply}
 TAG="notifybat"
 RID=91234
 CHECK_EVERY=60
 last_level=-1
 
+ls -d "$PS"/BAT* >/dev/null 2>&1 || exit 0
+
 get_percent() {
-  acpi -b 2>/dev/null \
-    | awk -F', ' '/Battery/ { gsub("%","",$2); print $2 }' \
-    | sort -n | head -n1
+  cat "$PS"/BAT*/capacity 2>/dev/null | sort -n | head -n1
 }
 
 get_status() {
-  acpi -b 2>/dev/null | awk -F', ' '/Battery/ {print $1}' | awk -F': ' 'NR==1{print $2}'
+  cat "$PS"/BAT*/status 2>/dev/null | head -n1
 }
 
 on_ac() {
-  ac=$(acpi -a 2>/dev/null | awk -F': ' 'NR==1{print $2}')
-  [ "$ac" = "on-line" ]
+  for d in "$PS"/*; do
+    [ "$(cat "$d/type" 2>/dev/null)" = "Mains" ] && [ "$(cat "$d/online" 2>/dev/null)" = "1" ] && return 0
+  done
+  return 1
 }
 
 notify() {
-  level="$1"
-  urgency="$2"
-  msg="$3"
-  icon="$4"
+  urgency="$1"
+  msg="$2"
+  icon="$3"
 
   dunstify -a "Battery" -i "$icon" -u "$urgency" \
     -h string:x-dunst-stack-tag:$TAG \
@@ -34,26 +39,31 @@ notify() {
     "$msg"
 }
 
+# forget the last alert; close it on screen if one is showing
+rearm() {
+  [ "$last_level" -ne -1 ] && dunstify -C $RID 2>/dev/null
+  last_level=-1
+}
+
 while :; do
   cap=$(get_percent)
-  [ -z "$cap" ] && cap=100
-
   status=$(get_status)
 
-  if [ "$status" = "Discharging" ] && ! on_ac; then
-    if   [ "$cap" -lt 25 ] && [ "$last_level" -ne 25 ]; then
-      notify "$cap" critical "Battery critical: ${cap}%" "battery-empty"
+  if [ -z "$cap" ] || on_ac || [ "$status" != "Discharging" ]; then
+    rearm
+  elif [ "$cap" -lt 25 ]; then
+    if [ "$last_level" -ne 25 ]; then
+      notify critical "Battery critical: ${cap}%" "battery-empty"
       last_level=25
-    elif [ "$cap" -lt 35 ] && [ "$last_level" -ne 35 ]; then
-      notify "$cap" normal "Battery low: ${cap}%" "battery-caution"
-      last_level=35
-    elif [ "$cap" -gt 40 ]; then
-      last_level=-1
     fi
-  else
-    last_level=-1
+  elif [ "$cap" -lt 35 ]; then
+    if [ "$last_level" -ne 35 ]; then
+      notify normal "Battery low: ${cap}%" "battery-caution"
+      last_level=35
+    fi
+  elif [ "$cap" -gt 40 ]; then
+    rearm
   fi
 
   sleep "$CHECK_EVERY"
 done
-
