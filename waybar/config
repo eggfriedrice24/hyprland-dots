@@ -15,8 +15,6 @@
   ],
   "modules-right": [
     "tray",
-    "upower#keyboard",
-    "custom/separator#right",
     "cpu",
     "temperature",
     "memory",
@@ -111,18 +109,6 @@
       "󰂁",
       "󰁹"
     ]
-  },
-  "upower#keyboard": {
-    "native-path": "hid-dc:2c:26:15:d5:6a-battery-3",
-    "format": "󰌌 {percentage}",
-    "tooltip-format": "{percentage}",
-    "show-icon": false,
-    "hide-if-empty": true
-  },
-  "custom/separator#right": {
-    "format": "|",
-    "interval": "once",
-    "tooltip": false
   },
   "custom/separator#left": {
     "format": "|",
