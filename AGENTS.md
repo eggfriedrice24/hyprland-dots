@@ -164,7 +164,7 @@ The Neovim configuration supports these languages with full LSP/formatting/linti
 
 Configured in `hypr/hyprland.lua`:
 
-- Desktop: DP-3 (2560x1440@240Hz)
+- Desktop: DP-1 (2560x1440@240Hz)
 - Laptop: eDP-1 (preferred mode)
 - Waybar on all outputs
 
