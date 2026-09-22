@@ -18,22 +18,22 @@ hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 
 
 -- Input
 hl.config({
-  input = {
-    kb_layout = "us,ge",
-    kb_options = "grp:caps_toggle",
-    follow_mouse = 1,
-    sensitivity = 0, -- -1.0 - 1.0, 0 means no modification.
-    -- force_no_accel = true
-    -- kb_model = "cherryblue" -- XKB model
-    -- kb_variant = "dvorak" -- XKB variant
-    -- numlock_by_default = false
-    -- repeat_rate = 25
-    -- repeat_delay = 600
-    -- accel_profile = "flat" -- flat, adaptive
-    touchpad = {
-      natural_scroll = true,
-    },
-  },
+	input = {
+		kb_layout = "us,ge",
+		kb_options = "grp:caps_toggle",
+		follow_mouse = 1,
+		sensitivity = 0, -- -1.0 - 1.0, 0 means no modification.
+		-- force_no_accel = true
+		-- kb_model = "cherryblue" -- XKB model
+		-- kb_variant = "dvorak" -- XKB variant
+		-- numlock_by_default = false
+		-- repeat_rate = 25
+		-- repeat_delay = 600
+		-- accel_profile = "flat" -- flat, adaptive
+		touchpad = {
+			natural_scroll = true,
+		},
+	},
 })
 
 hl.device({ name = "razer-razer-deathadder-essential", sensitivity = -0.85 })
@@ -41,32 +41,32 @@ hl.device({ name = "razer-razer-deathadder-essential-1", sensitivity = -0.85 })
 
 -- General
 hl.config({
-  general = {
-    gaps_in = 5,
-    gaps_out = 0,
-    border_size = 0,
-    col = {
-      active_border = "rgba(3c415580)",
-      inactive_border = "rgba(382d2eff)", -- was 0xff382D2E
-    },
-    layout = "dwindle",
-    -- no_focus_fallback = false
-    -- resize_on_border = false
-  },
+	general = {
+		gaps_in = 5,
+		gaps_out = 0,
+		border_size = 0,
+		col = {
+			active_border = "rgba(3c415580)",
+			inactive_border = "rgba(382d2eff)", -- was 0xff382D2E
+		},
+		layout = "dwindle",
+		-- no_focus_fallback = false
+		-- resize_on_border = false
+	},
 })
 
 -- Misc
 hl.config({
-  misc = {
-    disable_hyprland_logo = true,
-    disable_splash_rendering = true,
-    mouse_move_enables_dpms = true,
-    vrr = 0,
-    animate_manual_resizes = true,
-    mouse_move_focuses_monitor = true,
-    enable_swallow = true,
-    swallow_regex = "^(com\\.mitchellh\\.ghostty)$",
-  },
+	misc = {
+		disable_hyprland_logo = true,
+		disable_splash_rendering = true,
+		mouse_move_enables_dpms = true,
+		vrr = 0,
+		animate_manual_resizes = true,
+		mouse_move_focuses_monitor = true,
+		enable_swallow = true,
+		swallow_regex = "^(com\\.mitchellh\\.ghostty)$",
+	},
 })
 
 -- raise windows when they gain focus, so overlapping ones don't stay buried.
@@ -74,25 +74,27 @@ hl.config({
 -- (it can expire before execution) - with no window given, the dispatcher
 -- resolves the active window itself when it runs
 hl.on("window.active", function(w)
-  if w == nil then return end
-  hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top" }))
+	if w == nil then
+		return
+	end
+	hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top" }))
 end)
 
 -- Decoration
 hl.config({
-  decoration = {
-    rounding = 3,
-    active_opacity = 1.0,
-    inactive_opacity = 1.0,
-    blur = {
-      enabled = true,
-      size = 6,
-      passes = 3,
-      new_optimizations = true,
-      xray = true,
-      ignore_opacity = true,
-    },
-  },
+	decoration = {
+		rounding = 3,
+		active_opacity = 1.0,
+		inactive_opacity = 1.0,
+		blur = {
+			enabled = true,
+			size = 6,
+			passes = 3,
+			new_optimizations = true,
+			xray = true,
+			ignore_opacity = true,
+		},
+	},
 })
 
 -- Animations
@@ -115,9 +117,9 @@ hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "wind" }
 
 -- Layouts
 hl.config({
-  dwindle = {
-    preserve_split = true, -- you probably want this
-  },
+	dwindle = {
+		preserve_split = true, -- you probably want this
+	},
 })
 
 -- master: defaults, see https://wiki.hypr.land/Configuring/Layouts/Master-Layout/
