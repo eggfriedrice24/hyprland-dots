@@ -61,11 +61,22 @@ hl.config({
 		disable_hyprland_logo = true,
 		disable_splash_rendering = true,
 		mouse_move_enables_dpms = true,
-		vrr = 0,
+		vrr = 0, -- keep 0: this panel is OLED, and VRR makes its luminance track the varying refresh
+		-- interval, which shows up as brightness flicker in dark scenes. Tried vrr=2 (fullscreen only)
+		-- on 2026-09-20 and the flicker appeared in-game immediately. Related: hypr flicker history.
 		animate_manual_resizes = true,
 		mouse_move_focuses_monitor = true,
 		enable_swallow = true,
 		swallow_regex = "^(com\\.mitchellh\\.ghostty)$",
+	},
+})
+
+-- Render
+hl.config({
+	render = {
+		direct_scanout = 0, -- MUST stay 0: scanout hands the game its 8bpc buffer, forcing DP-1 off its 10bpc format.
+		-- That format change triggers a runtime modeset (brief black screen), which is exactly what
+		-- the bitdepth=10 setting and the GRUB video= param exist to keep confined to boot.
 	},
 })
 
