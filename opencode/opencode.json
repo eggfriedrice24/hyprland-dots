@@ -1,78 +1,65 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "context7": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@upstash/context7-mcp"
-      ],
-      "enabled": true
-    },
-    "google_workspace": {
-      "type": "local",
-      "command": [
-        "sh",
-        "-lc",
-        "set -a; [ -f \"${XDG_CONFIG_HOME:-$HOME/.config}/opencode/google-workspace.env\" ] && . \"${XDG_CONFIG_HOME:-$HOME/.config}/opencode/google-workspace.env\"; exec uvx workspace-mcp --tools gmail"
-      ],
-      "enabled": true,
-      "timeout": 30000
+    "servers": {
+      "context7": {
+        "type": "local",
+        "command": ["npx", "-y", "@upstash/context7-mcp"]
+      },
+      "google_workspace": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-lc",
+          "set -a; [ -f \"${XDG_CONFIG_HOME:-$HOME/.config}/opencode/google-workspace.env\" ] && . \"${XDG_CONFIG_HOME:-$HOME/.config}/opencode/google-workspace.env\"; exec uvx workspace-mcp --tools gmail"
+        ],
+        "timeout": { "catalog": 30000, "execution": 30000 }
+      }
     }
   },
-  "tools": {
-    "websearch": true
-  },
-  "permission": {
-    "*": "ask",
-    "read": {
-      "*": "allow",
-      "*.env": "deny",
-      "*.env.*": "deny",
-      "*.env.example": "allow",
-      "*.pem": "deny",
-      "*.key": "deny",
-      "*.p12": "deny",
-      "*.pfx": "deny",
-      "*credentials*": "deny",
-      "*secret*": "deny",
-      ".ssh/*": "deny",
-      ".gnupg/*": "deny"
-    },
-    "glob": "allow",
-    "grep": "allow",
-    "external_directory": {
-      "~/.opencode/**": "allow"
-    },
-    "bash": {
-      "*": "ask",
-      "pwd": "allow",
-      "ls*": "allow",
-      "git status*": "allow",
-      "git diff*": "allow",
-      "git log*": "allow",
-      "rm *": "deny",
-      "git push": "ask",
-      "git push *": "ask"
-    },
-    "skill": {
-      "*": "ask",
-      "commit": "allow",
-      "fix-dashes": "allow"
-    },
-    "webfetch": "ask",
-    "websearch": "ask",
-    "lsp": "allow",
-    "todowrite": "allow",
-    "question": "allow"
-  },
+  // Ordered rules, last match wins: broad rule first, exceptions after.
+  "permissions": [
+    { "action": "*", "resource": "*", "effect": "ask" },
+
+    { "action": "read", "resource": "*", "effect": "allow" },
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    { "action": "read", "resource": "*.env.*", "effect": "deny" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+    { "action": "read", "resource": "*.pem", "effect": "deny" },
+    { "action": "read", "resource": "*.key", "effect": "deny" },
+    { "action": "read", "resource": "*.p12", "effect": "deny" },
+    { "action": "read", "resource": "*.pfx", "effect": "deny" },
+    { "action": "read", "resource": "*credentials*", "effect": "deny" },
+    { "action": "read", "resource": "*secret*", "effect": "deny" },
+    { "action": "read", "resource": ".ssh/*", "effect": "deny" },
+    { "action": "read", "resource": ".gnupg/*", "effect": "deny" },
+
+    { "action": "glob", "resource": "*", "effect": "allow" },
+    { "action": "grep", "resource": "*", "effect": "allow" },
+    { "action": "external_directory", "resource": "~/.opencode/**", "effect": "allow" },
+    { "action": "edit", "resource": "~/.opencode/**", "effect": "allow" },
+
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "shell", "resource": "pwd", "effect": "allow" },
+    { "action": "shell", "resource": "ls*", "effect": "allow" },
+    { "action": "shell", "resource": "git status*", "effect": "allow" },
+    { "action": "shell", "resource": "git diff*", "effect": "allow" },
+    { "action": "shell", "resource": "git log*", "effect": "allow" },
+    { "action": "shell", "resource": "rm *", "effect": "deny" },
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+
+    { "action": "skill", "resource": "*", "effect": "ask" },
+    { "action": "skill", "resource": "commit", "effect": "allow" },
+    { "action": "skill", "resource": "fix-dashes", "effect": "allow" },
+
+    { "action": "webfetch", "resource": "*", "effect": "ask" },
+    { "action": "websearch", "resource": "*", "effect": "ask" },
+    { "action": "lsp", "resource": "*", "effect": "allow" },
+    { "action": "todowrite", "resource": "*", "effect": "allow" },
+    { "action": "question", "resource": "*", "effect": "allow" }
+  ]
   // "compaction": {
   //   "auto": false,
-  //   "prune": true,
-  //   "reserved": 10000
-  // },
-  "instructions": [
-    "~/.config/opencode/instructions/personal.md"
-  ]
+  //   "buffer": 10000
+  // }
 }
