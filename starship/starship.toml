@@ -6,19 +6,65 @@
 format = """$directory$git_branch$git_status$character"""
 right_format = """$nodejs$python$golang$java$cmd_duration"""
 add_newline = false
+palette = "eggfriedrice"
+
+# ============================================
+# PALETTE
+# ============================================
+# Copied verbatim from
+#   /home/eggfriedrice/p/eggfriedrice.nvim/extras/starship/eggfriedrice.toml
+# (starship has no include directive, so the table is pasted here).
+# It is regenerated in that repo with `make extras`; re-paste after regenerating.
+
+[palettes.eggfriedrice]
+# base
+bg = "#0d111a"
+bg_dark = "#090c13"
+bg_light = "#121722"
+fg = "#d8d3c3"
+fg_dark = "#a8a396"
+comment = "#8695b7"
+
+# accents (these names shadow starship's ANSI names on purpose)
+yellow = "#ffc940"
+orange = "#fc9a2c"
+red = "#e06c75"
+green = "#60e654"
+cyan = "#78e2d6"
+blue = "#6cb8ff"
+purple = "#c084fc"
+
+# roles, one per module
+directory = "#78e2d6"
+git_branch = "#c084fc"
+git_status_clean = "#60e654"
+git_status_dirty = "#ffc940"
+git_status_ahead = "#78e2d6"
+git_status_behind = "#fc9a2c"
+git_status_conflicted = "#e06c75"
+character_success = "#ffc940"
+character_error = "#e06c75"
+character_vimcmd = "#c084fc"
+cmd_duration = "#fc9a2c"
+language = "#6cb8ff"
+status = "#e06c75"
+jobs = "#78e2d6"
+time = "#8695b7"
+username = "#a8a396"
+hostname = "#a8a396"
 
 # ============================================
 # ACTIVE MODULES
 # ============================================
 
 [character]
-success_symbol = '[❯](bold #7bf1a8)'
-error_symbol = '[❯](bold #fb2c36)'
-vimcmd_symbol = '[❮](bold #7bf1a8)'
+success_symbol = '[❯](bold character_success)'
+error_symbol = '[❯](bold character_error)'
+vimcmd_symbol = '[❮](bold character_vimcmd)'
 
 [directory]
 format = '[$path]($style) '
-style = 'bold #fcc800'
+style = 'bold directory'
 truncation_length = 3
 truncate_to_repo = false
 home_symbol = ' '
@@ -26,15 +72,15 @@ home_symbol = ' '
 [git_branch]
 format = '[\[$symbol$branch\]]($style) '
 symbol = '󰊢 '
-style = 'bold #ffa1ad'
+style = 'bold git_branch'
 
 [git_status]
 format = '([\[$all_status$ahead_behind\]]($style) )'
-style = 'bold #d1d5dc'
-conflicted = '='
-ahead = '↑${count}'
-behind = '↓${count}'
-diverged = '↕↑${ahead_count}↓${behind_count}'
+style = 'bold git_status_dirty'
+conflicted = '[=](bold git_status_conflicted)'
+ahead = '[↑${count}](bold git_status_ahead)'
+behind = '[↓${count}](bold git_status_behind)'
+diverged = '[↕↑${ahead_count}↓${behind_count}](bold git_status_behind)'
 up_to_date = ''
 untracked = '?${count}'
 stashed = '\$'
@@ -46,7 +92,7 @@ deleted = '✘${count}'
 [cmd_duration]
 min_time = 1000
 format = '[\[⏱ $duration\]]($style)'
-style = 'bold #fcc800'
+style = 'bold cmd_duration'
 
 # ============================================
 # LANGUAGE MODULES
@@ -55,19 +101,19 @@ style = 'bold #fcc800'
 [nodejs]
 format = '[\[$symbol$version\]]($style) '
 symbol = ' '
-style = 'bold #a6e3a1'
+style = 'bold language'
 
 [python]
 format = '[\[$symbol$version\]]($style) '
 symbol = ' '
-style = 'bold #fcc800'
+style = 'bold language'
 
 [golang]
 format = '[\[$symbol$version\]]($style) '
 symbol = ' '
-style = 'bold cyan'
+style = 'bold language'
 
 [java]
 format = '[\[$symbol$version\]]($style) '
 symbol = ' '
-style = 'bold #f38ba8'
+style = 'bold language'
