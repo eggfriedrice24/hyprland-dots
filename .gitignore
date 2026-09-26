@@ -3,7 +3,6 @@ zsh/.zcompdump*
 zsh/.zsh_history
 
 # Neovim
-nvim/lazy-lock.json
 nvim/.netrwhist
 nvim/plugin/
 
