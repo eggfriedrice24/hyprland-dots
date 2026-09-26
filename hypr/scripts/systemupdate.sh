@@ -1,27 +1,21 @@
 #!/usr/bin/env bash
+# Pending update count (official + AUR) and, with "up", an interactive upgrade in ghostty
 
-# Check release
-if [ ! -f /etc/arch-release ] ; then
-    exit 0
-fi
+[ -f /etc/arch-release ] || exit 0
 
-# Check for updates
-aur=$(paru -Qua | wc -l)
-ofc=$(pacman -Qu | wc -l)
+helper=$(command -v yay || command -v paru) || { echo "no AUR helper"; exit 1; }
 
-# Calculate total available updates
+aur=$("$helper" -Qua 2>/dev/null | wc -l)
+ofc=$(pacman -Qu 2>/dev/null | wc -l)
 upd=$(( ofc + aur ))
 echo "$upd"
 
-# Show tooltip
-if [ $upd -eq 0 ] ; then
-    echo " Packages are up to date"
+if [ "$upd" -eq 0 ]; then
+    echo " Packages are up to date"
 else
     echo "󱓽 Official $ofc 󱓾 AUR $aur"
 fi
 
-# Trigger upgrade
-if [ "$1" == "up" ] ; then
-    ghostty --title=systemupdate -e sh -c 'yay -Syu'
+if [ "${1:-}" = "up" ]; then
+    ghostty --title=systemupdate -e sh -c "$helper -Syu"
 fi
-
