@@ -1,5 +1,6 @@
 # Theme and window chrome
-theme = eggfriedrice
+# generated theme lives in the eggfriedrice.nvim repo (`make extras`)
+theme = /home/eggfriedrice/p/eggfriedrice.nvim/extras/ghostty/eggfriedrice
 background-opacity = 0.75
 
 # no size popup while hyprland retiles
@@ -9,6 +10,7 @@ resize-overlay = never
 gtk-wide-tabs = true
 gtk-toolbar-style = flat
 window-theme = ghostty
-window-titlebar-background = #090c13
+# window-titlebar-background is provided by the theme (bg_dark)
+# titlebar text mirrors palette fg, overriding the theme's fg_dark
 window-titlebar-foreground = #d8d3c3
 gtk-custom-css = gtk.css

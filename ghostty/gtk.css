@@ -1,7 +1,9 @@
-/* eggfriedrice tabs */
+@import url("/home/eggfriedrice/p/eggfriedrice.nvim/extras/gtk/eggfriedrice.css");
+
+/* eggfriedrice tabs - colors come from the imported palette */
 
 tabbar .box {
-  background: #090c13;
+  background: @bg_dark;
   padding: 0;
   box-shadow: none;
 }
@@ -17,7 +19,7 @@ tabbar tab {
   margin: 1px 2px;
   padding: 1px 8px;
   min-height: 20px;
-  color: #8695b7;
+  color: @comment;
 }
 
 tabbar tab label {
@@ -26,23 +28,23 @@ tabbar tab label {
 }
 
 tabbar tab:hover {
-  background: #121722;
+  background: @bg_light;
 }
 
 tabbar tab:selected {
-  background: #121722;
-  color: #d8d3c3;
-  box-shadow: inset 0 -2px 0 0 #ffc940;
+  background: @bg_light;
+  color: @fg;
+  box-shadow: inset 0 -2px 0 0 @yellow;
 }
 
 tabbar tab button {
-  color: #46516c;
+  color: @fg_gutter;
   background: transparent;
   min-height: 14px;
   min-width: 14px;
 }
 
 tabbar tab button:hover {
-  color: #eb5757;
+  color: @red;
   background: transparent;
 }
