@@ -3,25 +3,16 @@
 ## Repository Overview
 
 This is a personal dotfiles repository for Arch Linux with Hyprland (Wayland compositor). The configuration follows a
-modular architecture with a unified Catppuccin Mocha + Halcyon theme across all components.
+modular architecture with a unified eggfriedrice theme generated from the eggfriedrice.nvim design system.
 
 ## Installation & Setup
 
-**Manual Installation:** This repository uses manual symlinking (no automated installer):
+**Installer:** `install.sh` runs the stages in `install/stages/` in order (packages, theme repo clone, symlinks, shell,
+services, system drop-ins from `install/etc/`, finalize). Package lists live in `install/packages/*.txt`. Use
+`./install.sh --dry-run` first; `--laptop` / `--desktop` override the battery-based machine detection, and `MACHINE` gates
+the desktop-only bits (rtw89 modprobe options, GRUB `video=` line, `aur-desktop.txt`). Rerunning is idempotent.
 
-```bash
-ln -sf ~/.dotfiles/hypr ~/.config/hypr
-ln -sf ~/.dotfiles/nvim ~/.config/nvim
-ln -sf ~/.dotfiles/ghostty ~/.config/ghostty
-ln -sf ~/.dotfiles/starship ~/.config/starship
-ln -sf ~/.dotfiles/zsh ~/.config/zsh
-```
-
-**Zsh XDG Setup:** For XDG compliance, create `~/.zshenv` in your home directory:
-
-```bash
-echo 'export ZDOTDIR="$HOME/.config/zsh"' > ~/.zshenv
-```
+**Zsh XDG Setup:** `~/.zshenv` is a symlink to `zsh/.zshenv`, which sets `ZDOTDIR="$HOME/.config/zsh"`.
 
 **Hyprland Auto-Start:** Configured in `zsh/.zprofile` to start Hyprland automatically on TTY1 login.
 
@@ -45,7 +36,7 @@ All major components use a source/import pattern to split configs into logical m
 - `keybinds.lua` - Keyboard shortcuts
 - `eggfriedrice.lua` - symlink to the eggfriedrice.nvim Lua palette module (`extras/lua`); `require("eggfriedrice")` gives `.border`, `.alpha.<name>`, `.hex.<name>`
 
-Legacy hyprlang configs are archived in `hypr.old/`. `hypr/hypridle.conf` and
+`hypr/hypridle.conf` and
 `hypr/hyprlock.conf` belong to hypridle/hyprlock (separate tools, still hyprlang).
 Lua API reference: `/usr/share/hypr/stubs/hl.meta.lua` (lua-ls picks it up via `hypr/.luarc.json`).
 
@@ -87,13 +78,13 @@ Key plugins:
 - Navigation: fzf-tab
 - History: history-substring-search, history-search-multi-word
 - Quality of Life: zsh-autopair, zsh-you-should-use
-- CLI Tools: fzf-bin, exa, bat (installed as binaries)
+- CLI tools (fzf, eza, bat, starship) come from `install/packages`, not zinit
 
 ### Neovim - Lazy.nvim Plugin Manager
 
 - Location: `~/.local/share/nvim/lazy/`
 - Configuration: `nvim/lua/config/lazy.lua`
-- 32 plugins tracked in `lazy-lock.json`
+- plugins pinned in `lazy-lock.json` (tracked; `:Lazy restore` on a fresh machine)
 
 ### Mason - LSP/Tools Manager
 
@@ -130,10 +121,8 @@ hyprctl reload
 
 # Run utility scripts (in hypr/scripts/)
 ./scripts/volumecontrol.sh    # Volume control
-./scripts/brightness.sh       # Brightness control
-./scripts/screenshot.sh       # Screenshots
-./scripts/randwall.sh         # Random wallpaper
-./scripts/batterynotify.sh    # Battery monitoring
+./scripts/brightnesscontrol.sh  # Brightness control (backlight or DDC)
+./scripts/screensht full|area  # Screenshots
 ```
 
 ## Development Workflow
@@ -190,7 +179,7 @@ All components use unified colors:
 
 The `.gitignore` excludes:
 
-- Runtime files: `.zcompdump`, `.zsh_history`, `lazy-lock.json`
+- Runtime files: `.zcompdump`, `.zsh_history`
 - Logs and swap files
 - `AGENTS.md` itself
 
@@ -205,14 +194,14 @@ When making changes, preserve this exclusion pattern.
 - **Shell:** Zsh
 - **Editor:** Neovim
 - **Font:** Cartograph CF with icon support
-- **Additional tools:** waybar, dunst, swww, cliphist, polkit-kde-agent, pipewire
+- **Additional tools:** waybar, dunst, awww, cliphist, polkit-kde-agent, pipewire
 
 ## Code Modification Guidelines
 
 ### When Editing Configurations
 
 1. **Preserve modular structure** - Don't consolidate split configs back into monolithic files
-2. **Maintain theme consistency** - New colors should match Catppuccin Mocha palette
+2. **Maintain theme consistency** - New colours come from the eggfriedrice palette: add the role in the design system and regenerate the extras
 3. **Follow XDG standards** - All new paths should use XDG environment variables
 4. **Use lazy-loading** - New plugins should specify lazy-load conditions
 5. **Update documentation** - If adding significant features, update README.md
@@ -241,11 +230,10 @@ When making changes, preserve this exclusion pattern.
 
 ### Utility Scripts
 
-All Hyprland utility scripts (15 total) are in `hypr/scripts/`:
+Hyprland utility scripts live in `hypr/scripts/` (battery and Keychron battery watchers, brightness and volume OSD, DDC brightness, screenshot, colour picker, game mode, system update count, portal reset, kill active tree):
 
 - Battery management, brightness/volume control
-- Clipboard management (cliphist)
-- Screenshot utility, theme switching, color picker
+- Screenshot utility and colour picker
 - Game mode, system updates, portal resets
 
 When creating new scripts, place them in this directory and make them executable.
