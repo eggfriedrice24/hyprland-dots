@@ -1,4 +1,4 @@
-@import "/home/eggfriedrice/p/eggfriedrice.nvim/extras/rofi/eggfriedrice.rasi"
+@import "../eggfriedrice.rasi"
 
 configuration {
 	font: "JetBrainsMono Nerd Font 36";

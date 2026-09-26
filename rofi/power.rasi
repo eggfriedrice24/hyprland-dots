@@ -1,4 +1,4 @@
-@import "/home/eggfriedrice/p/eggfriedrice.nvim/extras/rofi/eggfriedrice.rasi"
+@import "eggfriedrice.rasi"
 // roles: frame @bg, list surface @bg-light, accent @yellow, item text @fg
 
 

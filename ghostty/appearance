@@ -1,6 +1,6 @@
 # Theme and window chrome
-# generated theme lives in the eggfriedrice.nvim repo (`make extras`)
-theme = /home/eggfriedrice/p/eggfriedrice.nvim/extras/ghostty/eggfriedrice
+# generated theme lives in the eggfriedrice.nvim repo (`make extras`); themes/eggfriedrice links to it
+theme = eggfriedrice
 background-opacity = 0.75
 
 # old-school blinking block cursor everywhere

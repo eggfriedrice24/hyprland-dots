@@ -1,1 +1,1 @@
-/home/eggfriedrice/p/eggfriedrice.nvim/extras/lua/eggfriedrice.lua
+../../p/eggfriedrice.nvim/extras/lua/eggfriedrice.lua
