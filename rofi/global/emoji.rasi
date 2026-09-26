@@ -1,3 +1,5 @@
+@import "/home/eggfriedrice/p/eggfriedrice.nvim/extras/rofi/eggfriedrice.rasi"
+
 configuration {
     display-emoji: "😀";
     show-icons: true;                 
@@ -8,8 +10,9 @@ configuration {
 
 * {
   font: "Noto Sans 11, Noto Color Emoji 14";
-	text-color: #eff0eb;
-	background-color: #1917244D;
+	bg-glass: #0d111a4d; // @bg at the original alpha; rasi has no alpha()
+	text-color: @fg;
+	background-color: @bg-glass;
 	border-color: #00000000;
 	width: 684px;
 	height: 477px;
@@ -33,8 +36,8 @@ entry {
 }
 
 textbox {
-	background-color: #1917244D;
-	border-color: #1917244D;
+	background-color: @bg-glass;
+	border-color: @bg-glass;
 	padding: 13px 13px;
 }
 
@@ -56,9 +59,9 @@ element {
 element-text {
 	font: "Noto Color Emoji 27";
 	expand: false;
-	text-color: #333333;
+	text-color: @fg-gutter;
 }
 
 element selected {
-	background-color: #191724;
+	background-color: @bg;
 }

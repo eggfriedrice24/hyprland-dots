@@ -1,18 +1,20 @@
+@import "/home/eggfriedrice/p/eggfriedrice.nvim/extras/rofi/eggfriedrice.rasi"
+// roles: frame @bg, list surface @bg-light, accent @yellow, item text @fg
 
 
 * {
   /* Default background color */
-  background-color: #282738;
-  text-color:       #E5B9C6;
+  background-color: @bg;
+  text-color:       @yellow;
   font: "JetBrainsMono Bold 10";
 }
 
 
 window {
-  border-color: #282738;
+  border-color: @bg;
   border:       5px;
   border-radius: 10px;
-  background-color: #282738;
+  background-color: @bg;
   width: 300px;
 }
 
@@ -65,18 +67,18 @@ element,element-text,element-icon, button {
 
 listview, message {
   padding: 0.5em;
-  border-color: #282738;
+  border-color: @bg;
   border:        5px;
   border-radius: 10px;
-  background-color: #282738;
+  background-color: @bg;
   columns: 1;
   lines: 4;
 }
 listview {
   border:       5px 5px 5px 5px;
   border-radius: 10px 10px 10px 10px;
-  background-color: #353446;
-  border-color:     #282738;
+  background-color: @bg-light;
+  border-color:     @bg;
   font: "JetBrains Mono Medium";
   scrollbar: false;
 
@@ -87,100 +89,100 @@ element {
     border:  5px;
     border-radius: 5px;
     padding: 5px;
-    border-color: #353446;
+    border-color: @bg-light;
 }
 element-text {
-    background-color: #353446;
-    text-color:       #FFFFFF;
+    background-color: @bg-light;
+    text-color:       @fg;
     font: "JetBrains Mono Medium";
     margin:   0px 50px;
 }
 
 element normal.normal {
-    background-color: #353446;
-    text-color:       #E5B9C6;
+    background-color: @bg-light;
+    text-color:       @yellow;
 }
 element.normal.urgent {
-    background-color: #353446;
-    text-color:       #E5B9C6;
+    background-color: @bg-light;
+    text-color:       @yellow;
 }
 element.normal.active {
-    background-color: #353446;
-    text-color:       #E5B9C6;
+    background-color: @bg-light;
+    text-color:       @yellow;
 }
 element.selected.normal {
-    background-color: #E5B9C6;
-    border-color: #E5B9C6;
-    text-color:       #E5B9C6;
+    background-color: @yellow;
+    border-color: @yellow;
+    text-color:       @yellow;
 }
 element.selected.urgent {
-    background-color: #E5B9C6;
-    border-color: #E5B9C6;
-    text-color:       #E5B9C6;
+    background-color: @yellow;
+    border-color: @yellow;
+    text-color:       @yellow;
 }
 element.selected.active {
-    background-color: #E5B9C6;
-    border-color: #E5B9C6;
-    text-color:       #E5B9C6;
+    background-color: @yellow;
+    border-color: @yellow;
+    text-color:       @yellow;
 }
 element.alternate.normal {
-    background-color: #353446;
-    text-color:       #E5B9C6;
+    background-color: @bg-light;
+    text-color:       @yellow;
 }
 element.alternate.urgent {
-    background-color: #353446;
-    text-color:       #E5B9C6;
+    background-color: @bg-light;
+    text-color:       @yellow;
 }
 element.alternate.active {
-    background-color: #353446;
-    text-color:       #E5B9C6;
+    background-color: @bg-light;
+    text-color:       @yellow;
 }
 
 
 element-text.selected.normal {
-    background-color: #E5B9C6;
-    border-color: #E5B9C6;
-    text-color:       #282738;
+    background-color: @yellow;
+    border-color: @yellow;
+    text-color:       @bg;
     font: "JetBrains Mono Medium";
 }
 element-text.selected.urgent {
-    background-color: #E5B9C6;
-    border-color: #E5B9C6;
-    text-color:       #282738;
+    background-color: @yellow;
+    border-color: @yellow;
+    text-color:       @bg;
     font: "JetBrains Mono Medium";
 }
 element-text.selected.active {
-    background-color: #E5B9C6;
-    border-color: #E5B9C6;
-    text-color:       #282738;
+    background-color: @yellow;
+    border-color: @yellow;
+    text-color:       @bg;
     font: "JetBrains Mono Medium";
 }
 
 
 button {
-    text-color: #E5B9C6;
+    text-color: @yellow;
     border:       0px 0px 5px ;
-    border-color: #282738;
+    border-color: @bg;
     border-radius:    10px 10px 0 0;
-    background-color: #282738;
+    background-color: @bg;
     horizontal-align: 0.5;
 }
 button selected.normal {
-    text-color: #E5B9C6;
+    text-color: @yellow;
     margin: 0px;
     padding: 0px;
     border:     5px 5px 5px 5px ;
-    border-color: #282738;
+    border-color: @bg;
     border-radius:    10px 10px 10px 10px;
-    background-color: #353446;
+    background-color: @bg-light;
 }
 
 entry {
     placeholder: "Search here";
-    placeholder-color: #282738;
-    border-color: #353446;
-    background-color: #353446;
+    placeholder-color: @bg;
+    border-color: @bg-light;
+    background-color: @bg-light;
     border:        10px;
     border-radius: 2px 2px 2px 2px;
-    text-color: #E5B9C6;
+    text-color: @yellow;
   }

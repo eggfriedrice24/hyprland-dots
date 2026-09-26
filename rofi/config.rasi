@@ -1,3 +1,5 @@
+@import "/home/eggfriedrice/p/eggfriedrice.nvim/extras/rofi/eggfriedrice.rasi"
+
 configuration {
     modi: "drun";
     show-icons: true;
@@ -13,11 +15,12 @@ configuration {
 }
 
 * {
-    bg-soft: #1e2230;
-    border: #3c415580;
-    fg: #dadee5;
-    muted: #6b727e;
-    accent: #f0b100;
+    bg-soft: @bg-light;
+    // @fg-gutter-ui at the original 50% alpha; rasi has no alpha(), so this literal shadows the palette's opaque gold @border
+    border: #58648080;
+    muted: @comment;
+    accent: @yellow;
+    // @fg comes from the imported palette
 
     background-color: transparent;
     text-color: @fg;

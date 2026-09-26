@@ -1,3 +1,5 @@
+@import "/home/eggfriedrice/p/eggfriedrice.nvim/extras/rofi/eggfriedrice.rasi"
+
 configuration {
     font: "Inter Regular 10";
     sidebar-mode: true;
@@ -11,20 +13,21 @@ configuration {
 }
 
 * {
+    // translucent values keep the original alpha on the palette hex; rasi has no alpha()
     transparent: #00000000;
-    foreground: #F2F2F2EE;
-    background-selected: #F2F2F245;
-    background-active: #F2F2F230;
-    background-white: #F2F2F211;
+    foreground: #f2edddee; // @fg-bright
+    background-selected: #f2eddd45; // @fg-bright
+    background-active: #f2eddd30; // @fg-bright
+    background-white: #f2eddd11; // @fg-bright
     background-black: #00000000;
-    urgent: #E91E6366;
-    urgent-selected: #E91E6377;
+    urgent: #e06c7566; // @red
+    urgent-selected: #e06c7577; // @red
 }
 
 window {
     transparency: "real";
-    background-color: #1917244D;
-    text-color: #6e6a86;
+    background-color: #0d111a4d; // @bg at the original alpha
+    text-color: @comment;
     location: west;
     anchor: west;
     x-offset: 5px;
@@ -43,7 +46,7 @@ button {
     str: " ";
     font: "FantasqueSansMono Nerd Font 16";
     expand: false;
-    text-color: #6e6a86;
+    text-color: @comment;
     background-color: @transparent;
     vertical-align: 0.5;
     horizontal-align: 0.5;
@@ -52,7 +55,7 @@ button {
 entry {
     font: "Inter Regular 12";
     background-color: @transparent;
-    text-color: #6e6a86;
+    text-color: @comment;
     expand: true;
     vertical-align: 0.5;
     horizontal-align: 0;
@@ -73,7 +76,7 @@ entry-wrapper {
 inputbar {
     padding: 14px;
     margin: 10px 10px 14px 10px;
-    background-color: #26233a;
+    background-color: @bg-light;
     text-color: @foreground;
     expand: false;
     border-radius: 9px;
@@ -129,7 +132,7 @@ element-text {
     expand: true;
     horizontal-align: 0;
     vertical-align: 0.5;
-    color: #6e6a86;
+    color: @comment;
     background-color: transparent;
 }
 
@@ -147,7 +150,7 @@ element alternate.active {
 }
 
 element selected {
-    background-color: #403d5220;
+    background-color: #2f3b5420; // @selection at the original alpha
     text-color: @foreground;
 }
 
@@ -157,6 +160,6 @@ element selected.urgent {
 }
 
 element selected.active {
-    background-color: #403d5220;
+    background-color: #2f3b5420; // @selection at the original alpha
     color: @foreground-selected;
 }
