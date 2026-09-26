@@ -1,5 +1,10 @@
 # AUR packages
 grimblast-git
 zen-browser-bin
+helium-browser-bin
 slack-desktop
-t3code-bin
+t3code-nightly-bin
+localsend-bin
+rune-notes-bin
+catppuccin-gtk-theme-mocha
+lib32-libcap

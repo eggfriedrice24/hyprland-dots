@@ -1,7 +1,13 @@
 # Desktop applications
 ghostty
 thunar
+tumbler
+ffmpegthumbnailer
+imv
+mpv
 discord
-steam
 signal-desktop
+steam
 obs-studio
+qbittorrent
+flatpak

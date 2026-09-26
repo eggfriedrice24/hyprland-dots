@@ -1,5 +1,5 @@
-# Fonts
+# Fonts (Cartograph CF ships in fonts/ and is linked by the installer)
 ttf-jetbrains-mono-nerd
 ttf-nerd-fonts-symbols-mono
-otf-font-awesome
+noto-fonts
 noto-fonts-emoji

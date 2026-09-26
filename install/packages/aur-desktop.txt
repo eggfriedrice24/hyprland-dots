@@ -1,0 +1,2 @@
+# AUR packages for the desktop only
+it87-dkms-git # Gigabyte board sensors (dkms, needs linux-headers from system.txt)

@@ -4,13 +4,15 @@ base-devel
 curl
 jq
 zsh
-acpi
 keychain
 openssh
 unzip
+man-db
 networkmanager
 bluez
 bluez-utils
+gnome-keyring
 xdg-desktop-portal
 xdg-utils
+xdg-user-dirs
 libnotify

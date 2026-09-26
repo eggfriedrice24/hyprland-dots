@@ -1,0 +1,13 @@
+# Kernel, firmware, filesystems, maintenance
+linux-headers
+zram-generator
+wireless-regdb
+dosfstools
+smartmontools
+nvme-cli
+pacman-contrib
+reflector
+rsync
+zip
+unrar
+tree

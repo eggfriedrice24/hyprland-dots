@@ -2,10 +2,14 @@
 hyprland
 waybar
 dunst
-rofi-wayland
+rofi
+rofi-emoji
 awww
 xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+gsettings-desktop-schemas
 polkit-kde-agent
+qt5ct
 wl-clipboard
 cliphist
 hyprlock
@@ -13,6 +17,7 @@ hypridle
 hyprpicker
 grim
 slurp
+wf-recorder
 brightnessctl
 ddcutil
 imagemagick
