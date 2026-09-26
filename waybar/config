@@ -57,16 +57,20 @@
     "interval": 2,
     "format": "󰍛 {usage}%",
     "tooltip": true,
-    "on-click": "ghostty -e htop"
+    "on-click": "ghostty -e btop"
   },
   "memory": {
     "interval": 2,
     "format": "󰘚 {percentage}%",
     "tooltip-format": "{used:0.1f}G / {total:0.1f}G used",
-    "on-click": "ghostty -e htop"
+    "on-click": "ghostty -e btop"
   },
   "temperature": {
-    "hwmon-path-abs": "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
+    "_comment": "first existing path wins: k10temp on the AMD desktop, coretemp on an Intel laptop",
+    "hwmon-path-abs": [
+      "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
+      "/sys/devices/platform/coretemp.0/hwmon"
+    ],
     "input-filename": "temp1_input",
     "critical-threshold": 80,
     "format": "󰔏 {temperatureC}°C",
@@ -78,7 +82,7 @@
     "format-ethernet": "󰈀 Wired",
     "format-disconnected": "󰖪 Disconnected",
     "tooltip-format-wifi": "{signalStrength}% | {ipaddr}",
-    "on-click": "nm-connection-editor"
+    "on-click": "ghostty -e nmtui"
   },
   "pulseaudio": {
     "format": "{icon} {volume}%",
