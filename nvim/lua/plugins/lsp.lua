@@ -25,6 +25,7 @@ return {
 				"yaml-language-server",
 				"jdtls",
 				"basedpyright",
+				"emmet-language-server",
 				"rust-analyzer",
 
 				-- Formatters
@@ -36,6 +37,7 @@ return {
 				"goimports",
 				"google-java-format",
 				"rustfmt",
+				"shfmt",
 
 				-- Linters
 				"eslint-lsp",
@@ -264,6 +266,7 @@ return {
 				"eslint",
 				"lua_ls",
 				"basedpyright",
+				"emmet-language-server",
 				"rust_analyzer",
 			})
 		end,
