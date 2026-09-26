@@ -4,7 +4,12 @@ require("startup")
 require("env")
 require("windowrule")
 require("keybinds")
-local efr = require("eggfriedrice") -- palette module, symlinked from the theme repo's extras/lua
+-- palette module, symlinked from the theme repo's extras/lua. Fall back to the same literal
+-- colours so the rest of this config still applies when the repo is not cloned yet.
+local ok, efr = pcall(require, "eggfriedrice")
+if not ok then
+	efr = { border = "rgb(c9a747)", fg_gutter_ui = "rgb(586480)" }
+end
 
 -- Monitors
 hl.monitor({ output = "DP-1", mode = "2560x1440@240", position = "0x0", scale = 1, bitdepth = 10 }) -- 10bpc matches the boot console's link config, avoids a second DP retrain at login
