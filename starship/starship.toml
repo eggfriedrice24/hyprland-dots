@@ -1,21 +1,49 @@
-## ░█▀▀░▀█▀░█▀█░█▀▄░█▀▀░█░█░▀█▀░█▀█
-## ░▀▀█░░█░░█▀█░█▀▄░▀▀█░█▀█░░█░░█▀▀
-## ░▀▀▀░░▀░░▀░▀░▀░▀░▀▀▀░▀░▀░▀▀▀░▀░░
+# eggfriedrice — Starship prompt
+# Needs a Nerd Font (v3). Colours come from the eggfriedrice design system.
+#
+#   ~/code/eggfriedrice.nvim   master 2 1   22.9.0 ········  3s
+#   ❯
+#
+# Line 1: where you are, what git is doing, what toolchain is active; on the
+# right, what the last command cost (duration, exit code, background jobs).
+# Line 2: the prompt character. Cyan ❯ = last command OK, red ❯ = it failed,
+# purple ❮ = vi command mode. Every segment hides when it has nothing to say.
 
-# Prompt Layout - Only modules listed here will show up!
-format = """$directory$git_branch$git_status$character"""
-right_format = """$nodejs$python$golang$java$cmd_duration"""
-add_newline = false
+"$schema" = "https://starship.rs/config-schema.json"
+
+add_newline = true
 palette = "eggfriedrice"
 
-# ============================================
-# PALETTE
-# ============================================
-# Copied verbatim from
-#   /home/eggfriedrice/p/eggfriedrice.nvim/extras/starship/eggfriedrice.toml
-# (starship has no include directive, so the table is pasted here).
-# It is regenerated in that repo with `make extras`; re-paste after regenerating.
+format = """\
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_commit\
+$git_state\
+$git_status\
+${custom.git_clean}\
+$git_metrics\
+$nodejs\
+$bun\
+$deno\
+$python\
+$rust\
+$golang\
+$lua\
+$java\
+$kotlin\
+$swift\
+$docker_context\
+$fill\
+$cmd_duration\
+$status\
+$jobs\
+$line_break\
+$character"""
 
+# Copied from /home/eggfriedrice/p/eggfriedrice.nvim/extras/starship/eggfriedrice.toml
+# (starship has no include); regenerated there by `make extras`, re-paste after.
 [palettes.eggfriedrice]
 # base
 bg = "#0d111a"
@@ -23,6 +51,7 @@ bg_dark = "#090c13"
 bg_light = "#121722"
 fg = "#d8d3c3"
 fg_dark = "#a8a396"
+fg_gutter_ui = "#586480"
 comment = "#8695b7"
 
 # accents (these names shadow starship's ANSI names on purpose)
@@ -36,84 +65,209 @@ purple = "#c084fc"
 
 # roles, one per module
 directory = "#ffc940"
+directory_repo_root = "#ffc940"
+directory_before_root = "#8695b7"
+directory_read_only = "#e06c75"
 git_branch = "#c084fc"
+git_commit = "#c084fc"
+git_state = "#fc9a2c"
 git_status_clean = "#60e654"
 git_status_dirty = "#78e2d6"
+git_status_staged = "#60e654"
+git_status_untracked = "#a8a396"
+git_status_stashed = "#8695b7"
+git_status_deleted = "#e06c75"
+git_status_conflicted = "#e06c75"
 git_status_ahead = "#ffc940"
 git_status_behind = "#fc9a2c"
-git_status_conflicted = "#e06c75"
+git_metrics_added = "#60e654"
+git_metrics_deleted = "#e06c75"
 character_success = "#78e2d6"
 character_error = "#e06c75"
 character_vimcmd = "#c084fc"
+character_vimcmd_replace = "#e06c75"
+character_vimcmd_visual = "#ffc940"
 cmd_duration = "#fc9a2c"
 language = "#6cb8ff"
+docker_context = "#6cb8ff"
 status = "#e06c75"
 jobs = "#ffc940"
 time = "#8695b7"
 username = "#a8a396"
 hostname = "#a8a396"
 
-# ============================================
-# ACTIVE MODULES
-# ============================================
+# ── where ────────────────────────────────────────────────────────────────
+[username]
+format = "[$user ]($style)"
+style_user = "username"
+style_root = "bold red"
+show_always = false          # only over SSH or as root
 
-[character]
-success_symbol = '[❯](bold character_success)'
-error_symbol = '[❯](bold character_error)'
-vimcmd_symbol = '[❮](bold character_vimcmd)'
+[hostname]
+ssh_only = true
+ssh_symbol = " "
+format = "[$ssh_symbol$hostname]($style) "
+style = "hostname"
 
 [directory]
-format = '[$path]($style) '
-style = 'bold directory'
-truncation_length = 3
+format = "[$path]($style)[$read_only]($read_only_style) "
+style = "bold directory"
+before_repo_root_style = "directory_before_root"
+repo_root_style = "bold directory_repo_root"
+repo_root_format = "[$before_root_path]($before_repo_root_style)[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
+truncation_length = 4
 truncate_to_repo = false
-home_symbol = ' '
+truncation_symbol = "…/"
+home_symbol = "~"
+read_only = " "
+read_only_style = "directory_read_only"
 
+# ── git ──────────────────────────────────────────────────────────────────
 [git_branch]
-format = '[\[$symbol$branch\]]($style) '
-symbol = '󰊢 '
-style = 'bold git_branch'
+format = "[$symbol$branch(:$remote_branch)]($style) "
+symbol = " "
+style = "git_branch"
+truncation_length = 24
+truncation_symbol = "…"
+
+[git_commit]                 # detached HEAD / tag
+format = "[$hash$tag]($style) "
+style = "git_commit"
+tag_symbol = " "
+tag_disabled = false
+only_detached = true
+
+[git_state]                  # rebase, merge, cherry-pick, bisect in progress
+format = "[ $state( $progress_current/$progress_total)]($style) "
+style = "bold git_state"
 
 [git_status]
-format = '([\[$all_status$ahead_behind\]]($style) )'
-style = 'bold git_status_dirty'
-conflicted = '[=](bold git_status_conflicted)'
-ahead = '[↑${count}](bold git_status_ahead)'
-behind = '[↓${count}](bold git_status_behind)'
-diverged = '[↕↑${ahead_count}↓${behind_count}](bold git_status_behind)'
-up_to_date = ''
-untracked = '?${count}'
-stashed = '\$'
-modified = '!${count}'
-staged = '+${count}'
-renamed = '»${count}'
-deleted = '✘${count}'
+format = "($conflicted$stashed$deleted$renamed$modified$staged$untracked$ahead_behind )"
+conflicted = "[$count ](bold git_status_conflicted)"
+stashed    = "[$count ](git_status_stashed)"
+deleted    = "[$count ](git_status_deleted)"
+renamed    = "[$count ](git_status_dirty)"
+modified   = "[$count ](git_status_dirty)"
+staged     = "[$count ](git_status_staged)"
+untracked  = "[$count ](git_status_untracked)"
+ahead      = "[$count ](git_status_ahead)"
+behind     = "[$count ](git_status_behind)"
+diverged   = "[$ahead_count ](git_status_ahead)[$behind_count ](git_status_behind)"
+up_to_date = ""
 
-[cmd_duration]
-min_time = 1000
-format = '[\[⏱ $duration\]]($style)'
-style = 'bold cmd_duration'
+[custom.git_clean]           # green check when the tree has nothing to commit
+when = 'test -z "$(git status --porcelain 2>/dev/null)"'
+require_repo = true
+shell = ["sh"]
+format = "[]($style) "
+style = "git_status_clean"
 
-# ============================================
-# LANGUAGE MODULES
-# ============================================
+[git_metrics]                # lines added / removed since HEAD
+format = "([+$added]($added_style) )([-$deleted]($deleted_style) )"
+added_style = "git_metrics_added"
+deleted_style = "git_metrics_deleted"
+disabled = false
 
+# ── toolchain (only inside a project that uses it) ────────────────────────
 [nodejs]
-format = '[\[$symbol$version\]]($style) '
-symbol = ' '
-style = 'bold language'
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[bun]
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[deno]
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
 
 [python]
-format = '[\[$symbol$version\]]($style) '
-symbol = ' '
-style = 'bold language'
+format = "[$symbol$version( \\($virtualenv\\))]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[rust]
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
 
 [golang]
-format = '[\[$symbol$version\]]($style) '
-symbol = ' '
-style = 'bold language'
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[lua]
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
 
 [java]
-format = '[\[$symbol$version\]]($style) '
-symbol = ' '
-style = 'bold language'
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[kotlin]
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[swift]
+format = "[$symbol$version]($style) "
+symbol = " "
+version_format = "${raw}"
+style = "language"
+
+[docker_context]
+format = "[$symbol$context]($style) "
+symbol = " "
+style = "docker_context"
+only_with_files = true
+
+# ── what the last command cost (right side of line 1) ─────────────────────
+[fill]
+symbol = " "
+style = ""
+
+[cmd_duration]
+min_time = 2_000
+format = "[ $duration]($style) "
+style = "cmd_duration"
+show_milliseconds = false
+
+[status]
+disabled = false
+format = "[ $status( $signal_name)]($style) "
+style = "status"
+map_symbol = false
+recognize_signal_code = true
+pipestatus = false
+
+[jobs]
+format = "[ $number]($style) "
+style = "jobs"
+number_threshold = 1
+symbol_threshold = 1
+
+# ── the prompt character ──────────────────────────────────────────────────
+[character]
+success_symbol = "[❯](bold character_success)"
+error_symbol = "[❯](bold character_error)"
+vimcmd_symbol = "[❮](bold character_vimcmd)"
+vimcmd_replace_one_symbol = "[❮](bold character_vimcmd_replace)"
+vimcmd_replace_symbol = "[❮](bold character_vimcmd_replace)"
+vimcmd_visual_symbol = "[❮](bold character_vimcmd_visual)"
+
+[line_break]
+disabled = false
