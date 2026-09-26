@@ -4,7 +4,7 @@ require("startup")
 require("env")
 require("windowrule")
 require("keybinds")
--- Catppuccin palette lives in mocha.lua: local mocha = require("mocha")
+local efr = require("eggfriedrice") -- palette module, symlinked from the theme repo's extras/lua
 
 -- Monitors
 hl.monitor({ output = "DP-1", mode = "2560x1440@240", position = "0x0", scale = 1, bitdepth = 10 }) -- 10bpc matches the boot console's link config, avoids a second DP retrain at login
@@ -46,8 +46,8 @@ hl.config({
 		gaps_out = 0,
 		border_size = 0,
 		col = {
-			active_border = "rgba(3c415580)",
-			inactive_border = "rgba(382d2eff)", -- was 0xff382D2E
+			active_border = efr.border, -- gold accent border
+			inactive_border = efr.fg_gutter_ui, -- readable gray, inactive borders
 		},
 		layout = "dwindle",
 		-- no_focus_fallback = false
