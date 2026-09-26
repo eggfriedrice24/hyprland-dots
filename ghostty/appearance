@@ -3,6 +3,10 @@
 theme = /home/eggfriedrice/p/eggfriedrice.nvim/extras/ghostty/eggfriedrice
 background-opacity = 0.75
 
+# old-school blinking block cursor everywhere
+cursor-style = block
+cursor-style-blink = true
+
 # no size popup while hyprland retiles
 resize-overlay = never
 
