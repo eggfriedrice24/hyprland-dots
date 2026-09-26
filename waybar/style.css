@@ -1,3 +1,5 @@
+@import url("/home/eggfriedrice/p/eggfriedrice.nvim/extras/gtk/eggfriedrice.css");
+
 * {
   font-family: "Cartograph CF", "Symbols Nerd Font", monospace;
   font-size: 13px;
@@ -6,9 +8,9 @@
 }
 
 window#waybar {
-  background: rgba(21, 23, 33, 0.7);
-  color: #dadee5;
-  border-bottom: 1px solid rgba(60, 65, 85, 0.5);
+  background: alpha(@bg, 0.7);
+  color: @fg;
+  border-bottom: 1px solid alpha(@fg_gutter, 0.5);
 }
 
 /* Reset all module styles */
@@ -37,95 +39,95 @@ window#waybar {
   margin: 6px 2px;
   border-radius: 3px;
   font-size: 11px;
-  color: #070b14;
-  background: #f0b100;
+  color: @bg_dark;
+  background: @yellow;
   border: none;
   font-weight: 600;
 }
 
 #workspaces button.urgent {
-  background: #f14d4c;
-  color: #070b14;
+  background: @red;
+  color: @bg_dark;
 }
 
 /* Active Window Title */
 #window {
-  color: #6b727e;
+  color: @comment;
   font-weight: 400;
   padding-left: 8px;
 }
 
 /* Clock */
 #clock {
-  color: #dadee5;
+  color: @fg;
   font-weight: 600;
 }
 
 /* CPU */
 #cpu {
-  color: #f0b100;
+  color: @yellow;
 }
 
 /* Memory */
 #memory {
-  color: #4ba3f7;
+  color: @blue;
 }
 
 /* Temperature */
 #temperature {
-  color: #05df72;
+  color: @green;
 }
 
 #temperature.critical {
-  color: #f14d4c;
+  color: @red;
 }
 
 /* Network */
 #network {
-  color: #05df72;
+  color: @green;
 }
 
 #network.disconnected {
-  color: #f14d4c;
+  color: @red;
 }
 
 /* Pulseaudio */
 #pulseaudio {
-  color: #dadee5;
+  color: @fg;
 }
 
 #pulseaudio.muted {
-  color: #f14d4c;
+  color: @red;
 }
 
 /* Separator */
 #custom-separator {
-  color: #6b727e;
+  color: @comment;
   padding: 0 4px;
 }
 
 /* Battery */
 #battery {
-  color: #05df72;
+  color: @green;
 }
 
 #battery.charging {
-  color: #f0b100;
+  color: @yellow;
 }
 
 #battery.warning:not(.charging) {
-  color: #f0b100;
+  color: @yellow;
 }
 
 #battery.critical:not(.charging) {
-  color: #f14d4c;
+  color: @red;
 }
 
 /* System Tray */
 #tray {
   padding: 0 8px;
   margin: 5px 30px 5px 0;
-  border: 1px solid rgba(60, 65, 85, 0.5);
+  border: 1px solid alpha(@fg_gutter, 0.5);
   border-radius: 6px;
 }
 
