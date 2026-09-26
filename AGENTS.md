@@ -43,7 +43,7 @@ All major components use a source/import pattern to split configs into logical m
 - `env.lua` - Environment variables
 - `windowrule.lua` - Window and layer rules
 - `keybinds.lua` - Keyboard shortcuts
-- `mocha.lua` - Catppuccin Mocha palette as a Lua module
+- `eggfriedrice.lua` - symlink to the eggfriedrice.nvim Lua palette module (`extras/lua`); `require("eggfriedrice")` gives `.border`, `.alpha.<name>`, `.hex.<name>`
 
 Legacy hyprlang configs are archived in `hypr.old/`. `hypr/hypridle.conf` and
 `hypr/hyprlock.conf` belong to hypridle/hyprlock (separate tools, still hyprlang).
@@ -179,10 +179,12 @@ Configured in `hypr/hyprland.lua`:
 
 All components use unified colors:
 
-- Hyprland: Catppuccin Mocha colors in `hypr/mocha.lua`
-- Neovim: Halcyon colorscheme
-- Starship: Custom colors matching theme palette
-- FZF: Catppuccin Mocha colors in `zsh/env.zsh`
+- Source of truth: `~/p/eggfriedrice.nvim/lua/eggfriedrice/colors.lua`; generated per-app files under its `extras/` (regenerate with `make extras` there)
+- Hyprland and hyprlock: `hypr/eggfriedrice.lua` symlink and `source =` of `extras/hyprland`
+- Neovim: eggfriedrice.nvim as a local `dir =` build
+- Starship: the `[palettes.eggfriedrice]` block in `starship/starship.toml` is copied from `extras/starship` (re-paste after `make extras`)
+- Shell: `zsh/theme.zsh` sources `extras/zsh`, `zsh/env.zsh` sources `extras/fzf`, fast-syntax-highlighting uses `extras/fsh` via `fast-theme`
+- waybar and ghostty tabs import `extras/gtk`; rofi imports `extras/rofi`; dunst, bat, eza, btop, opencode, lazygit and tmux link or source their extras
 
 ### Git Workflow
 

@@ -16,7 +16,7 @@ Personal dotfiles for Arch Linux with Hyprland compositor.
 
 ## Theme
 
-All configurations use a consistent color scheme inspired by Catppuccin Mocha and Halcyon themes.
+All configurations share the eggfriedrice palette. Every color-bearing config points at a generated file under `~/p/eggfriedrice.nvim/extras` (ghostty, waybar, rofi, dunst, hyprland, hyprlock, zsh, fzf, starship, bat, eza, btop, opencode, tmux, lazygit), so the palette lives in one place and `make extras` in that repo updates everything.
 
 ## Installation
 
