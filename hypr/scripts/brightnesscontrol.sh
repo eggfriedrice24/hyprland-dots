@@ -7,8 +7,7 @@ notify_bri() {
     percent=$1
     [ -z "$percent" ] && return
 
-    angle="$(( ((percent + 5) / 10) * 10 ))"
-    ico="$HOME/.config/dunst/iconbri/bri-${angle}.svg"
+    ico="display-brightness-symbolic"
 
     dunstify -i "$ico" -a "Brightness" -u low \
       -h string:x-dunst-stack-tag:$tagBri \

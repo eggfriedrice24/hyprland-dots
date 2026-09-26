@@ -1,29 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Pick a colour with hyprpicker (copied to the clipboard by -a) and show it as a swatch notification
 
-TMPPCK=$(hyprpicker -a -n)
-TMPPST=$(wl-paste)
-CMD=$(echo "$TMPPST")
-TMP=/tmp/xcolor_$CMD.png
+set -euo pipefail
 
-hyprpick() {
-  $TMPPCK
-}
+for dep in hyprpicker magick notify-send; do
+    if ! command -v "$dep" &>/dev/null; then
+        notify-send -u critical -a "Color Picker" "Color Picker" "$dep is not installed"
+        exit 1
+    fi
+done
 
-check_dependencies() {
-    ! command -v hyprpicker &>/dev/null &&
-        notify-send -u critical -a "Color Picker" xcolor-pick "gpick needs to be installed" && exit 1
+color="$(hyprpicker -a -n)"
+[[ -n "$color" ]] || exit 0
 
-    ! command -v magick &>/dev/null &&
-        notify-send -u critical -a "Color Picker" xcolor-pick "imagemagick needs to be installed" && exit 1
-}
-
-main() {
-    convert -size 120x120 xc:"$CMD" "$TMP"
-    printf %s "$CMD" | wl-paste 
-
-    notify-send -a "Color Picker" -i "$TMP" xcolor-pick "$CMD"
-}
-
-check_dependencies
-hyprpick
-main
+swatch="${XDG_RUNTIME_DIR:-/tmp}/colorpicker_${color#\#}.png"
+magick -size 120x120 "xc:$color" "$swatch"
+notify-send -a "Color Picker" -i "$swatch" "Color picked" "$color"
