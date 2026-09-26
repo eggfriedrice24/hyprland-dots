@@ -33,8 +33,6 @@ zinit light-mode for \
   zsh-users/zsh-autosuggestions \
   Aloxaf/fzf-tab
 
-# sudo & co in yolk yellow (fg=yellow -> palette 3 = #ffc940)
-FAST_HIGHLIGHT_STYLES[precommand]='fg=yellow'
 
 zinit ice wait'3' lucid atload'bindkey "^[[A" history-substring-search-up; bindkey "^[[B" history-substring-search-down'
 zinit light zsh-users/zsh-history-substring-search
@@ -43,15 +41,3 @@ zinit light zsh-users/zsh-history-substring-search
 
 zinit ice wait'2' lucid
 zinit light zdharma-continuum/history-search-multi-word
-
-# FZF (binary)
-zinit ice from"gh-r" as"command"
-zinit light junegunn/fzf-bin
-
-# EXA (ls replacement)
-zinit ice wait lucid from"gh-r" as"program" mv"bin/exa* -> exa"
-zinit light ogham/exa
-
-# BAT (cat replacement)
-zinit ice wait lucid from"gh-r" as"program" mv"*/bat -> bat" atload"export BAT_THEME='Nord'"
-zinit light sharkdp/bat

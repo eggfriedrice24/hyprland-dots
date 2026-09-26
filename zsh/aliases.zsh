@@ -1,6 +1,6 @@
 # Main
 alias installed="grep -i installed /var/log/pacman.log"
-alias ls="exa --color=auto --icons"
+alias ls="eza --color=auto --icons=auto"
 alias l="ls -l"
 alias la="ls -a"
 alias lla="ls -la"
