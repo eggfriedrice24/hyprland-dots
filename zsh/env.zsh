@@ -3,24 +3,30 @@
 ##
 
 export PNPM_HOME="$HOME/.local/share/pnpm"
-export PATH="$HOME/.spicetify:$PATH"
 export PATH="$PNPM_HOME:$PATH"
-export PATH="$HOME/.scripts:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/go/bin:$PATH"
+# toolchain bins that only exist once the tool has been used
+for _dir in "$HOME/.cargo/bin" "$HOME/go/bin" "$HOME/uni/t-mesh/bin"; do
+  [[ -d "$_dir" ]] && export PATH="$_dir:$PATH"
+done
+unset _dir
 export GPG_TTY="${TTY:-$(tty)}"
 
-# SSH Agent (keychain reuses existing agent across terminals)
-eval "$(keychain --eval --quiet --noask efr)"
+# SSH Agent (keychain reuses existing agent across terminals; the key is restored by hand, see README)
+if command -v keychain >/dev/null; then
+  eval "$(keychain --eval --quiet --noask efr)"
+fi
 
-# FNM (Fast Node Manager) - Auto-switch Node versions based on .nvmrc
-export PATH="$HOME/.local/share/fnm:$PATH"
-eval "$(fnm env --use-on-cd)"
+# FNM (Fast Node Manager) - auto-switch Node versions from .nvmrc. Versions live in
+# ~/.local/share/fnm; the same dir holds the binary when fnm came from its curl installer.
+[[ -d "$HOME/.local/share/fnm" ]] && export PATH="$HOME/.local/share/fnm:$PATH"
+if command -v fnm >/dev/null; then
+  eval "$(fnm env --use-on-cd)"
+fi
 
 export SUDO_PROMPT="passwd: "
 export TERMINAL="ghostty"
-export BROWSER="firefox"
+export BROWSER="zen-browser"
 export VISUAL="nvim"
 export EDITOR="nvim"
 
@@ -40,38 +46,32 @@ export XDG_MUSIC_DIR="$HOME/Music"
 export XDG_PICTURES_DIR="$HOME/Pictures"
 export XDG_VIDEOS_DIR="$HOME/Videos"
 
-## Comment this to use normal manpager
-export MANPAGER='nvim +Man! +"set nocul" +"set noshowcmd" +"set noruler" +"set noshowmode" +"set laststatus=0" +"set showtabline=0" +"set nonumber"'
-
-if [ $(echo $MANPAGER | awk '{print $1}') = nvim ]; then
-  export LESS="--RAW-CONTROL-CHARS"
-  export MANPAGER="less -s -M +Gg"
-
-  export LESS_TERMCAP_mb=$'\e[1;32m'
-  export LESS_TERMCAP_md=$'\e[1;32m'
-  export LESS_TERMCAP_me=$'\e[0m'
-  export LESS_TERMCAP_se=$'\e[0m'
-  export LESS_TERMCAP_so=$'\e[01;33m'
-  export LESS_TERMCAP_ue=$'\e[0m'
-  export LESS_TERMCAP_us=$'\e[1;4;31m'
-fi
+# man pages: less with coloured bold and underline (man-db comes from install/packages/base.txt)
+export MANPAGER="less -s -M +Gg"
+export LESS="--RAW-CONTROL-CHARS"
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 # FZF bases
 export FZF_DEFAULT_OPTS="
-  --prompt ' '
+  --prompt ' '
   --pointer ' λ'
   --layout=reverse
   --border horizontal
   --height 40"
-# colors are appended by the generated theme (needs fzf >= 0.36)
-source /home/eggfriedrice/p/eggfriedrice.nvim/extras/fzf/eggfriedrice.sh
+# colors are appended by the generated theme (needs fzf >= 0.36); EGGFRIEDRICE_EXTRAS is set in theme.zsh
+if [[ -r "$EGGFRIEDRICE_EXTRAS/fzf/eggfriedrice.sh" ]]; then
+  source "$EGGFRIEDRICE_EXTRAS/fzf/eggfriedrice.sh"
+fi
 
 # eza: picks up ~/.config/eza/theme.yml only while LS_COLORS and EZA_COLORS stay unset
 
 # lazygit: user config first, generated theme layered on top
-export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml,/home/eggfriedrice/p/eggfriedrice.nvim/extras/lazygit/eggfriedrice.yml"
+export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml,$EGGFRIEDRICE_EXTRAS/lazygit/eggfriedrice.yml"
 
 # vim:ft=zsh:nowrap
-
-# T-Mesh CLI
-export PATH="$HOME/uni/t-mesh/bin:$PATH"
