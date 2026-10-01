@@ -19,6 +19,7 @@ declare -A symlinks=(
     ["bat"]="$HOME/.config/bat"
     ["eza"]="$HOME/.config/eza"
     ["btop"]="$HOME/.config/btop"
+    ["frameit"]="$HOME/.config/frameit"
     ["pipewire"]="$HOME/.config/pipewire"
     ["wireplumber"]="$HOME/.config/wireplumber"
     [".wallpapers"]="$HOME/.wallpapers"

@@ -23,6 +23,7 @@ hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("wf-recorder -f $(xdg-user-dir VIDE
 hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("killall -s SIGINT wf-recorder"))
 hl.bind("Print", hl.dsp.exec_cmd(screenshot .. " full"))
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd(screenshot .. " area"))
+hl.bind("SUPER + SHIFT + Z", hl.dsp.exec_cmd("frameit")) -- highlight a region while screen sharing
 
 -- Apps and misc
 hl.bind("SUPER + SHIFT + X", hl.dsp.exec_cmd(colorpicker))

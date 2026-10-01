@@ -1,0 +1,9 @@
+# frameit: temporary selection rectangle for screen shares (frameit >= 0.2 for include)
+# colours come from the eggfriedrice theme; keys below the include win over it
+include = "/home/eggfriedrice/p/eggfriedrice.nvim/extras/frameit/eggfriedrice.toml"
+border_width = 2
+border_radius = 6
+cursor = "crosshair"
+
+# chord registered by `frameit bind`; the static bind in hypr/keybinds.lua matches it
+trigger = "SUPER + SHIFT + Z"

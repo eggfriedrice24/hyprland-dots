@@ -29,6 +29,7 @@ required_extras=(
     btop/eggfriedrice.theme
     dunst/eggfriedrice.conf
     eza/eggfriedrice.yml
+    frameit/eggfriedrice.toml
     fsh/eggfriedrice.ini
     fzf/eggfriedrice.sh
     ghostty/eggfriedrice
