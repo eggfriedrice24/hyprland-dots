@@ -1,5 +1,14 @@
 @import url("eggfriedrice.css");
 
+/* GTK 4.24+ binds ext-background-effect on every toplevel and sends an
+   empty blur region unless a widget has backdrop-filter blur >= 20px;
+   Hyprland 0.56 honours that empty region over decoration:blur. This
+   makes GTK request the whole window - hyprland's own blur settings
+   still decide the look, the radius here only clears GTK's threshold */
+window {
+  backdrop-filter: blur(20px);
+}
+
 /* eggfriedrice tabs - colors come from the imported palette */
 
 tabbar .box {
