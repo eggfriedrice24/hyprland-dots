@@ -1,0 +1,111 @@
+#:schema https://raw.githubusercontent.com/eggfriedrice24/eggfriedrice.code/main/docs/config.schema.json
+
+# The efr config file, read by efrd and efr from $XDG_CONFIG_HOME/efr/config.toml
+# (EFR_CONFIG_DIR or EFR_HOME moves it; efr paths shows where). Every key is optional:
+# a key that is left out has the value of its commented line, or none when the comment
+# says so. An unknown key is an error, so a typo never silently does nothing. The file
+# holds no secrets, so it can live in a dotfiles repository behind a symbolic link.
+# efrd reads it again when it changes; a file with an error keeps the old settings. A
+# key marked (restart) applies only after efrd restarts. efr config check checks it.
+
+# The daemon's tracing filter, in EnvFilter syntax. EFR_LOG and efrd --log win over
+# it.
+# log = "info"
+
+# The screen backend of the hidden shells: auto (ghostty when the build has it, else
+# vt100), vt100 or ghostty. EFR_SCREEN and efrd --screen win over it. (restart)
+# screen = "auto"
+
+[model]
+# The provider of new conversations: openai-subscription (the ChatGPT plan, after
+# efr login openai) or openai-api (an API key). (restart)
+# provider = "openai-subscription"
+
+# The default model of a turn. Unset: the first of openai.models, else gpt-5.5. A
+# prompt may choose another one for its turn.
+name = "gpt-6.1-sol"
+
+# The default reasoning effort, such as low, medium or high. Unset: the backend's own
+# default for the model. A prompt may choose another one for its turn.
+# effort = "medium"
+
+# The system prompt of every request. Unset: efr's own, which tells the model how it
+# runs commands and what the permission policy does.
+# system_prompt = "You are efr, a coding and system assistant in the user's terminal."
+
+# The most tokens one model call may produce, from 1 to 1000000. Unset: the
+# provider's default.
+# max_output_tokens = 32000
+
+[openai]
+# The originator of the subscription login and of every subscription request.
+# (restart)
+# originator = "efr"
+
+# Model ids added to the built-in model list, such as a new model before efr knows
+# it. A prompt may then name them; their efforts are not checked.
+# models = ["gpt-5.4"]
+
+# Replaces the subscription backend's base URL. Unset: the ChatGPT backend. (restart)
+# subscription_base_url = "https://chatgpt.com/backend-api/codex"
+
+# Replaces the public API's base URL. Unset: api.openai.com. (restart)
+# api_base_url = "https://api.openai.com/v1"
+
+[permissions]
+# The default permission mode of a turn: manual (every call asks, except what your
+# rules allow), cautious (read-only commands and reads run at once) or auto (cautious
+# plus writes, builds and tests in the project). A prompt may choose another one for
+# its turn. A turn from the phone runs with at most cautious. docs/permissions.md
+# lists what each mode allows.
+mode = "auto"
+
+# Files and directories that count as secrets on top of the built-in ones, so the model
+# may never read or write them: absolute, or below the home directory as ~/...
+# secret_paths = ["~/.config/rclone/rclone.conf"]
+
+# Your rules, after the built-in ones; the last rule that matches wins. Each has an
+# action (any, read, write, execute, network), a resource (any, project, a class, a
+# path under, or a command) and an effect (allow, ask, deny). docs/permissions.md
+# explains them.
+# [[permissions.rules]]
+# action = "execute"
+# resource = { command = { program = "cargo", args = ["test"] } }
+# effect = "allow"
+
+[shell]
+# The hidden shell, an absolute path. Unset: zsh on the PATH.
+# program = "/usr/bin/zsh"
+
+# Start the hidden shell as a login shell.
+# login = true
+
+# Minutes without output or input, at a prompt and unwatched, before a hidden shell is
+# closed, up to a year; 0 keeps idle shells.
+# idle_minutes = 60
+
+# keep leaves sudo's credential cache to sudo (5 minutes by default); per_call makes
+# the hidden shell forget sudo's and doas's credentials after each call, so the next
+# sudo asks for the password again. Every sudo call asks for approval with either
+# value.
+# sudo_cache = "keep"
+
+[conversation]
+# The most prompts that may wait behind a running turn, from 1 to 1024.
+# max_queued = 16
+
+# Seconds an approval request waits before it expires, up to a week. Unset: it waits
+# until you answer.
+# approval_timeout_secs = 600
+
+# The shortest time between two streamed text updates, in milliseconds, up to 60000.
+# update_interval_ms = 200
+
+# Hours without activity after which a terminal's next , line starts a new
+# conversation, up to a year; 0 continues the old one forever.
+# tty_idle_hours = 12
+
+[render]
+# The colour theme of code blocks and diffs, such as catppuccin-mocha, gruvbox-dark or
+# nord. Unset: the terminal's own 16 colours. Only efr reads it.
+# theme = "catppuccin-mocha"

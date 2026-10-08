@@ -8,6 +8,7 @@ theme
 env
 aliases
 options
+efr
 plugins
 keybinds
 prompt

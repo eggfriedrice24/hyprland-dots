@@ -43,7 +43,7 @@ Lua API reference: `/usr/share/hypr/stubs/hl.meta.lua` (lua-ls picks it up via `
 **Zsh** - `.zshrc` dynamically sources modules in order:
 
 ```bash
-theme.zsh → env.zsh → aliases.zsh → options.zsh → plugins.zsh → keybinds.zsh → prompt.zsh
+theme.zsh → env.zsh → aliases.zsh → options.zsh → efr.zsh → plugins.zsh → keybinds.zsh → prompt.zsh
 ```
 
 **Neovim** - `init.lua` imports from `lua/config/`, Lazy.nvim auto-imports from `lua/plugins/`:
