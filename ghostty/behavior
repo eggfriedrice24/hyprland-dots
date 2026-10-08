@@ -13,3 +13,7 @@ notify-on-command-finish-after = 15s
 # no-cursor: keep the block cursor at the prompt instead of the bar the
 # shell integration would switch to
 shell-integration-features = ssh-env,ssh-terminfo,no-cursor
+
+# io_uring waits count as iowait, pinning IO PSI near 100% while idle
+# (libxev#216); epoll until libxev passes IORING_ENTER_NO_IOWAIT
+async-backend = epoll
