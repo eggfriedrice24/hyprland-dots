@@ -13,11 +13,10 @@ end
 
 -- Monitors
 hl.monitor({ output = "DP-1", mode = "2560x1440@240", position = "0x0", scale = 1, bitdepth = 10 }) -- 10bpc matches the boot console's link config, avoids a second DP retrain at login
-hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "2560x0", scale = 1 }) -- HP P27q, right of main
--- HP in portrait (pivot): swap in for the line above when physically rotated.
+-- HP P27q, right of main, in portrait (pivot).
 -- transform 1 = 90 deg clockwise, 3 = counter-clockwise; position centers the
--- 2560-tall portrait against the 1440-tall main (y from -560 to 2000)
--- hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "2560x-560", scale = 1, transform = 1 })
+-- 2560-tall portrait against the 1440-tall main (y from -560 to 2000).
+hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "2560x-560", scale = 1, transform = 1 })
 hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 })
 -- hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
