@@ -2,12 +2,11 @@
 # Needs a Nerd Font (v3). Colours come from the eggfriedrice design system.
 #
 #   ~/code/eggfriedrice.nvim   master 2 1   22.9.0 ········  3s
-#   ❯
 #
-# Line 1: where you are, what git is doing, what toolchain is active; on the
-# right, what the last command cost (duration, exit code, background jobs).
-# Line 2: the prompt character. Cyan ❯ = last command OK, red ❯ = it failed,
-# purple ❮ = vi command mode. Every segment hides when it has nothing to say.
+# One line: where you are, what git is doing, what toolchain is active, then
+# the prompt character; on the right (right_format), what the last command
+# cost (duration, exit code, background jobs). Cyan ❯ = last command OK,
+# red ❯ = it failed, purple ❮ = vi command mode. Every segment hides when it has nothing to say.
 
 "$schema" = "https://starship.rs/config-schema.json"
 
@@ -35,12 +34,12 @@ $java\
 $kotlin\
 $swift\
 $docker_context\
-$fill\
+$character"""
+
+right_format = """\
 $cmd_duration\
 $status\
-$jobs\
-$line_break\
-$character"""
+$jobs"""
 
 # Copied from /home/eggfriedrice/p/eggfriedrice.nvim/extras/starship/eggfriedrice.toml
 # (starship has no include); regenerated there by `make extras`, re-paste after.
@@ -235,11 +234,7 @@ symbol = " "
 style = "docker_context"
 only_with_files = true
 
-# ── what the last command cost (right side of line 1) ─────────────────────
-[fill]
-symbol = " "
-style = ""
-
+# ── what the last command cost (right prompt) ─────────────────────────────
 [cmd_duration]
 min_time = 2_000
 format = "[ $duration]($style) "
@@ -268,6 +263,3 @@ vimcmd_symbol = "[❮](bold character_vimcmd)"
 vimcmd_replace_one_symbol = "[❮](bold character_vimcmd_replace)"
 vimcmd_replace_symbol = "[❮](bold character_vimcmd_replace)"
 vimcmd_visual_symbol = "[❮](bold character_vimcmd_visual)"
-
-[line_break]
-disabled = false
