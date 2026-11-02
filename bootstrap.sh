@@ -71,13 +71,22 @@ ask SWAP_GB "Swap partition size in GiB (0 = none, zram is set up anyway)" 8
 [[ "$SWAP_GB" =~ ^[0-9]+$ ]] || die "Not a number: $SWAP_GB"
 ask ROOT_GB "Root size in GiB (empty = rest of the disk)" ""
 [[ -z "$ROOT_GB" || "$ROOT_GB" =~ ^[0-9]+$ ]] || die "Not a number: $ROOT_GB"
+# refuse sizes that do not fit before anything is wiped
+disk_gib=$(( $(lsblk -bdno SIZE "$ROOT_DISK") / 1024**3 ))
+root_min=${ROOT_GB:-20} # without a root size, leave at least 20 GiB for it
+(( 1 + SWAP_GB + root_min < disk_gib )) ||
+    die "1 GiB ESP + ${SWAP_GB} GiB swap + ${root_min} GiB root does not fit on $ROOT_DISK (${disk_gib} GiB)"
 
 echo
 printf "${BOLD}Partitions:${NC}\n"
 lsblk -pno NAME,SIZE,FSTYPE,LABEL -e 7,11 | grep -v zram
 echo
 echo "Home: [k]eep an existing ext4 partition (not formatted), [f]ormat a whole disk as ext4, [s]ubvolume on the root disk"
-ask HOME_MODE "Home" k
+# a single disk (laptop) can only hold home as a subvolume
+other_disks="$(lsblk -dpno NAME,TYPE -e 7,11 | awk -v r="$ROOT_DISK" '$2 == "disk" && $1 != r && $1 !~ /zram/' | wc -l)"
+home_default=s
+(( other_disks > 0 )) && home_default=k
+ask HOME_MODE "Home" "$home_default"
 HOME_DEV=""
 case "$HOME_MODE" in
     k)
@@ -147,17 +156,22 @@ for m in cryptroot crypthome; do cryptsetup close "$m" 2>/dev/null || true; done
 info "Partitioning $ROOT_DISK"
 wipefs -af "$ROOT_DISK"
 sgdisk --zap-all "$ROOT_DISK"
-sgdisk -n1:0:+1G -t1:ef00 -c1:EFI "$ROOT_DISK"
+# the whole table in one sgdisk call
+sg_args=(-n1:0:+1G -t1:ef00 -c1:EFI)
 n=2
 SWAP_PART=""
 if (( SWAP_GB > 0 )); then
-    sgdisk -n2:0:+"${SWAP_GB}"G -t2:8200 -c2:swap "$ROOT_DISK"
+    sg_args+=(-n2:0:+"${SWAP_GB}"G -t2:8200 -c2:swap)
     SWAP_PART="$(part "$ROOT_DISK" 2)"
     n=3
 fi
 root_end=0 # 0 = up to the end of the disk
 [[ -n "$ROOT_GB" ]] && root_end="+${ROOT_GB}G"
-sgdisk -n"$n":0:"$root_end" -t"$n":8300 -c"$n":root "$ROOT_DISK"
+sg_args+=(-n"$n":0:"$root_end" -t"$n":8300 -c"$n":root)
+if ! sgdisk "${sg_args[@]}" "$ROOT_DISK"; then
+    sgdisk -p "$ROOT_DISK" || true
+    die "sgdisk could not write the partition table: sgdisk ${sg_args[*]} $ROOT_DISK"
+fi
 partprobe "$ROOT_DISK"; udevadm settle
 ESP="$(part "$ROOT_DISK" 1)"
 ROOT_PART="$(part "$ROOT_DISK" "$n")"
