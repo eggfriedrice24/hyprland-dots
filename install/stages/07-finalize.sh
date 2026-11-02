@@ -95,6 +95,10 @@ success "=== Stage 7: Complete ==="
 echo
 info "Installation complete. Reboot and log in on TTY1 to start Hyprland."
 echo
+if (( ${#AUR_FAILED[@]} )); then
+    warn "These AUR packages failed to build; install them by hand: yay -S ${AUR_FAILED[*]}"
+    echo
+fi
 info "Manual steps the installer does not cover (details in README.md):"
 echo "  - restore ~/.ssh (keys and config) and ~/.gitconfig, then: gh auth login"
 echo "  - tailscale up"

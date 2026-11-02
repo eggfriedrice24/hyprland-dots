@@ -240,7 +240,7 @@ grep -q GenuineIntel /proc/cpuinfo && ucode=(intel-ucode)
 info "Installing the base system"
 pacstrap -K /mnt base linux linux-firmware linux-headers "${ucode[@]}" \
     btrfs-progs dosfstools e2fsprogs cryptsetup grub efibootmgr grub-btrfs inotify-tools snapper \
-    sudo git zsh networkmanager neovim man-db
+    sudo git zsh networkmanager openssh neovim man-db
 cp /etc/pacman.conf /mnt/etc/pacman.conf
 
 genfstab -U /mnt >>/mnt/etc/fstab
@@ -330,7 +330,8 @@ if [[ "$ENCRYPT" == y ]]; then
 fi
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 
-for svc in NetworkManager fstrim.timer snapper-cleanup.timer grub-btrfsd; do
+# sshd here too, not only in the dotfiles: if that step fails, the machine is still reachable to fix it
+for svc in NetworkManager sshd fstrim.timer snapper-cleanup.timer grub-btrfsd; do
     arch-chroot /mnt systemctl enable "$svc"
 done
 
@@ -356,6 +357,10 @@ if [[ "$RUN_DOTFILES" =~ ^[Yy] ]]; then
         warn "The dotfiles installer failed in the chroot; rerun it after the first boot (it is idempotent)"
     fi
     rm -f /mnt/etc/sudoers.d/99-bootstrap
+    # gpg daemons that makepkg started in the chroot keep running on the ISO: stop them, or
+    # their keyring lock outlives the reboot and yay cannot import PGP keys any more
+    arch-chroot /mnt sudo -u "$USERNAME" -H gpgconf --kill all 2>/dev/null || true
+    rm -f "/mnt/home/$USERNAME/.gnupg/public-keys.d/"{pubring.db.lock,.#lk*} "/mnt/home/$USERNAME/.gnupg/S."*
 fi
 
 # snap-pac last, so the install itself does not leave dozens of snapshots, then one baseline snapshot

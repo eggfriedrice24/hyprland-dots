@@ -8,4 +8,3 @@ localsend-bin
 rune-notes-bin
 frameit
 catppuccin-gtk-theme-mocha
-lib32-libcap
