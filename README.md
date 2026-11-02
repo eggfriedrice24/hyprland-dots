@@ -22,6 +22,31 @@ opencode, tmux, lazygit), so the palette lives in one place and `make extras` in
 are relative (`../../p/eggfriedrice.nvim/...`), so the dotfiles and the theme repo have to be siblings under `$HOME`.
 The installer clones the theme repo before it links anything.
 
+## Fresh install from the Arch ISO
+
+`bootstrap.sh` replaces archinstall: boot the ISO in UEFI mode, connect (`iwctl` for WiFi), then
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eggfriedrice24/hyprland-dots/master/bootstrap.sh -o bootstrap.sh
+bash bootstrap.sh
+```
+
+It asks for the disks, host, user and locale, shows a summary, and wipes nothing until you type `ERASE`. It builds a 1 GiB
+ESP at `/boot`, optional swap, and btrfs root (`@`, `@snapshots`, `@log`, `@pkg`, `@docker`, zstd compression) with
+snapper, snap-pac and grub-btrfs, so every pacman transaction is a snapshot you can boot from GRUB. `/home` is an existing
+ext4 partition kept as is, a whole second disk formatted as ext4, or a `@home` subvolume. It then clones this repo and runs
+`install.sh --yes` inside the new system; if that fails, rerun `./install.sh` after the first boot.
+
+Rollback after a bad update: boot the good snapshot from the GRUB menu (`snapper list` shows its number N), then make it the
+new `@` (fstab and GRUB mount `@` by name, so `snapper rollback` does not apply):
+
+```bash
+sudo mount -o subvolid=5 /dev/disk/by-label/arch /mnt
+sudo mv /mnt/@ /mnt/@broken
+sudo btrfs subvolume snapshot /mnt/@snapshots/N/snapshot /mnt/@
+sudo umount /mnt && reboot    # delete @broken later: sudo btrfs subvolume delete /mnt/@broken
+```
+
 ## Installation
 
 Prerequisites on a fresh Arch install: a user in the `wheel` group with `sudo`, `git`, and network access. Everything

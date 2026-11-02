@@ -3,12 +3,14 @@ set -Eeuo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 DRY_RUN=0
+ASSUME_YES=0
 MACHINE=""
 CURRENT_STAGE="preflight"
 
 usage() {
-    echo "Usage: $0 [--dry-run] [--laptop|--desktop] [--help]"
+    echo "Usage: $0 [--dry-run] [--yes] [--laptop|--desktop] [--help]"
     echo "  --dry-run   Print actions without executing"
+    echo "  --yes       Do not ask for confirmation (used by bootstrap.sh)"
     echo "  --laptop    Force laptop mode"
     echo "  --desktop   Force desktop mode"
     exit "${1:-0}"
@@ -17,6 +19,7 @@ usage() {
 for arg in "$@"; do
     case "$arg" in
         --dry-run) DRY_RUN=1 ;;
+        --yes|-y)  ASSUME_YES=1 ;;
         --laptop)  MACHINE="laptop" ;;
         --desktop) MACHINE="desktop" ;;
         --help|-h) usage 0 ;;
@@ -65,7 +68,7 @@ printf "  │  Dry run:  %-16s │\n" "$( [[ $DRY_RUN -eq 1 ]] && echo 'yes' || 
 echo "  └─────────────────────────────┘"
 echo
 
-if [[ "$DRY_RUN" -eq 0 ]]; then
+if [[ "$DRY_RUN" -eq 0 && "$ASSUME_YES" -eq 0 ]]; then
     read -rp "Continue? [y/N] " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "Aborted."; exit 0; }
 fi
