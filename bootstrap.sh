@@ -13,7 +13,8 @@
 #   zram swap comes from the dotfiles (install/etc/systemd/zram-generator.conf)
 set -Eeuo pipefail
 
-DOTFILES_REPO="https://github.com/eggfriedrice24/hyprland-dots.git"
+# override to test unpushed commits, e.g. DOTFILES_REPO=http://10.0.2.2:8000/.git from a VM
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/eggfriedrice24/hyprland-dots.git}"
 DOTFILES_PUSH="git@github.com:eggfriedrice24/hyprland-dots.git"
 BTRFS_OPTS="noatime,compress=zstd:1"
 
