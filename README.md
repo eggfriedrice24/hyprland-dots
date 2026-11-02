@@ -34,7 +34,9 @@ bash bootstrap.sh
 It asks for the disks, host, user and locale, shows a summary, and wipes nothing until you type `ERASE`. It builds a 1 GiB
 ESP at `/boot`, optional swap, and btrfs root (`@`, `@snapshots`, `@log`, `@pkg`, `@docker`, zstd compression) with
 snapper, snap-pac and grub-btrfs, so every pacman transaction is a snapshot you can boot from GRUB. `/home` is an existing
-ext4 partition kept as is, a whole second disk formatted as ext4, or a `@home` subvolume. It then clones this repo and runs
+ext4 partition kept as is, a whole second disk formatted as ext4, or a `@home` subvolume. Optional LUKS2 (the default on
+a laptop): one passphrase at boot opens root; a new `/home` disk opens with a key file stored on root, and swap gets a
+random key every boot (so no hibernation). A kept `/home` stays unencrypted. It then clones this repo and runs
 `install.sh --yes` inside the new system; if that fails, rerun `./install.sh` after the first boot.
 
 Rollback after a bad update: boot the good snapshot from the GRUB menu (`snapper list` shows its number N), then make it the

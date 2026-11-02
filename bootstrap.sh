@@ -9,6 +9,7 @@
 #     btrfs subvolumes: @ /, @snapshots /.snapshots, @log /var/log, @pkg /var/cache/pacman/pkg, @docker /var/lib/docker
 #     snapper + snap-pac (snapshot per pacman transaction) + grub-btrfs (boot snapshots from the GRUB menu)
 #   /home: keep an existing ext4 partition untouched, format a whole second disk as ext4, or a @home subvolume
+#   optional LUKS2: passphrase for root at boot, key file on root for a new /home disk, random-key swap
 #   zram swap comes from the dotfiles (install/etc/systemd/zram-generator.conf)
 set -Eeuo pipefail
 
@@ -104,6 +105,16 @@ ask LOCALE "Locale" en_US.UTF-8
 ask KEYMAP "Console keymap" us
 ask RUN_DOTFILES "Run the dotfiles installer inside the new system now? [y/n]" y
 
+echo
+enc_default=n
+ls /sys/class/power_supply/BAT* &>/dev/null && enc_default=y
+ask ENCRYPT "Encrypt the system with LUKS (passphrase at every boot)? [y/n]" "$enc_default"
+ENCRYPT="${ENCRYPT:0:1}"; ENCRYPT="${ENCRYPT,,}"
+if [[ "$ENCRYPT" == y ]]; then
+    ask_password LUKS_PASS "Disk encryption passphrase"
+    [[ "$HOME_MODE" == k ]] && warn "The kept home partition stays unencrypted; only new partitions are encrypted"
+fi
+
 # ---------------------------------------------------------------- confirm
 echo
 printf "${BOLD}Summary${NC}\n"
@@ -114,6 +125,14 @@ case "$HOME_MODE" in
     s) echo "  /home:        @home subvolume on the root disk" ;;
 esac
 echo "  Host/user:    $HOSTNAME_ / $USERNAME   $TIMEZONE  $LOCALE  $KEYMAP"
+if [[ "$ENCRYPT" == y ]]; then
+    enc_text="LUKS2 on root"
+    [[ "$HOME_MODE" == f ]] && enc_text+=" and the new /home (unlocked by a key file on root)"
+    (( SWAP_GB > 0 )) && enc_text+=", swap with a random key each boot"
+    echo "  Encryption:   $enc_text"
+else
+    echo "  Encryption:   none"
+fi
 echo
 wipe_list="$ROOT_DISK"; [[ "$HOME_MODE" == f ]] && wipe_list+=" $HOME_DISK"
 ask CONFIRM "Type ERASE to wipe $wipe_list and install"
@@ -122,6 +141,7 @@ ask CONFIRM "Type ERASE to wipe $wipe_list and install"
 # ---------------------------------------------------------------- partition
 umount -R /mnt 2>/dev/null || true
 swapoff -a 2>/dev/null || true
+for m in cryptroot crypthome; do cryptsetup close "$m" 2>/dev/null || true; done # leftovers of an earlier run
 
 info "Partitioning $ROOT_DISK"
 wipefs -af "$ROOT_DISK"
@@ -147,34 +167,52 @@ if [[ "$HOME_MODE" == f ]]; then
     sgdisk --zap-all "$HOME_DISK"
     sgdisk -n1:0:0 -t1:8302 -c1:home "$HOME_DISK"
     partprobe "$HOME_DISK"; udevadm settle
-    HOME_DEV="$(part "$HOME_DISK" 1)"
+    HOME_PART="$(part "$HOME_DISK" 1)"
+    HOME_DEV="$HOME_PART"
+    if [[ "$ENCRYPT" == y ]]; then
+        info "Encrypting $HOME_PART"
+        # random key file, stored on the encrypted root and opened from crypttab at boot
+        dd if=/dev/urandom of=/tmp/crypthome.key bs=512 count=1 status=none
+        chmod 400 /tmp/crypthome.key
+        cryptsetup luksFormat --type luks2 --batch-mode --key-file /tmp/crypthome.key "$HOME_PART"
+        cryptsetup open --key-file /tmp/crypthome.key "$HOME_PART" crypthome
+        HOME_DEV=/dev/mapper/crypthome
+    fi
     mkfs.ext4 -F -L home "$HOME_DEV"
 fi
 
 info "Formatting"
 mkfs.fat -F32 -n EFI "$ESP"
-if [[ -n "$SWAP_PART" ]]; then
+BTRFS_DEV="$ROOT_PART"
+if [[ "$ENCRYPT" == y ]]; then
+    info "Encrypting $ROOT_PART"
+    printf '%s' "$LUKS_PASS" | cryptsetup luksFormat --type luks2 --batch-mode --key-file - "$ROOT_PART"
+    printf '%s' "$LUKS_PASS" | cryptsetup open --allow-discards --key-file - "$ROOT_PART" cryptroot
+    BTRFS_DEV=/dev/mapper/cryptroot
+fi
+# an encrypted swap gets a fresh random key from crypttab at every boot, so it is only formatted then
+if [[ -n "$SWAP_PART" && "$ENCRYPT" != y ]]; then
     mkswap -L swap "$SWAP_PART"
     swapon "$SWAP_PART"
 fi
-mkfs.btrfs -f -L arch "$ROOT_PART"
+mkfs.btrfs -f -L arch "$BTRFS_DEV"
 
 info "Creating btrfs subvolumes"
-mount "$ROOT_PART" /mnt
+mount "$BTRFS_DEV" /mnt
 subvols=(@ @snapshots @log @pkg @docker)
 [[ "$HOME_MODE" == s ]] && subvols+=(@home)
 for sv in "${subvols[@]}"; do btrfs subvolume create "/mnt/$sv"; done
 umount /mnt
 
-mount -o "$BTRFS_OPTS,subvol=@" "$ROOT_PART" /mnt
+mount -o "$BTRFS_OPTS,subvol=@" "$BTRFS_DEV" /mnt
 mkdir -p /mnt/{boot,home,.snapshots,var/log,var/cache/pacman/pkg,var/lib/docker}
-mount -o "$BTRFS_OPTS,subvol=@snapshots" "$ROOT_PART" /mnt/.snapshots
-mount -o "$BTRFS_OPTS,subvol=@log" "$ROOT_PART" /mnt/var/log
-mount -o "$BTRFS_OPTS,subvol=@pkg" "$ROOT_PART" /mnt/var/cache/pacman/pkg
-mount -o "$BTRFS_OPTS,subvol=@docker" "$ROOT_PART" /mnt/var/lib/docker
+mount -o "$BTRFS_OPTS,subvol=@snapshots" "$BTRFS_DEV" /mnt/.snapshots
+mount -o "$BTRFS_OPTS,subvol=@log" "$BTRFS_DEV" /mnt/var/log
+mount -o "$BTRFS_OPTS,subvol=@pkg" "$BTRFS_DEV" /mnt/var/cache/pacman/pkg
+mount -o "$BTRFS_OPTS,subvol=@docker" "$BTRFS_DEV" /mnt/var/lib/docker
 mount "$ESP" /mnt/boot
 if [[ "$HOME_MODE" == s ]]; then
-    mount -o "$BTRFS_OPTS,subvol=@home" "$ROOT_PART" /mnt/home
+    mount -o "$BTRFS_OPTS,subvol=@home" "$BTRFS_DEV" /mnt/home
 else
     mount "$HOME_DEV" /mnt/home
 fi
@@ -186,13 +224,29 @@ grep -q GenuineIntel /proc/cpuinfo && ucode=(intel-ucode)
 
 info "Installing the base system"
 pacstrap -K /mnt base linux linux-firmware linux-headers "${ucode[@]}" \
-    btrfs-progs dosfstools e2fsprogs grub efibootmgr grub-btrfs inotify-tools snapper \
+    btrfs-progs dosfstools e2fsprogs cryptsetup grub efibootmgr grub-btrfs inotify-tools snapper \
     sudo git zsh networkmanager neovim man-db
 cp /etc/pacman.conf /mnt/etc/pacman.conf
 
 genfstab -U /mnt >>/mnt/etc/fstab
 # subvolid pins break snapper rollbacks; subvol= is enough
 sed -i 's/,subvolid=[0-9]*//; s/subvolid=[0-9]*,//' /mnt/etc/fstab
+
+if [[ "$ENCRYPT" == y ]]; then
+    # root is opened by the initramfs (cryptdevice= on the kernel line); the rest by systemd from crypttab
+    if [[ -n "$SWAP_PART" ]]; then
+        # PARTUUID: the partition has no stable content to carry a UUID, it is re-encrypted every boot
+        swap_partuuid="$(blkid -o value -s PARTUUID "$SWAP_PART")"
+        echo "cryptswap PARTUUID=$swap_partuuid /dev/urandom swap,cipher=aes-xts-plain64,size=512,discard" >>/mnt/etc/crypttab
+        echo "/dev/mapper/cryptswap none swap defaults 0 0" >>/mnt/etc/fstab
+    fi
+    if [[ "$HOME_MODE" == f ]]; then
+        install -Dm400 /tmp/crypthome.key /mnt/etc/cryptsetup-keys.d/crypthome.key
+        chmod 700 /mnt/etc/cryptsetup-keys.d
+        echo "crypthome UUID=$(blkid -o value -s UUID "$HOME_PART") /etc/cryptsetup-keys.d/crypthome.key discard" >>/mnt/etc/crypttab
+        shred -u /tmp/crypthome.key
+    fi
+fi
 
 # ---------------------------------------------------------------- configure
 info "Configuring the system"
@@ -211,9 +265,12 @@ cat >/mnt/etc/hosts <<EOF
 EOF
 
 # busybox hooks so grub-btrfs-overlayfs can make read-only snapshots bootable
+# (encrypt asks for the root passphrase; keyboard and keymap come before it so the passphrase types right)
+encrypt_hook=""
+[[ "$ENCRYPT" == y ]] && encrypt_hook="encrypt "
 mkdir -p /mnt/etc/mkinitcpio.conf.d
-cat >/mnt/etc/mkinitcpio.conf.d/bootstrap.conf <<'EOF'
-HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck grub-btrfs-overlayfs)
+cat >/mnt/etc/mkinitcpio.conf.d/bootstrap.conf <<EOF
+HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block ${encrypt_hook}filesystems fsck grub-btrfs-overlayfs)
 EOF
 arch-chroot /mnt mkinitcpio -P
 
@@ -251,6 +308,11 @@ arch-chroot /mnt chown :wheel /.snapshots
 info "Installing GRUB"
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=2/' /mnt/etc/default/grub
+if [[ "$ENCRYPT" == y ]]; then
+    # /boot is the plain ESP, so GRUB itself needs no cryptodisk; the kernel opens root
+    root_luks_uuid="$(blkid -o value -s UUID "$ROOT_PART")"
+    sed -i -E "s|^(GRUB_CMDLINE_LINUX=\")|\1cryptdevice=UUID=${root_luks_uuid}:cryptroot:allow-discards |; s| \"$|\"|" /mnt/etc/default/grub
+fi
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 
 for svc in NetworkManager fstrim.timer snapper-cleanup.timer grub-btrfsd; do
