@@ -4,6 +4,7 @@ waybar
 dunst
 rofi
 rofi-emoji
+rofi-calc
 awww
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
