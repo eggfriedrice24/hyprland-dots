@@ -1,15 +1,14 @@
 // the launcher's panel, search bar and colours for rofi-calc: the live result sits in the message
-// box under the search bar and saved results list below it
+// box under the search bar. The keybind runs it with -no-history, which leaves one blank row that
+// Enter acts on, so the list is dropped from the layout; Enter still accepts it.
 @import "../config.rasi"
 
 configuration {
-    // one line per history row; the launcher's eh: 2 is for its name + comment rows
-    eh: 1;
     show-icons: false;
 }
 
 mainbox {
-    children: [ inputbar, message, listview ];
+    children: [ inputbar, message ];
 }
 
 // nf-fa-calculator
@@ -28,15 +27,4 @@ message {
 textbox {
     font: "Cartograph CF 15";
     text-color: @input;
-}
-
-// history: always shown, newest first, the divider above it only when there is any
-listview {
-    lines: 5;
-    require-input: false;
-}
-
-element {
-    padding: 6px 10px;
-    children: [ element-text ];
 }
