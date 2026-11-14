@@ -174,6 +174,7 @@ All components use unified colors:
 - Starship: the `[palettes.eggfriedrice]` block in `starship/starship.toml` is copied from `extras/starship` (re-paste after `make extras`)
 - Shell: `zsh/theme.zsh` sources `extras/zsh`, `zsh/env.zsh` sources `extras/fzf`, fast-syntax-highlighting uses `extras/fsh` via `fast-theme`
 - waybar and ghostty tabs import `extras/gtk`; rofi imports `extras/rofi`; dunst, bat, eza, btop, opencode, lazygit and tmux link or source their extras
+- GTK apps: `gtk-3.0/` and `gtk-4.0/` import `extras/adw` (named colors that recolor adw-gtk3 and libadwaita) plus `extras/gtk`; `gtk-3.0/thunar.css` styles Thunar; `install/papirus-folders.sh` builds Papirus-Dark-eggfriedrice from `extras/papirus` (rerun after `make extras`)
 
 ### Git Workflow
 

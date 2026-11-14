@@ -73,7 +73,8 @@ The stages in `install/stages/` run in order:
    docker group, pipewire user sockets
 6. **system** - the tracked `/etc` drop-ins in `install/etc/` (btusb autosuspend, rtw89 on the desktop, zram), bluetooth
    FastConnectable, wireless regdom, GRUB command line (`zswap.enabled=0`, and the ASUS `video=` fix on the desktop),
-   GTK theme and dark mode via gsettings
+   GTK theme (adw-gtk3-dark, recolored from the palette by `gtk-3.0/` and `gtk-4.0/`), Papirus-Dark with the
+   palette's folders (`install/papirus-folders.sh`), and dark mode via gsettings
 7. **finalize** - font cache, XDG user dirs, state dirs, Rust nightly, Node 22 via fnm, Claude Code, Stremio flatpak
 
 The script is idempotent: rerun it after pulling to converge a machine.
