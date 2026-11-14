@@ -1,67 +1,58 @@
-@import "../eggfriedrice.rasi"
+// the launcher's panel, search bar and colours, with the list swapped for an emoji grid
+@import "../config.rasi"
 
 configuration {
-    display-emoji: "😀";
-    show-icons: true;                 
+    // one line per cell; the launcher's eh: 2 is for its name + comment rows
+    eh: 1;
+    // fuzzy matching over emoji descriptions buries the actual hits ("heart" ranks faces first)
+    matching: "normal";
+    sort: false;
+    show-icons: false;
     me-select-entry: "";
     me-accept-entry: "MousePrimary";
     emoji-font: "Noto Color Emoji";
 }
 
-* {
-  font: "Noto Sans 11, Noto Color Emoji 14";
-	bg-glass: #0d111a4d; // @bg at the original alpha; rasi has no alpha()
-	text-color: @fg;
-	background-color: @bg-glass;
-	border-color: #00000000;
-	width: 684px;
-	height: 477px;
-	location: 0;
-}
-
-inputbar {
-	border: 0 0 1px 0;
-	children: [prompt,entry];
-}
-
-prompt {
-	font: "Noto Sans 18";
-	vertical-align: 0.5;
-	padding: 0px 9px 0px 9px;
-	border: 0 1px 0 0;
-}
-
 entry {
-	padding: 12px;
+    placeholder: "Search emoji";
 }
 
-textbox {
-	background-color: @bg-glass;
-	border-color: @bg-glass;
-	padding: 13px 13px;
-}
-
+// shown before typing and at a fixed height, so the window never resizes
 listview {
-	cycle: false;
-	scrollbar: false;
-	columns: 9;
-	cycle: false;
-	dynamic: false;
-	layout: vertical;
-	padding: 8px 10px 10px 10px;
+    columns: 10;
+    lines: 5;
+    padding: 8px;
+    spacing: 4px;
+    fixed-height: true;
+    fixed-columns: true;
+    require-input: false;
+    dynamic: false;
 }
 
 element {
-	border-radius: 3px;
-	padding: 14px 0px 40px 0px;
+    padding: 2px 0px;
+    border: 1px;
+    border-color: transparent;
+    border-radius: 10px;
+    children: [ element-text ];
 }
 
+// rofi sizes rows from the base font and draws the taller emoji from the top of a box shorter than
+// the glyph, so vertical-align cannot centre it. The bottom padding is the room it overflows into;
+// 27px with the element's 2px leaves equal gaps above and below (measured), less cuts the glyph or
+// lets it sit low in the selected tile
 element-text {
-	font: "Noto Color Emoji 27";
-	expand: false;
-	text-color: @fg-gutter;
+    font: "Noto Color Emoji 20";
+    padding: 0px 0px 27px 0px;
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
 }
 
-element selected {
-	background-color: @bg;
+// the accent fill of the launcher drowns yellow emoji, so the cell gets a raised tile and an accent edge instead
+element selected.normal,
+element selected.active,
+element selected.urgent {
+    background-color: @selection;
+    border-color: @accent;
+    text-color: @foreground;
 }
