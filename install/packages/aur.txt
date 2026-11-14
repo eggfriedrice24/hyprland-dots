@@ -7,4 +7,3 @@ t3code-nightly-bin
 localsend-bin
 rune-notes-bin
 frameit
-catppuccin-gtk-theme-mocha

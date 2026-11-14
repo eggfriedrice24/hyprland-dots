@@ -8,6 +8,8 @@ rofi-calc
 awww
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
+adw-gtk-theme
+papirus-icon-theme
 gsettings-desktop-schemas
 polkit-kde-agent
 qt5ct
