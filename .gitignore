@@ -25,3 +25,8 @@ audio-reference.md
 
 # Ghostty per-machine overrides
 ghostty/local
+
+# GTK writes per-machine state into the linked config dirs (Thunar bookmarks, settings)
+gtk-3.0/bookmarks
+gtk-3.0/settings.ini
+gtk-4.0/settings.ini

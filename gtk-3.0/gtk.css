@@ -1,0 +1,6 @@
+/* GTK3 apps on adw-gtk3-dark: the palette's named colors recolor the whole theme
+   (generated in the theme repo: extras/adw for the toolkit roles, extras/gtk for the
+   raw palette the Thunar layer also uses), then the Thunar layer on top */
+@import url("eggfriedrice.css");
+@import url("eggfriedrice-adw.css");
+@import url("thunar.css");
