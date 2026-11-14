@@ -1,0 +1,235 @@
+/* Thunar on the eggfriedrice palette. Thunar tags its windows .thunar, so nothing here
+   leaks into other GTK apps. One translucent surface for the whole window (Hyprland blurs
+   behind it; GTK3 drops its opaque region when the background has alpha), every pane
+   transparent on top of it, so the window reads as a single panel like the rofi launcher.
+   Colors are the named colors from eggfriedrice-adw.css. */
+
+.thunar.background {
+  background-color: alpha(@window_bg_color, 0.86);
+  font-family: "Cartograph CF";
+}
+
+.thunar menubar,
+.thunar toolbar,
+.thunar statusbar,
+.thunar notebook,
+.thunar notebook > stack,
+.thunar .standard-view,
+.thunar .standard-view .view,
+.thunar .preview-pane,
+.thunar .sidebar,
+.thunar .sidebar .view,
+.thunar scrolledwindow,
+.thunar viewport {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* menubar: quiet until touched */
+.thunar menubar {
+  padding: 2px 6px;
+}
+
+.thunar menubar > menuitem {
+  color: @comment;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.thunar menubar > menuitem:hover {
+  color: @window_fg_color;
+  background-color: alpha(@window_fg_color, 0.06);
+  box-shadow: none;
+}
+
+/* toolbar: flat icon buttons and a pill location entry */
+.thunar toolbar {
+  padding: 4px 10px 8px 10px;
+}
+
+.thunar toolbar button {
+  color: @comment;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+}
+
+.thunar toolbar button:hover {
+  color: @window_fg_color;
+  background-color: alpha(@window_fg_color, 0.06);
+}
+
+.thunar toolbar entry {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid alpha(@window_fg_color, 0.06);
+  background-color: alpha(@bg_dark, 0.6);
+  box-shadow: none;
+  color: @window_fg_color;
+}
+
+.thunar toolbar entry:focus {
+  border-color: alpha(@accent_color, 0.6);
+  box-shadow: none;
+  outline: none;
+}
+
+.thunar toolbar entry image {
+  color: @accent_color;
+}
+
+/* path bar, when Thunar shows buttons instead of the entry: pills, current one lit */
+.thunar .path-bar-button {
+  color: @comment;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  border: none;
+}
+
+.thunar .path-bar-button:hover {
+  color: @window_fg_color;
+  background-color: alpha(@window_fg_color, 0.06);
+}
+
+.thunar .path-bar-button:checked {
+  color: @accent_fg_color;
+  background-color: @accent_bg_color;
+}
+
+/* sidebar: same surface as the view, split by a hairline; rows as pills */
+.thunar .sidebar {
+  border-right: 1px solid alpha(@window_fg_color, 0.06);
+}
+
+.thunar .sidebar .view {
+  padding: 3px 6px;
+  color: @window_fg_color;
+}
+
+.thunar .sidebar .view:hover {
+  background-color: alpha(@window_fg_color, 0.05);
+}
+
+.thunar .sidebar .view:selected {
+  color: @fg_bright;
+  background-color: @selection;
+}
+
+.thunar paned > separator {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  background: none;
+}
+
+/* file view. Thunar tints a selected icon by multiplying it with the view's selected
+   background, looked up with the bare :selected state (:active while the view is unfocused),
+   while the name's highlight is drawn with the view's focus state as well. Transparent at the
+   bare states makes the multiply a no-op, so icons keep their own colors, and the name gets a
+   quiet editor-selection pill only in the states the highlight is actually drawn with. */
+.thunar .standard-view .view {
+  color: @window_fg_color;
+}
+
+.thunar .standard-view .view:hover {
+  background-color: alpha(@window_fg_color, 0.04);
+}
+
+.thunar .standard-view .view:selected,
+.thunar .standard-view .view:active {
+  color: @fg_bright;
+  background-color: transparent;
+}
+
+.thunar .standard-view .view:selected:focus,
+.thunar .standard-view .view:selected:backdrop {
+  color: @fg_bright;
+  background-color: @selection;
+  border-radius: 8px;
+}
+
+/* details view: GTK3 rounds each column's cell on its own, which breaks a row into a chain
+   of pills, and a full-width accent bar is loud in a long list, so rows take the editor's
+   selection color, square */
+.thunar .standard-view treeview.view:selected,
+.thunar .standard-view treeview.view:active,
+.thunar .standard-view treeview.view:selected:focus,
+.thunar .standard-view treeview.view:selected:backdrop {
+  color: @fg_bright;
+  background-color: @selection;
+  border-radius: 0;
+}
+
+.thunar .standard-view .view.rubberband,
+.thunar .standard-view rubberband {
+  border: 1px solid alpha(@accent_color, 0.7);
+  border-radius: 6px;
+  background-color: alpha(@accent_bg_color, 0.12);
+}
+
+.thunar .standard-view:drop(active) {
+  box-shadow: inset 0 0 0 1px alpha(@accent_color, 0.6);
+  border-radius: 10px;
+}
+
+/* details view header */
+.thunar treeview.view header button {
+  color: @comment;
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-bottom: 1px solid alpha(@window_fg_color, 0.06);
+}
+
+/* tabs: accent underline on the active one */
+.thunar notebook > header {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.thunar notebook > header tab {
+  color: @comment;
+  border-radius: 8px;
+  padding: 4px 12px;
+  box-shadow: none;
+}
+
+.thunar notebook > header tab:checked {
+  color: @window_fg_color;
+  background-color: alpha(@window_fg_color, 0.05);
+  box-shadow: inset 0 -2px 0 0 @accent_color;
+}
+
+/* split view: the unfocused pane dims instead of turning grey */
+.thunar .split-view-inactive-pane .view {
+  background-color: alpha(@bg_dark, 0.3);
+}
+
+/* status bar: small and muted */
+.thunar statusbar {
+  padding: 2px 10px;
+  border-top: 1px solid alpha(@window_fg_color, 0.05);
+}
+
+.thunar statusbar label {
+  color: @comment;
+  font-size: 0.9em;
+}
+
+/* scrollbars: thin, no trough */
+.thunar scrollbar {
+  background: none;
+  border: none;
+}
+
+.thunar scrollbar slider {
+  min-width: 4px;
+  min-height: 4px;
+  background-color: alpha(@window_fg_color, 0.18);
+}
