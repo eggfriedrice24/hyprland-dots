@@ -35,6 +35,8 @@ hl.bind("SUPER + B", hl.dsp.exec_cmd(browserP))
 hl.bind("SUPER + E", hl.dsp.exec_cmd(files))
 hl.bind("SUPER + D", hl.dsp.exec_cmd("killall rofi || rofi -show drun -theme ~/.config/rofi/config.rasi"))
 hl.bind("SUPER + period", hl.dsp.exec_cmd([[killall rofi || rofi -show emoji -emoji-format "{emoji}" -modi emoji -theme ~/.config/rofi/global/emoji]]))
+-- rofi-calc: live qalc result under the input, Enter copies it (history rows too) and saves it to history
+hl.bind("SUPER + equal", hl.dsp.exec_cmd([[killall rofi || rofi -show calc -modi calc -no-show-match -no-sort -terse -hint-result "= " -hint-welcome "Enter copies the result" -calc-command "echo -n '{result}' | wl-copy" -calc-command-history -automatic-save-to-history -theme ~/.config/rofi/global/calc]]))
 -- "WB" is not a valid key name, these binds never triggered in the old config either
 -- hl.bind("SUPER + SHIFT + WB", hl.dsp.exec_cmd("killall -SIGUSR2 waybar")) -- Reload waybar
 -- hl.bind("SUPER + WB", hl.dsp.exec_cmd("killall -SIGUSR1 waybar")) -- Hide waybar
