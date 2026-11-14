@@ -19,6 +19,7 @@ return {
 				"gopls",
 				"json-lsp",
 				"typescript-language-server",
+				"astro-language-server",
 				"css-lsp",
 				"tailwindcss-language-server",
 				"html-lsp",
@@ -254,6 +255,7 @@ return {
 
 			-- Enable all servers
 			vim.lsp.enable({
+				"astro",
 				"cssls",
 				"tailwindcss",
 				"ts_ls",
