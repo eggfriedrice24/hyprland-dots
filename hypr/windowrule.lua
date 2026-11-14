@@ -12,7 +12,7 @@ hl.window_rule({ match = { class = "^(Brave-browser)$" }, opacity = "0.90 0.90" 
 hl.window_rule({ match = { class = "^(steam)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(Spotify)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(Code)$" }, opacity = "0.80 0.80" })
-hl.window_rule({ match = { class = "^(thunar)$" }, opacity = "0.80 0.80" })
+-- thunar: translucent through gtk-3.0/thunar.css instead, so text and icons stay opaque
 hl.window_rule({ match = { class = "^(file-roller)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(nwg-look)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(qt5ct)$" }, opacity = "0.80 0.80" })
