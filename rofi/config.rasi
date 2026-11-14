@@ -3,7 +3,10 @@
 configuration {
     modi: "drun";
     show-icons: true;
-    drun-display-format: "{name}";
+    // second line is the desktop entry's Comment, dimmed with pango alpha so it follows the row's text colour
+    drun-display-format: "{name}\n<span size='small' alpha='60%'>{comment}</span>";
+    // two text lines per row so the comment line is not clipped
+    eh: 2;
     matching: "fuzzy";
     sort: true;
     sidebar-mode: false;
@@ -14,98 +17,120 @@ configuration {
     kb-move-char-forward: "Control+f";
 }
 
+// colours are the launcher roles of the imported palette (@panel, @panel-edge, @panel-divider,
+// @muted, @accent, @on-accent, ...); @panel must stay above the rofi layer rule's ignore_alpha (0.20)
+// for the hyprland blur to show through. rofi/global/emoji.rasi imports this file and overrides the list.
 * {
-    bg-soft: @bg-light;
-    // @fg-gutter-ui at the original 50% alpha; rasi has no alpha(), so this literal shadows the palette's opaque gold @border
-    border: #58648080;
-    muted: @comment;
-    accent: @yellow;
-    // @fg comes from the imported palette
-
     background-color: transparent;
-    text-color: @fg;
+    text-color: @foreground;
     font: "Cartograph CF 11";
 }
 
+// anchored from the top so the search bar stays put while results grow downward
 window {
     transparency: "real";
-    location: center;
-    anchor: center;
-    width: 620px;
-    border: 0px;
-    background-color: transparent;
+    location: north;
+    anchor: north;
+    y-offset: 24%;
+    width: 600px;
+    border: 1px;
+    border-color: @panel-edge;
+    border-radius: 12px;
+    background-color: @panel;
 }
 
 mainbox {
     padding: 0px;
     spacing: 0px;
-    background-color: transparent;
     children: [ inputbar, listview ];
 }
 
 inputbar {
-    padding: 8px 11px;
-    border: 1px;
-    border-color: @border;
-    border-radius: 6px 6px 0px 0px;
-    background-color: @bg-soft;
-    children: [ entry ];
+    padding: 12px 16px;
+    spacing: 10px;
+    children: [ textbox-search, entry ];
+}
+
+// custom textbox, since prompt always prints the mode name; nf-fa-search, Cartograph has no nerd glyphs
+textbox-search {
+    str: "";
+    expand: false;
+    font: "JetBrainsMono Nerd Font Propo 13";
+    text-color: @muted;
+    vertical-align: 0.5;
 }
 
 entry {
-    placeholder: "Search apps";
+    placeholder: "Search";
     placeholder-color: @muted;
-    text-color: @fg;
+    font: "Cartograph CF 15";
+    text-color: @input;
     cursor: text;
+    vertical-align: 0.5;
 }
 
+// require-input hides the whole widget until you type, divider included
 listview {
-    columns: 6;
-    lines: 1;
+    columns: 1;
+    lines: 7;
     layout: vertical;
-    padding: 8px 10px;
-    spacing: 6px;
-    border: 1px;
-    border-color: @border;
-    border-radius: 0px 0px 6px 6px;
-    fixed-columns: true;
+    padding: 6px;
+    spacing: 1px;
+    border: 1px 0px 0px 0px;
+    border-color: @panel-divider;
     fixed-height: false;
     require-input: true;
-    cycle: true;
     dynamic: true;
+    cycle: true;
     scrollbar: false;
-    background-color: @bg-soft;
 }
 
 element {
-    children: [ element-icon ];
-    padding: 4px 4px 5px 4px;
-    border: 1px;
-    border-color: transparent;
-    background-color: transparent;
+    padding: 6px 10px;
+    spacing: 10px;
+    border-radius: 8px;
+    children: [ element-icon, element-text ];
     cursor: pointer;
 }
 
 element-icon {
-    size: 34px;
-    padding: 5px;
-    border: 1px;
-    border-color: transparent;
-    border-radius: 6px;
-    horizontal-align: 0.5;
+    size: 26px;
     vertical-align: 0.5;
-    background-color: transparent;
 }
 
-element selected {
-    background-color: transparent;
-    border-color: transparent;
+element-text {
+    vertical-align: 0.5;
+    text-color: inherit;
+    cursor: inherit;
 }
 
-element-icon selected,
-element-icon selected.normal,
-element-icon selected.urgent,
-element-icon selected.active {
+element normal.normal,
+element normal.active,
+element alternate.normal,
+element alternate.active {
+    background-color: transparent;
+    text-color: @foreground;
+}
+
+element normal.urgent,
+element alternate.urgent {
+    background-color: transparent;
+    text-color: @urgent;
+}
+
+element selected.normal,
+element selected.active,
+element selected.urgent {
     background-color: @accent;
-    border-color: @accent;
+    text-color: @on-accent;
+}
+
+message {
+    padding: 10px 18px;
+    border: 1px 0px 0px 0px;
+    border-color: @panel-divider;
+}
+
+textbox {
+    text-color: @muted;
 }
