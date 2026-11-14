@@ -98,7 +98,14 @@ if command -v gsettings &>/dev/null; then
             run dbus-run-session -- gsettings set org.gnome.desktop.interface "$key" "$value"
         fi
     }
-    gset gtk-theme "'catppuccin-mocha-yellow-standard+default'"
+    # adw-gtk3 draws everything from named colors, which gtk-3.0/gtk.css redefines from the palette
+    gset gtk-theme "'adw-gtk3-dark'"
+    # Papirus-Dark with the palette's folders, built into ~/.local/share/icons by papirus-folders.sh
+    if run "$DOTFILES_DIR/install/papirus-folders.sh"; then
+        gset icon-theme "'Papirus-Dark-eggfriedrice'"
+    else
+        warn "Papirus folder recolor failed, icon theme left as is"
+    fi
     gset color-scheme "'prefer-dark'"
     gset cursor-size "24"
 else

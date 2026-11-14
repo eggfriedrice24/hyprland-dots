@@ -25,6 +25,8 @@ fi
 # Every extra the dotfiles reference. Most consumers fall back silently when one is missing,
 # so a broken theme would otherwise go unnoticed until the desktop looks wrong.
 required_extras=(
+    adw/gtk-3.0.css
+    adw/gtk-4.0.css
     bat/eggfriedrice.tmTheme
     btop/eggfriedrice.theme
     dunst/eggfriedrice.conf
@@ -38,6 +40,7 @@ required_extras=(
     lazygit/eggfriedrice.yml
     lua/eggfriedrice.lua
     opencode/eggfriedrice.json
+    papirus/eggfriedrice.sh
     rofi/eggfriedrice.rasi
     tmux/eggfriedrice.tmux
     zsh/eggfriedrice.zsh
