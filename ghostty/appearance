@@ -1,7 +1,8 @@
 # Theme and window chrome
 # generated theme lives in the eggfriedrice.nvim repo (`make extras`); themes/eggfriedrice links to it
 theme = eggfriedrice
-background-opacity = 0.75
+# matches the Thunar panel (gtk-3.0/thunar.css, alpha 0.86) so terminals and the file manager read as one surface
+background-opacity = 0.86
 
 # old-school blinking block cursor everywhere
 cursor-style = block

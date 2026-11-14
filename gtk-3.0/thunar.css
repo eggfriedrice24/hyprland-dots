@@ -5,6 +5,7 @@
    Colors are the named colors from eggfriedrice-adw.css. */
 
 .thunar.background {
+  /* same opacity as ghostty's background-opacity (ghostty/appearance), keep them in step */
   background-color: alpha(@window_bg_color, 0.86);
   font-family: "Cartograph CF";
 }
