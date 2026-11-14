@@ -1,5 +1,6 @@
 # Main
 alias installed="grep -i installed /var/log/pacman.log"
+alias up="sudo pacman -Syu && yay -Sua"
 alias ls="eza --color=auto --icons=auto"
 alias l="ls -l"
 alias la="ls -a"
