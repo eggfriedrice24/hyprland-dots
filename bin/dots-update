@@ -432,7 +432,7 @@ converge() {
     # the sync, the theme check and the full upgrade already happened here
     local skip="" rc=0 id
     local -a args=(--yes --no-upgrade)
-    [[ -d "$THEME_DIR/.git" ]] && skip=theme # not synced (--no-pull) and missing: stage 2 clones it
+    [[ -e "$THEME_DIR/.git" ]] && skip=theme # not synced (--no-pull) and missing: stage 2 clones it
     ((DO_PACKAGES)) || skip="${skip:+$skip,}packages"
     [[ -n "$skip" ]] && args+=("--skip=$skip")
     ((DRY_RUN)) && args+=(--dry-run)
@@ -644,7 +644,7 @@ main() {
     fi
     PHASE=verify
     # with --no-pull a missing theme repo is left to stage 2, which clones and verifies it
-    if ((DO_CONVERGE)) && { ((DO_PULL)) || [[ -d "$THEME_DIR/.git" ]]; }; then verify_theme; fi
+    if ((DO_CONVERGE)) && { ((DO_PULL)) || [[ -e "$THEME_DIR/.git" ]]; }; then verify_theme; fi
     PHASE=snapshot
     MIGRATIONS_BEFORE="$(applied_migrations | paste -sd' ')"
     snapshot_pre
