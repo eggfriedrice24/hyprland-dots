@@ -493,8 +493,11 @@ THEME_REQUIRED_EXTRAS=(
 
 # The theme repo has every required extra, and every symlink tracked in the dotfiles resolves
 # (most of them point into the theme repo). Skipped in a dry run that has not cloned it yet.
+# A dry run does not pull, so when the theme repo is behind its upstream the extras and the links
+# into it are judged by the fetched upstream tree: that is what a real run checks after its pull,
+# and checking the stale checkout would report the newest extras as missing.
 verify_theme() {
-    local missing=0 extra entry mode path
+    local missing=0 extra entry mode path abs theme_abs upstream=""
     if [[ ! -d "$THEME_DIR/extras" ]]; then
         if [[ "${DRY_RUN:-0}" == "1" ]]; then
             warn "Theme repo not cloned in dry-run, skipping the extras and link check"
@@ -503,17 +506,33 @@ verify_theme() {
         error "Theme repo has no extras/ directory: $THEME_DIR"
         return 1
     fi
+    if [[ "${DRY_RUN:-0}" == "1" ]] &&
+        (( $(git -C "$THEME_DIR" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0) > 0 )); then
+        upstream='@{u}'
+        info "Theme repo is behind its upstream; checking the extras as a real run would after the pull"
+    fi
+    theme_abs="$(realpath -m "$THEME_DIR")"
     for extra in "${THEME_REQUIRED_EXTRAS[@]}"; do
-        if [[ ! -s "$THEME_DIR/extras/$extra" ]]; then
-            error "Missing theme extra: $THEME_DIR/extras/$extra"
-            missing=1
+        if [[ -n "$upstream" ]]; then
+            git -C "$THEME_DIR" cat-file -e "$upstream:extras/$extra" 2>/dev/null && continue
+        elif [[ -s "$THEME_DIR/extras/$extra" ]]; then
+            continue
         fi
+        error "Missing theme extra: $THEME_DIR/extras/$extra"
+        missing=1
     done
     # ls-files -s: "<mode> <object> <stage>\t<path>"; 120000 is a symlink
     while IFS= read -r -d '' entry; do
         mode="${entry%% *}"
         path="${entry#*$'\t'}"
         if [[ "$mode" == 120000 && ! -e "$DOTFILES_DIR/$path" ]]; then
+            if [[ -n "$upstream" ]]; then
+                abs="$(realpath -m "$(dirname "$DOTFILES_DIR/$path")/$(readlink "$DOTFILES_DIR/$path")")"
+                if [[ "$abs" == "$theme_abs"/* ]] &&
+                    git -C "$THEME_DIR" cat-file -e "$upstream:${abs#"$theme_abs"/}" 2>/dev/null; then
+                    continue
+                fi
+            fi
             error "Dangling link in the dotfiles: $path -> $(readlink "$DOTFILES_DIR/$path")"
             missing=1
         fi
@@ -522,5 +541,9 @@ verify_theme() {
         error "Theme repo is incomplete or older than the dotfiles expect; update $THEME_DIR (or run 'make extras' there) and retry"
         return 1
     fi
-    success "All ${#THEME_REQUIRED_EXTRAS[@]} theme extras present, every tracked link resolves"
+    if [[ -n "$upstream" ]]; then
+        success "All ${#THEME_REQUIRED_EXTRAS[@]} theme extras present upstream, every tracked link resolves after the pull"
+    else
+        success "All ${#THEME_REQUIRED_EXTRAS[@]} theme extras present, every tracked link resolves"
+    fi
 }
