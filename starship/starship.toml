@@ -1,12 +1,12 @@
 # eggfriedrice - Starship prompt
 # Needs a Nerd Font (v3). Colours come from the eggfriedrice design system.
 #
-#   ~/code/eggfriedrice.nvim   master 2 1   22.9.0 ········  3s
+#   ~/p/eggfriedrice.nvim   master 2 1   22.9.0 ········  3s
 #
 # One line: where you are, what git is doing, what toolchain is active, then
 # the prompt character; on the right (right_format), what the last command
 # cost (duration, exit code, background jobs). Cyan ❯ = last command OK,
-# red ❯ = it failed, purple ❮ = vi command mode. Every segment hides when it has nothing to say.
+# red ❯ = it failed. Every segment hides when it has nothing to say.
 
 "$schema" = "https://starship.rs/config-schema.json"
 
@@ -259,7 +259,3 @@ symbol_threshold = 1
 [character]
 success_symbol = "[❯](bold character_success)"
 error_symbol = "[❯](bold character_error)"
-vimcmd_symbol = "[❮](bold character_vimcmd)"
-vimcmd_replace_one_symbol = "[❮](bold character_vimcmd_replace)"
-vimcmd_replace_symbol = "[❮](bold character_vimcmd_replace)"
-vimcmd_visual_symbol = "[❮](bold character_vimcmd_visual)"
