@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# font-picker: try UI fonts live from rofi (SUPER+SHIFT+F).
+#
+# Lists the candidate UI fonts that are installed and have a real Medium (the ui weight of the
+# typography tokens), each name drawn in its own font, the current one marked. Choosing one:
+#   1. sets font.ui in the theme repo's lua/eggfriedrice/typography.lua and runs `make extras`,
+#      so the design system stays the source of truth (commit it there once you settle)
+#   2. applies it live: GTK's font-name (open GTK windows follow), waybar's stylesheet, dunst;
+#      rofi takes it on its next start, hyprlock on the next lock, Ghostty tabs in new windows
+#
+#   font-picker           pick a font
+#   font-picker --fetch   download the candidates that have no usable Arch package from Google Fonts
+#                         (their upstream) into ~/.local/share/fonts/eggfriedrice; files already there
+#                         are kept, so a rerun only fetches what is missing. Stage 9 of the installer runs it.
+#   font-picker FAMILY    apply FAMILY without the menu
+#
+# Where each candidate comes from: Nunito ships in the dotfiles (fonts/Nunito), Inter is the inter-font
+# package; the rest have no package with a Medium (Figtree, Lexend and Google Sans Flex none at all,
+# M PLUS Rounded 1c only a 2015 AUR build or the 319 MiB ttf-mplus-nerd, Atkinson Hyperlegible Next
+# only the AUR), so they come from Google Fonts.
+set -euo pipefail
+
+THEME_DIR="${THEME_DIR:-$HOME/p/eggfriedrice.nvim}"
+TYPO="$THEME_DIR/lua/eggfriedrice/typography.lua"
+FONT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/eggfriedrice"
+GF=https://raw.githubusercontent.com/google/fonts/main/ofl
+
+# family as fontconfig names it | Google Fonts files for --fetch (empty: shipped or packaged)
+CANDIDATES=(
+    "Nunito|"
+    "Rounded Mplus 1c|mplusrounded1c/MPLUSRounded1c-Regular.ttf mplusrounded1c/MPLUSRounded1c-Medium.ttf mplusrounded1c/MPLUSRounded1c-Bold.ttf"
+    "Google Sans Flex|googlesansflex/GoogleSansFlex[ROND,opsz,slnt,wdth,wght].ttf"
+    "Inter|"
+    "Figtree|figtree/Figtree[wght].ttf"
+    "Rubik|rubik/Rubik[wght].ttf"
+    "Lexend|lexend/Lexend[wght].ttf"
+    "Atkinson Hyperlegible Next|atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext[wght].ttf"
+)
+
+notify() { notify-send -a font-picker -h string:x-canonical-private-synchronous:font-picker "$@" 2>/dev/null || true; }
+
+fetch() {
+    mkdir -p "$FONT_DIR"
+    local entry family files file url fetched=0 failed=0
+    for entry in "${CANDIDATES[@]}"; do
+        family="${entry%%|*}"
+        files="${entry#*|}"
+        [[ -n "$files" ]] || continue
+        for file in $files; do
+            [[ -s "$FONT_DIR/${file##*/}" ]] && continue
+            url="$GF/${file//[/%5B}"
+            url="${url//]/%5D}"
+            url="${url//,/%2C}"
+            echo "fetching $family: ${file##*/}"
+            # to a temporary name first, so an interrupted download never leaves a broken font behind
+            if curl -sfL -o "$FONT_DIR/.${file##*/}.part" "$url"; then
+                mv -f "$FONT_DIR/.${file##*/}.part" "$FONT_DIR/${file##*/}"
+                fetched=$((fetched + 1))
+            else
+                rm -f "$FONT_DIR/.${file##*/}.part"
+                echo "font-picker: could not fetch $file" >&2
+                failed=$((failed + 1))
+            fi
+        done
+    done
+    if ((fetched)); then
+        fc-cache -f "$FONT_DIR" >/dev/null
+        echo "fetched $fetched font file(s) into $FONT_DIR"
+    else
+        echo "picker fonts already in $FONT_DIR"
+    fi
+    ((failed == 0))
+}
+
+# a candidate counts when fontconfig resolves "<family>:medium" to that family at weight 100 (Medium)
+has_medium() {
+    local got
+    got="$(fc-match -f '%{family}|%{weight}' "$1:medium" 2>/dev/null)"
+    [[ ",${got%|*}," == *",$1,"* && "${got##*|}" == 100 ]]
+}
+
+current_family() {
+    sed -n -E 's/^[[:space:]]*ui = "([^"]+)",.*/\1/p' "$TYPO" | head -n1
+}
+
+ui_size() {
+    sed -n -E 's/^[[:space:]]*sm = ([0-9]+),.*/\1/p' "$TYPO" | head -n1
+}
+
+apply() {
+    local family="$1" size
+    [[ -f "$TYPO" ]] || { notify -u critical "font-picker" "No $TYPO"; exit 1; }
+    has_medium "$family" || { notify -u critical "font-picker" "$family has no Medium weight installed"; exit 1; }
+    sed -i -E "s|^([[:space:]]*ui = )\"[^\"]+\",|\1\"$family\",|" "$TYPO"
+    if ! make -C "$THEME_DIR" extras >/dev/null 2>&1; then
+        notify -u critical "font-picker" "make extras failed in $THEME_DIR"
+        exit 1
+    fi
+    size="$(ui_size)"
+    gsettings set org.gnome.desktop.interface font-name "$family Medium ${size:-10}"
+    pkill -SIGUSR2 -x waybar || true
+    dunstctl reload 2>/dev/null || true
+    notify "UI font: $family" "Live in GTK apps, waybar and dunst; rofi from its next start. Commit typography.lua in eggfriedrice.nvim to keep it."
+}
+
+pick() {
+    local current entry family size rows=() families=() choice
+    current="$(current_family)"
+    size="$(ui_size)"
+    for entry in "${CANDIDATES[@]}"; do
+        family="${entry%%|*}"
+        has_medium "$family" || continue
+        families+=("$family")
+        if [[ "$family" == "$current" ]]; then
+            rows+=("<span font_desc=\"$family Medium ${size:-10}\">$family</span>  <span alpha=\"60%\">current</span>")
+        else
+            rows+=("<span font_desc=\"$family Medium ${size:-10}\">$family</span>")
+        fi
+    done
+    (( ${#families[@]} )) || { notify -u critical "font-picker" "No candidate fonts installed: run font-picker --fetch"; exit 1; }
+    choice="$(printf '%s\n' "${rows[@]}" | rofi -dmenu -i -markup-rows -format i -p font \
+        -theme ~/.config/rofi/config.rasi \
+        -theme-str 'configuration { eh: 1; show-icons: false; } listview { require-input: false; lines: 8; } element { children: [ element-text ]; } entry { placeholder: "Search fonts"; }')" || exit 0
+    [[ "$choice" =~ ^[0-9]+$ ]] || exit 0
+    apply "${families[$choice]}"
+}
+
+case "${1:-}" in
+    --fetch) fetch ;;
+    -h | --help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' ;;
+    "") pick ;;
+    *) apply "$1" ;;
+esac
