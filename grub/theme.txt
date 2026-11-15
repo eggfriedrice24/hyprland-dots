@@ -1,0 +1,65 @@
+# eggfriedrice GRUB theme: the eggfriedrice.code egg above a short centred menu, the selected
+# entry a navy pill as in Thunar, a hairline yolk bar for the timeout.
+# A template: install/grub-theme.sh fills the @name@ tokens (palette colours from the theme repo,
+# pixel sizes scaled to the panel) and installs the result in /boot/grub/themes/eggfriedrice.
+
+title-text: ""
+desktop-color: "@bg@"
+terminal-font: "eggfriedrice-mono Regular @mono_px@"
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+terminal-border: "0"
+terminal-box: "terminal_box_*.png"
+
++ image {
+    left = 50%-@logo_half_w@
+    top = 50%-@logo_top@
+    width = @logo_w@
+    height = @logo_h@
+    file = "logo.png"
+}
+
++ progress_bar {
+    id = "__timeout__"
+    left = 50%-@bar_half_w@
+    top = 50%-@bar_top@
+    width = @bar_w@
+    height = @bar_h@
+    show_text = false
+    bar_style = "bar_*.png"
+    highlight_style = "highlight_*.png"
+    highlight_overlay = true
+}
+
++ boot_menu {
+    left = 50%-@menu_half_w@
+    top = 50%+@menu_off@
+    width = @menu_w@
+    height = @menu_h@
+    item_font = "eggfriedrice Regular @item_px@"
+    selected_item_font = "eggfriedrice Regular @item_px@"
+    item_color = "@fg@"
+    selected_item_color = "@fg_bright@"
+    item_height = @item_h@
+    item_padding = 0
+    item_spacing = @item_gap@
+    icon_width = 0
+    icon_height = 0
+    item_icon_space = 0
+    item_pixmap_style = "item_*.png"
+    selected_item_pixmap_style = "select_*.png"
+    scrollbar = false
+}
+
++ label {
+    left = 0
+    top = 100%-@hint_bottom@
+    width = 100%
+    height = @hint_h@
+    align = "center"
+    font = "eggfriedrice Regular @hint_px@"
+    color = "@hint@"
+    text = "enter boots    e edits the entry    c opens a console"
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="696" height="668" viewBox="172 178 696 668">
+  <!-- eggfriedrice.code app icon, direction b (the yolk), without its square tile: the egg white
+       in text_bright, the yolk in accent_primary, a prompt cut into the yolk in the GRUB background.
+       The @name@ tokens are filled from the theme's palette by install/grub-theme.sh -->
+  <path d="M512 190 C650 180 790 240 830 370 C865 480 860 560 820 650 C775 760 660 840 520 838 C380 836 250 780 205 660 C165 555 180 430 240 335 C300 245 400 196 512 190 Z" fill="@white@"/>
+  <circle cx="548" cy="492" r="150" fill="@yolk@"/>
+  <path d="M512 436 L568 492 L512 548" fill="none" stroke="@cut@" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
