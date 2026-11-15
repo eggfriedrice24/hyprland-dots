@@ -20,10 +20,11 @@ configuration {
 // colours are the launcher roles of the imported palette (@panel, @panel-edge, @panel-divider,
 // @muted, @accent, @on-accent, ...); @panel must stay above the rofi layer rule's ignore_alpha (0.20)
 // for the hyprland blur to show through. rofi/global/emoji.rasi imports this file and overrides the list.
+// fonts are the palette file's typography properties (@font-ui-sm, @font-ui-md, @font-icon, ...)
 * {
     background-color: transparent;
     text-color: @foreground;
-    font: "Cartograph CF 11";
+    font: @font-ui-sm;
 }
 
 // anchored from the top so the search bar stays put while results grow downward
@@ -51,11 +52,11 @@ inputbar {
     children: [ textbox-search, entry ];
 }
 
-// custom textbox, since prompt always prints the mode name; nf-fa-search, Cartograph has no nerd glyphs
+// custom textbox, since prompt always prints the mode name; nf-fa-search, the ui font has no nerd glyphs
 textbox-search {
     str: "";
     expand: false;
-    font: "JetBrainsMono Nerd Font Propo 13";
+    font: @font-icon;
     text-color: @muted;
     vertical-align: 0.5;
 }
@@ -63,7 +64,7 @@ textbox-search {
 entry {
     placeholder: "Search";
     placeholder-color: @muted;
-    font: "Cartograph CF 15";
+    font: @font-ui-md;
     text-color: @input;
     cursor: text;
     vertical-align: 0.5;

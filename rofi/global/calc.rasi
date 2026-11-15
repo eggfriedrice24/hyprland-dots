@@ -25,6 +25,6 @@ message {
 }
 
 textbox {
-    font: "Cartograph CF 15";
+    font: @font-ui-md;
     text-color: @input;
 }

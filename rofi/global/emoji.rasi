@@ -39,9 +39,9 @@ element {
 // rofi sizes rows from the base font and draws the taller emoji from the top of a box shorter than
 // the glyph, so vertical-align cannot centre it. The bottom padding is the room it overflows into;
 // 27px with the element's 2px leaves equal gaps above and below (measured), less cuts the glyph or
-// lets it sit low in the selected tile
+// lets it sit low in the selected tile. @font-emoji is the emoji font at the 20pt the gaps were measured at
 element-text {
-    font: "Noto Color Emoji 20";
+    font: @font-emoji;
     padding: 0px 0px 27px 0px;
     horizontal-align: 0.5;
     vertical-align: 0.5;
