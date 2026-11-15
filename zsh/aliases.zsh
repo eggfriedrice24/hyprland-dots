@@ -6,7 +6,7 @@ alias l="ls -l"
 alias la="ls -a"
 alias lla="ls -la"
 alias lt="ls --tree"
-alias cat="bat --color always --plain"
+alias cat="bat --plain --paging=never"
 alias grep='grep --color=auto'
 alias mv='mv -v'
 alias cp='cp -vr'
