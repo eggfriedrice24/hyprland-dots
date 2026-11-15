@@ -23,6 +23,22 @@ run() {
     fi
 }
 
+# Optional steps that failed; stage 7 lists them at the end instead of the install stopping
+FAILED=()
+
+# try LABEL CMD...: run an optional step through run; a failure is reported and collected, never fatal
+try() {
+    local label="$1"
+    shift
+    if run "$@"; then
+        return 0
+    else
+        local status=$?
+        warn "Optional step failed (exit ${status}): ${label}"
+        FAILED+=("$label")
+    fi
+}
+
 has_pkg() { pacman -Qq "$1" &>/dev/null; }
 
 # Strip comments, blank lines and surrounding whitespace from a package list file

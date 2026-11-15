@@ -92,10 +92,10 @@ if command -v gsettings &>/dev/null; then
         fi
         info "gsettings $key = $value"
         if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
-            run gsettings set org.gnome.desktop.interface "$key" "$value"
+            try "gsettings $key $value" gsettings set org.gnome.desktop.interface "$key" "$value"
         else
             # no session bus on a TTY install: give dconf a private one
-            run dbus-run-session -- gsettings set org.gnome.desktop.interface "$key" "$value"
+            try "gsettings $key $value" dbus-run-session -- gsettings set org.gnome.desktop.interface "$key" "$value"
         fi
     }
     # adw-gtk3 draws everything from named colors, which gtk-3.0/gtk.css redefines from the palette

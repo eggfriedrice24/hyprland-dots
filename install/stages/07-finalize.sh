@@ -42,7 +42,7 @@ if command -v rustup &>/dev/null; then
         success "Rust toolchain: $(rustup show active-toolchain 2>/dev/null | cut -d' ' -f1)"
     else
         info "Installing the nightly Rust toolchain..."
-        run rustup default nightly
+        try "rustup default nightly" rustup default nightly
     fi
 fi
 
@@ -52,8 +52,8 @@ if command -v fnm &>/dev/null; then
         success "fnm default Node: $(fnm list 2>/dev/null | grep 'default' | awk '{print $2}')"
     else
         info "Installing Node 22 via fnm..."
-        run fnm install 22
-        run fnm default 22
+        try "fnm install 22" fnm install 22
+        try "fnm default 22" fnm default 22
     fi
 else
     warn "fnm not found, no Node version installed"
@@ -64,7 +64,8 @@ if command -v claude &>/dev/null; then
     success "Claude Code already installed: $(claude --version 2>/dev/null)"
 else
     info "Installing Claude Code..."
-    run bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
+    # pipefail: a failed download must fail the step, not feed bash an empty script
+    try "Claude Code installer" bash -c 'set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash'
 fi
 
 # OpenCode: the Google Workspace MCP credentials are gitignored, seed the file from the example
@@ -81,13 +82,13 @@ fi
 if command -v flatpak &>/dev/null; then
     if ! flatpak remotes --columns=name 2>/dev/null | grep -x 'flathub' >/dev/null; then
         info "Adding the flathub remote..."
-        run sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+        try "flatpak remote-add flathub" sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
     fi
     if flatpak info com.stremio.Stremio &>/dev/null; then
         success "Stremio flatpak installed"
     else
         info "Installing Stremio (flatpak)..."
-        run sudo flatpak install -y --noninteractive flathub com.stremio.Stremio
+        try "flatpak install com.stremio.Stremio" sudo flatpak install -y --noninteractive flathub com.stremio.Stremio
     fi
 fi
 
@@ -97,6 +98,11 @@ info "Installation complete. Reboot and log in on TTY1 to start Hyprland."
 echo
 if (( ${#AUR_FAILED[@]} )); then
     warn "These AUR packages failed to build; install them by hand: yay -S ${AUR_FAILED[*]}"
+    echo
+fi
+if (( ${#FAILED[@]} )); then
+    warn "These optional steps failed; rerun the installer or do them by hand:"
+    printf '  - %s\n' "${FAILED[@]}"
     echo
 fi
 info "Manual steps the installer does not cover (details in README.md):"
