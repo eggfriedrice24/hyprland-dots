@@ -21,10 +21,8 @@ else
     warn "~/.zshenv is not the dotfiles link, zsh will not find ZDOTDIR"
 fi
 
-theme_extras="${THEME_DIR:-$HOME/p/eggfriedrice.nvim}/extras"
 zinit_home="${XDG_DATA_HOME:-$HOME/.local/share}/zinit"
 fsh_plugin="$zinit_home/plugins/zdharma-continuum---fast-syntax-highlighting"
-fsh_theme="$theme_extras/fsh/eggfriedrice.ini"
 
 # zinit clones its plugins on the first interactive shell; do it here, visibly, so fast-theme can run.
 # A failed bootstrap (offline, GitHub down) only costs the plugins until the next shell, so it warns
@@ -33,7 +31,6 @@ if [[ -d "$fsh_plugin" ]]; then
     success "zinit plugins already installed"
 elif [[ "${DRY_RUN:-0}" == "1" ]]; then
     dry "zsh -ic 'exit 0' (bootstrap zinit and its plugins)"
-    dry "zsh -ic fast-theme $fsh_theme"
 else
     info "Installing zinit and its plugins (first interactive shell)..."
     if ! zsh -ic 'exit 0'; then
@@ -41,40 +38,13 @@ else
     fi
 fi
 
-# fast-syntax-highlighting theme (fast-theme persists it into the plugin work dir)
-if [[ ! -f "$fsh_theme" ]]; then
-    warn "fsh theme not found, skipping: $fsh_theme"
-elif [[ ! -d "$fsh_plugin" ]]; then
-    # dry run on a fresh machine: printed above. A real run gets here when the bootstrap failed.
-    if [[ "${DRY_RUN:-0}" != "1" ]]; then
-        warn "fast-syntax-highlighting not installed, skipping its theme; rerun the installer once zinit has its plugins"
-    fi
-elif zsh -ic '[[ "$FAST_THEME_NAME" == "eggfriedrice" ]]' &>/dev/null; then
-    success "fast-syntax-highlighting theme is already eggfriedrice"
-else
-    info "Applying fast-syntax-highlighting theme..."
-    run zsh -ic "fast-theme '$fsh_theme'"
-fi
-
-# bat theme cache: the theme name in bat/config resolves only after a cache build with the tmTheme present
-bat_theme="${DOTFILES_DIR}/bat/themes/eggfriedrice.tmTheme"
-if ! has_cmd bat; then
-    warn "bat not found, skipping theme cache build"
-elif [[ ! -e "$bat_theme" && "${DRY_RUN:-0}" == "1" ]]; then
-    # fresh dry run: the link resolves once stage 2 has cloned the theme repo
-    dry "bat cache --build"
-elif [[ ! -e "$bat_theme" ]]; then
-    error "bat theme missing or dangling: $bat_theme"
-    return 1
-elif bat --list-themes 2>/dev/null | grep -x 'eggfriedrice' >/dev/null; then
-    success "bat theme cache already includes eggfriedrice"
-else
-    info "Building bat theme cache..."
-    run bat cache --build
-    if [[ "${DRY_RUN:-0}" == "0" ]] && ! bat --list-themes 2>/dev/null | grep -x 'eggfriedrice' >/dev/null; then
-        error "bat theme eggfriedrice still missing after the cache build"
-        return 1
-    fi
-fi
+# Shell-side theme artifacts, each rebuilt only when the theme is newer (install/theme-apply.sh):
+# fast-syntax-highlighting's generated theme, bat's theme cache (the theme name in bat/config
+# resolves only after a cache build; a dangling theme link stops the install), starship's palette copy
+# shellcheck source=install/theme-apply.sh
+source "${DOTFILES_DIR}/install/theme-apply.sh"
+theme_apply_fsh
+theme_apply_bat || return 1
+theme_check_starship
 
 success "=== Stage 4: Complete ==="
