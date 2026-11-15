@@ -27,9 +27,9 @@ one-off migrations in `install/migrations/`. README.md documents all three.
 
 **Zsh XDG Setup:** `~/.zshenv` is a symlink to `zsh/.zshenv`, which sets `ZDOTDIR="$HOME/.config/zsh"`.
 
-**Hyprland Auto-Start:** `zsh/.zprofile` sources `zsh/session.zsh` (PATH, XDG dirs, EDITOR, BROWSER, TERMINAL,
-SSH_AUTH_SOCK), hands those names to systemd and D-Bus activation, and execs Hyprland on a TTY1 login outside any
-graphical session.
+**Hyprland Auto-Start:** `zsh/.zprofile` sources `zsh/session.zsh` (PATH, XDG dirs, EDITOR, VISUAL, BROWSER,
+TERMINAL), hands those names to systemd and D-Bus activation, and execs Hyprland on a TTY1 login outside any graphical
+session. The ssh agent is keychain, started per interactive shell in `zsh/env.zsh`.
 
 **Bootstrap Process:**
 
