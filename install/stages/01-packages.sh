@@ -102,7 +102,7 @@ bootstrap_yay() {
     local tmpdir status=0
     tmpdir="$(mktemp -d)" || return 1
     if ! git clone --quiet https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" ||
-        ! (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm); then
+        ! (cd "$tmpdir/yay-bin" && makepkg -sir --noconfirm); then # -r: drop the build-only deps again
         status=1
     fi
     rm -rf "$tmpdir"
@@ -117,6 +117,9 @@ for list in "${profile_aur_lists[@]}"; do
     aur_lists+=("$list")
     aur_labels+=("$(layer_of "$list") profile")
 done
+
+# No <pkg>-debug packages from AUR builds (yay-bin's own included), before anything is built
+install_etc_file "${DOTFILES_DIR}/install/etc/makepkg.conf.d/no-debug.conf" /etc/makepkg.conf.d/no-debug.conf
 
 # AUR helper: yay is what the existing machines use; bootstrap yay-bin when nothing is present
 AUR_HELPER=""

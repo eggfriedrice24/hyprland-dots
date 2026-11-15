@@ -166,12 +166,13 @@ install_aur_packages() {
     info "Installing ${#to_install[@]} AUR packages: ${to_install[*]}"
     plan_packages "${to_install[@]}"
     # AUR builds break for reasons outside this repo (upstream PKGBUILD, PGP keys); one failure
-    # must not stop the configs from being linked, so retry one by one and report at the end
-    if ! run "$AUR_HELPER" -S --needed --noconfirm "${to_install[@]}"; then
+    # must not stop the configs from being linked, so retry one by one and report at the end.
+    # --removemake: the build-only dependencies go again, instead of staying behind as orphans
+    if ! run "$AUR_HELPER" -S --needed --noconfirm --removemake "${to_install[@]}"; then
         warn "Batch AUR install failed, retrying one package at a time"
         for pkg in "${to_install[@]}"; do
             has_pkg "$pkg" && continue
-            if ! run "$AUR_HELPER" -S --needed --noconfirm "$pkg"; then
+            if ! run "$AUR_HELPER" -S --needed --noconfirm --removemake "$pkg"; then
                 warn "AUR package failed: $pkg"
                 AUR_FAILED+=("$pkg")
             fi
