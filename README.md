@@ -257,11 +257,61 @@ migrations applied after the snapshot (their work is undone in the system but st
 `install/migrate.sh --rearm <id>` command for each, and the dotfiles commit the snapshot was taken at; nothing is
 checked out for you.
 
+## Syncing an existing machine
+
+For a machine that has not been updated in a while (the ThinkPad). Do it in one sitting, from a TTY, not from inside
+Hyprland: the pull replaces the config the running session reads, and a Hyprland older than 0.55 cannot read the Lua
+config at all.
+
+1. Log out of Hyprland and log in on TTY2 (Ctrl+Alt+F2; TTY1 starts Hyprland by itself).
+2. Note what the machine is, for its line in `machines/index`:
+
+   ```bash
+   cat /sys/class/dmi/id/{sys_vendor,product_name,product_version,product_family}; ls /sys/class/power_supply
+   ```
+
+3. Back up the OpenCode database. The tracked config is OpenCode 2; pacman upgrades a 1.x install and the database is
+   migrated in place on the first start. A 1.x `opencode` that is not `/usr/bin/opencode` (a Vite+ global) has to go
+   first: `vp remove -g opencode-ai`.
+
+   ```bash
+   cp ~/.local/share/opencode/opencode.db ~/.local/share/opencode/opencode.db.v1-backup
+   ```
+
+4. Check for packages the installer stops on: `pacman -Q rust jack2 pulseaudio`. For each one that is installed,
+   `sudo pacman -S rustup pipewire-jack pipewire-pulse` (the matching replacement) and answer y to the removal.
+5. Pull the dotfiles, which brings `dots-update` along (commit or stash local changes first if the pull refuses):
+
+   ```bash
+   git -C ~/dotfiles pull --ff-only
+   ```
+
+6. Dry run, then the real run. It pulls the theme repo too (or clones `~/p/eggfriedrice.nvim` when it is missing),
+   upgrades every package, Hyprland included, converges the machine and runs the migrations:
+
+   ```bash
+   ~/dotfiles/bin/dots-update --dry-run
+   ~/dotfiles/bin/dots-update
+   ```
+
+7. Check the result: `~/dotfiles/install.sh --print-profile` says `thinkpad dmi` (or `laptop battery` until the index
+   has its strings) and `~/dotfiles/install/migrate.sh --status` shows nothing `pending`.
+8. Reboot when the report asks for it (a kernel upgrade always does), otherwise log out; then log in on TTY1.
+9. In Neovim: `:Lazy restore` (plugins at the tracked `lazy-lock.json`), `:MasonUninstall rustfmt` if Mason still has
+   it (rustup provides it), `:Lazy clean`.
+
+The migrations an old machine picks up remove catppuccin-gtk-theme-mocha, kitty and its config, and qt5ct, and swap
+swww for awww, rofi-wayland for rofi, t3code-bin for t3code-nightly-bin, and the AUR fnm-bin and pnpm-bin for the
+repository packages; `install/migrate.sh --status` lists them. Without `dots-update` (to see each step on its own):
+`git -C ~/p/eggfriedrice.nvim pull --ff-only`, then `./install.sh --dry-run` and `./install.sh` in `~/dotfiles`.
+
 ## After install
 
 Things that hold secrets or hardware state and are set up by hand:
 
-- **SSH and git**: restore `~/.ssh` (keys and `config`) and `~/.gitconfig`, then `gh auth login`
+- **WiFi**: the ISO's connection is not carried over; `nmcli device wifi connect <ssid> --ask`
+- **SSH and git**: restore `~/.ssh` (keys and `config`; `AddKeysToAgent yes` there hands keys to the ssh-agent user
+  unit) and `~/.gitconfig`, then `gh auth login`
 - **Tailscale**: `sudo tailscale up`
 - **Bluetooth**: pair and trust devices with `bluetoothctl`
 - **WiFi on the desktop**: pin the connection to the AP's BSSID and the 5 GHz band to avoid rtw89 stalls:
@@ -270,8 +320,33 @@ Things that hold secrets or hardware state and are set up by hand:
   and `xdg-mime default imv.desktop image/png image/jpeg image/webp image/gif`
 - **OpenCode**: fill in `opencode/google-workspace.env` (seeded from the example)
 - **Slack**: paste the theme from `~/p/eggfriedrice.nvim/extras/slack/eggfriedrice.txt`
-- **Neovim**: start `nvim` once, then `:Lazy restore` to pin plugins to the tracked `lazy-lock.json`
+- **Zen**: link `~/p/eggfriedrice.nvim/extras/zen/userChrome.css` to `<profile>/chrome/userChrome.css` (about:profiles
+  shows the profile folder), set `toolkit.legacyUserProfileCustomizations.stylesheets` to true in about:config, restart
+- **Helium**: `chrome://extensions`, Developer mode, Load unpacked, pick `~/p/eggfriedrice.nvim/extras/chromium`
+- **efr**: clone `git@github.com:eggfriedrice24/eggfriedrice.code.git` to `~/p/eggfriedrice.code` (the path
+  `zsh/efr.zsh` sources its zsh plugin from), then `just install` there (needs `just`, rustup and Zig 0.17.0),
+  `systemctl --user enable --now efrd` and `efr login openai`. Its config `~/.config/efr/config.toml` is not tracked;
+  `palette` under `[render]`, set to the absolute path of `~/p/eggfriedrice.nvim/extras/efr/eggfriedrice.toml`,
+  themes it
+- **Neovim**: stage 9 installs the plugins and Mason tools headless on a new machine; if it reported a failure, start
+  `nvim` and run `:Lazy restore`, then `:MasonToolsInstallSync`
 - **Ghostty per machine**: optional untracked `ghostty/local` (for example a laptop font size)
+- **Machine-only shell paths**: optional untracked `zsh/local.zsh`, sourced by `zsh/session.zsh`
+
+## A crashed lock screen
+
+When hyprlock dies, Hyprland paints a red "lockscreen crashed" screen. The `hyprctl keyword` command it suggests does
+not work with the Lua config, and starting hyprlock again did not repaint in the one recorded case. What unlocked with
+the session intact (it unlocks without a password): switch to a TTY (Ctrl+Alt+F2), log in, then
+
+```bash
+export HYPRLAND_INSTANCE_SIGNATURE=$(ls /run/user/$UID/hypr | head -1)
+pkill hyprlock
+hyprctl eval 'hl.clear_crashed_lockscreen()'
+```
+
+and go back with Ctrl+Alt+F1. `misc.allow_session_lock_restore` is set in `hypr/hyprland.lua`, so
+`hyprctl eval "hl.exec_cmd('hyprlock')"` may let a new hyprlock take over, but the recipe above is the reliable way out.
 
 ## Structure
 
