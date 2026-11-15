@@ -258,9 +258,12 @@ layer_of() {
     printf '%s' "${rel%%/*}"
 }
 
+# --root=/ reads the unit files of the system this runs in. A plain is-enabled from bootstrap's chroot
+# asks the live ISO's systemd instead, which has timesyncd enabled (and NetworkManager not), so the
+# new system's timesyncd was skipped as "already enabled".
 enable_system_service() {
     local service="$1"
-    if systemctl is-enabled "$service" &>/dev/null; then
+    if systemctl --root=/ is-enabled "$service" &>/dev/null; then
         success "Already enabled: $service"
     else
         info "Enabling: $service"
