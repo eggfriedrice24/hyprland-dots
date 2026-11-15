@@ -16,6 +16,19 @@ return {
 		hp_portrait,
 	},
 
+	config = {
+		misc = {
+			vrr = 0, -- keep 0: the ASUS is OLED, and VRR makes its luminance track the varying refresh
+			-- interval, which shows up as brightness flicker in dark scenes. Tried vrr=2 (fullscreen only)
+			-- on 2026-09-20 and the flicker appeared in-game immediately. Related: hypr flicker history.
+		},
+		render = {
+			direct_scanout = 0, -- MUST stay 0: scanout hands the game its 8bpc buffer, forcing DP-1 off its 10bpc format.
+			-- That format change triggers a runtime modeset (brief black screen), which is exactly what
+			-- the bitdepth=10 setting above and the GRUB video= param exist to keep confined to boot.
+		},
+	},
+
 	setup = function()
 		hl.device({ name = "razer-razer-deathadder-essential", sensitivity = -0.85 })
 		hl.device({ name = "razer-razer-deathadder-essential-1", sensitivity = -0.85 })
