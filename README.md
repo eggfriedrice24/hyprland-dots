@@ -186,6 +186,7 @@ up --dry-run    # show the plan; fetches the remotes, changes nothing else
 up              # pacman and the AUR helper ask as usual; --yes answers for them
 up --check      # refresh the status file without sudo: pending packages, commits behind, reboot or relogin needed
 up -- --profile framework   # anything after -- goes to install.sh
+up --prune      # afterwards, pick packages the dotfiles do not list and remove them (see Pruning)
 ```
 
 `--no-pull`, `--no-packages`, `--no-converge` and `--no-snapshot` leave a phase out. Exit status: 0 done, 1 stopped, 2
@@ -193,6 +194,19 @@ done with warnings, 130 interrupted. Logs are in `~/.local/state/dotfiles/update
 `last.log`), the status file is `~/.local/state/dotfiles/update/status`. On battery below 30 percent it asks first.
 Without a terminal (a keybind or bar), `hypr/scripts/systemupdate.sh up` opens it in a Ghostty window that stays open;
 `systemupdate.sh` alone prints one waybar JSON line from the status file.
+
+## Pruning
+
+`dots-prune` (or `up --prune` after an update) lists the explicitly installed packages that the dotfiles do not
+account for: not in `install/packages/*.txt`, not in the profile layers' `packages.txt`, `aur.txt` or `keep.txt`, not
+part of what `bootstrap.sh` installs (read from its `pacstrap` line), and not providing a listed name. Each comes with
+its size and how many dependencies would go with it; you mark the ones to remove in fzf and confirm once. The ones you
+keep can be added to `machines/<profile>/keep.txt` (tracked: commit it) so the next run does not ask about them again.
+Orphans, dependencies nothing needs any more, are offered last. `dots-prune --dry-run` only lists.
+
+Two things keep a machine from collecting such packages in the first place: `/etc/makepkg.conf.d/no-debug.conf`
+(stage 1) stops AUR builds from installing `<pkg>-debug` packages, and the AUR helper runs with `--removemake`, so
+build-only dependencies do not stay behind.
 
 ## Migrations
 
