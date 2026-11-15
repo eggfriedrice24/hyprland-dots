@@ -1,6 +1,14 @@
 # Main
 alias installed="grep -i installed /var/log/pacman.log"
-alias up="sudo pacman -Syu && yay -Sua"
+# up: dots-update (bin/, linked into ~/.local/bin by install stage 3); until that link exists,
+# the copy in the checkout this zsh config lives in
+if (( $+commands[dots-update] )); then
+  alias up='dots-update'
+elif [[ -x ${ZDOTDIR:A:h}/bin/dots-update ]]; then
+  alias up="${ZDOTDIR:A:h}/bin/dots-update"
+else
+  alias up="sudo pacman -Syu && yay -Sua"
+fi
 alias ls="eza --color=auto --icons=auto"
 alias l="ls -l"
 alias la="ls -a"
