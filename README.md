@@ -161,7 +161,8 @@ What each profile carries today:
   with the DP-1 rule), Bluetooth FastConnectable, the WiFi BSSID note
 - **laptop** - eDP-1 at scale 1 plus a rule for anything plugged in, `sof-firmware`, a key-only sshd drop-in, the idle
   config in `machines/laptop/hypridle.conf` (dim at 2.5 min, lock at 5, display off at 5.5, suspend at 15 on battery
-  only), a key press wakes the display
+  only), a key press wakes the display; with the lid closed it locks and turns the display off, and on AC keeps
+  running (logind ignores the lid there, so the laptop stays reachable over tailscale), on battery it suspends
 - **thinkpad** - the laptop layer as it is
 - **framework** - eDP-1 at scale 1.6, XWayland zero scaling, tap to click, three-finger workspace swipe, touch mapped
   to the panel, the lid turns the panel off on a dock, `intel-media-driver`, `libva-utils`, `fwupd`, `powertop`,
@@ -482,6 +483,7 @@ layouts.
 | **Profiles** | |
 | SUPER+O (desktop) | turn the HP between portrait and landscape |
 | three-finger swipe (framework) | switch workspace |
+| lid closed (laptops) | lock and display off; on AC the laptop keeps running, on battery it suspends |
 | lid closed on a dock (framework) | the internal panel turns off, back on when opened |
 
 ## Structure
@@ -514,6 +516,7 @@ dotfiles/
 ├── zsh/                 # shell modules, .zshenv sets ZDOTDIR, .zprofile starts Hyprland on TTY1
 ├── starship/            # prompt
 ├── gtk-3.0/ gtk-4.0/    # GTK colours and Thunar
+├── git/                 # global gitignore (~/.config/git)
 ├── rofi/ dunst/ bat/ btop/ eza/ frameit/ opencode/ pipewire/ wireplumber/
 ├── .wallpapers/         # linked to ~/.wallpapers
 └── fonts/               # Cartograph CF, Atkinson Hyperlegible Next and Nunito, linked into ~/.local/share/fonts

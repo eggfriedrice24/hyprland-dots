@@ -211,7 +211,8 @@ Configured in `machines/<profile>/hypr.lua`, never in the shared hypr files:
 
 - Desktop: DP-1 (ASUS OLED, 2560x1440@240, bitdepth 10, coupled to `video=DP-1` in `machines/desktop/grub`) and
   HDMI-A-1 (HP, portrait, SUPER+O flips it)
-- Laptop layer: eDP-1 at scale 1 plus a catch-all rule for anything plugged in
+- Laptop layer: eDP-1 at scale 1 plus a catch-all rule for anything plugged in; the lid locks and blanks, and on AC
+  the laptop keeps running (`machines/laptop/etc/systemd/logind.conf.d/10-lid.conf`)
 - Framework: eDP-1 at scale 1.6 (VERIFY values are settled with `machines/framework/ARRIVAL.md`), gestures, lid handling
 - Waybar on all outputs
 
