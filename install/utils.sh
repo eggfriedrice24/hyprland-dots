@@ -457,8 +457,9 @@ repo_sync() {
 }
 
 # Clone the theme repo when it is missing, fast-forward it otherwise
+# (-e: in a worktree or submodule .git is a file)
 theme_ensure() {
-    if [[ -d "$THEME_DIR/.git" ]]; then
+    if [[ -e "$THEME_DIR/.git" ]]; then
         repo_sync "$THEME_DIR" theme
     else
         info "Cloning theme repo to $THEME_DIR..."
