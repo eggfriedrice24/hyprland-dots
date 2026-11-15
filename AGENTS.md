@@ -18,7 +18,8 @@ means a migration is still pending. Rerunning is idempotent. Helpers every stage
 machine-specific: `hypr.lua` (monitors, config, setup, hypridle), `extends`, `packages.txt`, `aur.txt`, `services`,
 `etc/`, `grub`, `system.sh`, `notes`, and the optional `keep.txt` that `dots-prune` reads and writes.
 `machines/index` maps DMI strings to a profile; `install/machine.sh` and `hypr/machine.lua` resolve it identically
-(flag, pin in `~/.config/dotfiles/profile`, DMI, battery -> laptop, else generic). Hostnames are `t` (desktop), `tt` (ThinkPad), `tf` (Framework), but nothing may key on the hostname.
+(flag, pin in `~/.config/dotfiles/profile`, DMI, battery -> laptop, else generic). Hostnames are `t` (desktop), `tt`
+(ThinkPad), `tf` (Framework), but nothing may key on the hostname.
 
 **Commands:** `bin/` is linked into `~/.local/bin` by stage 3. `bin/dots-update` (alias `up`) syncs both repos,
 snapshots, upgrades packages and runs `install.sh --no-upgrade`. `bin/dots-snapshot` owns every snapper call (status,
