@@ -1,28 +1,22 @@
 #!/usr/bin/env bash
-# Stage 6: System configuration outside $HOME: kernel module options, zram, bluetooth,
+# Stage 6: System configuration outside $HOME: the profile's /etc files, zram, bluetooth,
 # wireless regulatory domain, GRUB command line, GTK settings
 
 info "=== Stage 6: System configuration ==="
 
 etc_src="${DOTFILES_DIR}/install/etc"
 
-# Kernel module options
-install_etc_file "$etc_src/modprobe.d/btusb-no-autosuspend.conf" /etc/modprobe.d/btusb-no-autosuspend.conf
-if [[ "$PROFILE" == "desktop" ]]; then
-    # rtw89 WiFi card: ASPM and power save off, cures the periodic stalls (costs power, so desktop only)
-    install_etc_file "$etc_src/modprobe.d/rtw89.conf" /etc/modprobe.d/rtw89.conf
-fi
+# Machine profile /etc files (machines/<layer>/etc/, laid out like /etc), base layer first:
+# kernel module options for the desktop's WiFi and Bluetooth, sshd hardening on laptops
+mapfile -t etc_trees < <(profile_files etc)
+for tree in "${etc_trees[@]}"; do
+    install_etc_tree "$tree"
+done
 
 # zram swap
 if has_pkg zram-generator; then
     install_etc_file "$etc_src/systemd/zram-generator.conf" /etc/systemd/zram-generator.conf
 fi
-
-# Machine profile /etc files (machines/<layer>/etc/, laid out like /etc), base layer first
-mapfile -t etc_trees < <(profile_files etc)
-for tree in "${etc_trees[@]}"; do
-    install_etc_tree "$tree"
-done
 
 # Bluetooth: advertise as fast-connectable (quicker headphone and keyboard reconnects).
 # The key lives in [General]; a main.conf without even the commented default gets it appended there.
@@ -150,11 +144,6 @@ kernel_param() {
 }
 
 kernel_param GRUB_CMDLINE_LINUX "zswap.enabled=0" # zram replaces zswap
-if [[ "$PROFILE" == "desktop" ]]; then
-    # ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see hypr/hyprland.lua).
-    # The key also matches an older video=DP-N: entry (the monitor was on DP-3 until Sep 10).
-    kernel_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240" 'video=DP-[0-9]+:'
-fi
 
 # Machine profile kernel parameters (machines/<layer>/grub: "VARIABLE PARAMETER [KEY]" per line)
 mapfile -t grub_lists < <(profile_files grub)

@@ -1,0 +1,10 @@
+# Desktop: Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX. Hostname: t (ThinkPad tt, Framework tf).
+# Lines that are not comments are printed by the installer's last stage as manual steps.
+#
+# Desktop-only pieces of this profile:
+#   aur.txt                          it87-dkms-git for the board sensors
+#   etc/modprobe.d/rtw89.conf        rtw89 WiFi card: ASPM and power save off, cures the periodic
+#                                    stalls (costs power, so desktop only)
+#   etc/modprobe.d/btusb-...conf     no USB autosuspend for the Bluetooth adapter
+#   grub                             video=DP-1 for the ASUS, coupled to the DP-1 rule in hypr.lua
+WiFi: pin the connection to the AP's BSSID and 5 GHz band

@@ -107,10 +107,6 @@ bootstrap_yay() {
 # AUR lists: the shared one, then the profile layers' aur.txt
 aur_lists=("${DOTFILES_DIR}/install/packages/aur.txt")
 aur_labels=(aur)
-if [[ "$PROFILE" == "desktop" ]]; then
-    aur_lists+=("${DOTFILES_DIR}/install/packages/aur-desktop.txt")
-    aur_labels+=(aur-desktop)
-fi
 mapfile -t profile_aur_lists < <(profile_files aur.txt)
 for list in "${profile_aur_lists[@]}"; do
     aur_lists+=("$list")

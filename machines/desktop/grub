@@ -1,0 +1,9 @@
+# Kernel parameters for this profile, added to /etc/default/grub by stage 6:
+#   VARIABLE PARAMETER [KEY]
+# KEY is an ERE for the parameter's name; an existing word matching it is replaced instead of a
+# second value being appended (default: PARAMETER up to its "=").
+#
+# ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see machines/desktop/hypr.lua,
+# keep the connector in sync). The key also replaces an older video=DP-N: entry (the monitor was on
+# DP-3 until Sep 10).
+GRUB_CMDLINE_LINUX_DEFAULT video=DP-1:2560x1440@240 video=DP-[0-9]+:
