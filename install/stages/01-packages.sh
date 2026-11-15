@@ -99,7 +99,7 @@ bootstrap_yay() {
 }
 
 aur_lists=(aur)
-if [[ "$MACHINE" == "desktop" ]]; then
+if [[ "$PROFILE" == "desktop" ]]; then
     aur_lists+=(aur-desktop)
 fi
 

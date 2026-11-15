@@ -8,7 +8,7 @@ etc_src="${DOTFILES_DIR}/install/etc"
 
 # Kernel module options
 install_etc_file "$etc_src/modprobe.d/btusb-no-autosuspend.conf" /etc/modprobe.d/btusb-no-autosuspend.conf
-if [[ "$MACHINE" == "desktop" ]]; then
+if [[ "$PROFILE" == "desktop" ]]; then
     # rtw89 WiFi card: ASPM and power save off, cures the periodic stalls (costs power, so desktop only)
     install_etc_file "$etc_src/modprobe.d/rtw89.conf" /etc/modprobe.d/rtw89.conf
 fi
@@ -144,7 +144,7 @@ kernel_param() {
 }
 
 kernel_param GRUB_CMDLINE_LINUX "zswap.enabled=0" # zram replaces zswap
-if [[ "$MACHINE" == "desktop" ]]; then
+if [[ "$PROFILE" == "desktop" ]]; then
     # ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see hypr/hyprland.lua).
     # The key also matches an older video=DP-N: entry (the monitor was on DP-3 until Sep 10).
     kernel_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240" 'video=DP-[0-9]+:'
