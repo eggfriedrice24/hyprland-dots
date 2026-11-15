@@ -97,7 +97,7 @@ local opts = {
 			},
 		},
 		lualine_x = {
-			-- Optional: Noice integration (remove if you don't use noice)
+			-- noice: pending command and macro-recording mode
 			{
 				function()
 					return require("noice").api.status.command.get()
@@ -168,7 +168,6 @@ local opts = {
 	winbar = {},
 	inactive_winbar = {},
 	extensions = {
-		"neo-tree",
 		"lazy",
 		"mason",
 		"trouble",
