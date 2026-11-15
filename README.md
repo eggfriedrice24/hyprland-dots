@@ -20,9 +20,9 @@ Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [M
 
 ## Theme
 
-All configurations share the eggfriedrice design system from `~/p/eggfriedrice.nvim`: colours and typography (Nunito
-Medium for every UI surface, Cartograph CF only for terminal text, a small size scale). Every config that carries
-either points at a generated file under its `extras/`: ghostty, waybar, rofi, dunst, hyprland, hyprlock, GTK 3 and 4,
+All configurations share the eggfriedrice design system from `~/p/eggfriedrice.nvim`: colours and typography
+(Atkinson Hyperlegible Next Medium for every UI surface, Cartograph CF only for terminal text, a small size scale).
+Every config that carries either points at a generated file under its `extras/`: ghostty, waybar, rofi, dunst, hyprland, hyprlock, GTK 3 and 4,
 Thunar, zsh, fzf, fast-syntax-highlighting, bat, eza, btop, opencode and frameit, with the Papirus folders, the
 Starship palette and the GRUB theme derived from it. The palette lives in one place: `make extras` in that repo, then
 `install/theme-apply.sh` here for the derived caches (the GRUB theme, which needs root, on the next `up`). The links are relative (`../../p/eggfriedrice.nvim/...`), so
@@ -103,8 +103,8 @@ The stages in `install/stages/` run in order:
    AUR via yay (`aur.txt`, then the profile's `aur.txt`), bootstrapping yay-bin when no helper is present
 2. **theme** - clones or fast-forwards `~/p/eggfriedrice.nvim`, checks every extra the configs reference and that every
    tracked symlink resolves
-3. **symlinks** - links each config directory into `~/.config`, plus `~/.zshenv`, `~/.wallpapers`, the Cartograph
-   and Nunito fonts and every command in `bin/` into `~/.local/bin`; existing real files are backed up as
+3. **symlinks** - links each config directory into `~/.config`, plus `~/.zshenv`, `~/.wallpapers`, the Cartograph,
+   Atkinson Hyperlegible Next and Nunito fonts and every command in `bin/` into `~/.local/bin`; existing real files are backed up as
    `*.bak.<timestamp>`, and links into the repo whose target is gone are removed
 4. **shell** - `chsh` to zsh, first zinit run, then the fast-syntax-highlighting theme and the bat cache, each rebuilt
    only when the theme is newer; a warning when the Starship palette drifted from the theme
@@ -467,7 +467,7 @@ dotfiles/
 ├── gtk-3.0/ gtk-4.0/    # GTK colours and Thunar
 ├── rofi/ dunst/ bat/ btop/ eza/ frameit/ opencode/ pipewire/ wireplumber/
 ├── .wallpapers/         # linked to ~/.wallpapers
-└── fonts/               # Cartograph CF and Nunito, linked into ~/.local/share/fonts
+└── fonts/               # Cartograph CF, Atkinson Hyperlegible Next and Nunito, linked into ~/.local/share/fonts
 ```
 
 ## License

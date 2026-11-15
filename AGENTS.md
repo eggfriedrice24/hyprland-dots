@@ -234,8 +234,8 @@ Configured in `hypr/hyprland.lua`:
 
 All components use unified colors and typography:
 
-- Source of truth: `~/p/eggfriedrice.nvim/lua/eggfriedrice/colors.lua` and `typography.lua` (Nunito Medium for UI,
-  Cartograph CF for terminal text only, sizes xs 9, sm 10, md 11, lg 13); generated per-app files under its `extras/`
+- Source of truth: `~/p/eggfriedrice.nvim/lua/eggfriedrice/colors.lua` and `typography.lua` (Atkinson Hyperlegible
+  Next Medium for UI, Cartograph CF for terminal text only, sizes xs 9, sm 10, md 11, lg 13); generated per-app files under its `extras/`
   (regenerate with `make extras` there, then run `install/theme-apply.sh` here)
 - Hyprland and hyprlock: `hypr/eggfriedrice.lua` symlink and `source =` of `extras/hyprland` (colours and `$font_ui`)
 - Neovim: eggfriedrice.nvim as a local `dir =` build; lualine, incline and notify take colours from `eggfriedrice.colors`
@@ -272,11 +272,11 @@ The `.gitignore` excludes:
 - **Terminal:** Ghostty
 - **Shell:** Zsh
 - **Editor:** Neovim
-- **Fonts:** Nunito (UI, the variable font, tracked in `fonts/` because Arch's ttf-nunito has no Medium), Cartograph CF
-  (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji. The font picker's other UI
-  candidates: Inter (inter-font) and, from Google Fonts into `~/.local/share/fonts/eggfriedrice` by
-  `hypr/scripts/font-picker --fetch` in stage 9, M PLUS Rounded 1c, Google Sans Flex, Figtree, Rubik, Lexend and
-  Atkinson Hyperlegible Next
+- **Fonts:** Atkinson Hyperlegible Next (UI, the variable font, tracked in `fonts/`: the AUR is its only package),
+  Cartograph CF (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji. The font picker's
+  other UI candidates: Nunito (tracked in `fonts/`, Arch's ttf-nunito has no Medium), Inter (inter-font) and, from
+  Google Fonts into `~/.local/share/fonts/eggfriedrice` by `hypr/scripts/font-picker --fetch` in stage 9, M PLUS
+  Rounded 1c, Google Sans Flex, Figtree, Rubik and Lexend
 - **Additional tools:** waybar, dunst, rofi, awww, cliphist, hypridle, hyprlock, polkit-kde-agent, pipewire, Thunar
 
 ## Code Modification Guidelines
