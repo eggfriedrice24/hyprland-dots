@@ -33,6 +33,7 @@ usage() {
     echo "  --no-upgrade      No keyring refresh and full upgrade in stage 1 (dots-update has just done both)"
     echo "  --skip=a,b        Skip these stages: $(stage_names | paste -sd' ')"
     echo "  --quiet           Only print what changes: no banner, no [OK] lines, no closing notes"
+    echo "Exit status: 0 done, 1 a stage failed, 3 every stage ran but a migration is still pending"
     exit "${1:-0}"
 }
 
@@ -86,6 +87,8 @@ export PATH="$HOME/.local/bin:$PATH"
 export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE PROFILE_DIR NO_UPGRADE QUIET
 
 source "${DOTFILES_DIR}/install/utils.sh"
+# shellcheck source=install/migrate.sh
+source "${DOTFILES_DIR}/install/migrate.sh"
 
 if ! profile_exists "$PROFILE"; then
     error "Unknown machine profile '$PROFILE' (${PROFILE_SOURCE}). Known: $(list_profiles | paste -sd' ')"
@@ -214,4 +217,9 @@ for stage in "${DOTFILES_DIR}"/install/stages/[0-9]*.sh; do
     source "$stage"
 done
 CURRENT_STAGE="done"
+# 3: every stage ran, but a migration failed (or another run held the lock) and is still pending
+if [[ -n "$MIGRATION_FAILED" ]]; then
+    _log END "install.sh finished, migration ${MIGRATION_FAILED} still pending"
+    exit 3
+fi
 _log END "install.sh finished"

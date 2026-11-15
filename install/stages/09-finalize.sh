@@ -136,6 +136,14 @@ if (( ${#FAILED[@]} )); then
     printf '  - %s\n' "${FAILED[@]}"
     echo
 fi
+# Stage 8 leaves a failed migration pending; install.sh exits 3 because of it
+if [[ "${MIGRATION_FAILED:-}" == "locked" ]]; then
+    warn "Migrations did not run: another run held the lock. Run them later: ${DOTFILES_DIR/#$HOME/\~}/install/migrate.sh"
+    echo
+elif [[ -n "${MIGRATION_FAILED:-}" ]]; then
+    warn "Migration ${MIGRATION_FAILED} failed and is still pending, with any after it. After fixing the cause: ${DOTFILES_DIR/#$HOME/\~}/install/migrate.sh"
+    echo
+fi
 # shellcheck disable=SC2153 # NOTES is filled by note() in install/utils.sh
 if (( ${#NOTES[@]} )) && [[ -z "${DOTS_NOTES_FILE:-}" ]]; then
     warn "Before this run's changes are all in effect:"
