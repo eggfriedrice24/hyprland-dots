@@ -1,4 +1,7 @@
 @import url("eggfriedrice.css");
+/* the typography tokens as custom properties (var(--font-ui), ...); terminal text keeps
+   the mono font set in ghostty/font, only the GTK chrome here takes the ui font */
+@import url("typography.css");
 
 /* GTK 4.24+ binds ext-background-effect on every toplevel and sends an
    empty blur region unless a widget has backdrop-filter blur >= 20px;
@@ -32,8 +35,9 @@ tabbar tab {
 }
 
 tabbar tab label {
-  font-family: "Cartograph CF";
-  font-size: 12px;
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-ui);
+  font-size: var(--font-size-xs);
 }
 
 tabbar tab:hover {
