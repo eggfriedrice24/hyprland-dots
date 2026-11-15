@@ -1,0 +1,7 @@
+# Framework Laptop 13 Pro (Intel Core Ultra X7 358H, Panther Lake). Hostname: tf (desktop t, ThinkPad tt).
+# Lines that are not comments are printed by the installer's last stage as manual steps.
+#
+# machines/index matches product_name "Laptop*" from vendor Framework, a guess until the machine is
+# here; if it is wrong the machine resolves to the plain laptop profile, and
+# ./install.sh --profile framework pins it until the index is fixed.
+work through machines/framework/ARRIVAL.md (identity, panel scale, battery node, lid switch, power baseline)

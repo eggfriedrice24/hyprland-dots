@@ -1,0 +1,6 @@
+# Kernel parameters for this profile, added to /etc/default/grub by stage 6:
+#   VARIABLE PARAMETER [KEY]
+# KEY is an ERE for the parameter's name; an existing word matching it is replaced instead of a
+# second value being appended (default: PARAMETER up to its "=").
+# Nothing is needed until the machine has been measured (machines/framework/ARRIVAL.md); candidates:
+# GRUB_CMDLINE_LINUX_DEFAULT mem_sleep_default=s2idle
