@@ -1,0 +1,9 @@
+# ThinkPad, the existing laptop. Hostname: tt (desktop t, Framework tf).
+# Lines that are not comments are printed by the installer's last stage as manual steps.
+#
+# machines/index matches vendor LENOVO plus a ThinkPad product_version or product_family; when
+# neither matches, the machine resolves to the battery-based laptop profile, which this one extends,
+# so it behaves the same either way. To tighten the match, run this on the machine and put the
+# exact strings into machines/index:
+#   cat /sys/class/dmi/id/{sys_vendor,product_name,product_version,product_family}; ls /sys/class/power_supply
+# Before its first install.sh run, check for packages the installer stops on: pacman -Q rust jack2 pulseaudio
