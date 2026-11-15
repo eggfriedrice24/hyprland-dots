@@ -21,7 +21,8 @@
     "custom/separator#left",
     "pulseaudio",
     "network",
-    "battery"
+    "battery",
+    "battery#bat1"
   ],
   "hyprland/workspaces": {
     "format": "{id}",
@@ -100,6 +101,24 @@
   },
   "battery": {
     "bat": "BAT0",
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": "󰂄 {capacity}%",
+    "format-icons": [
+      "󰂎",
+      "󰁺",
+      "󰁾",
+      "󰂁",
+      "󰁹"
+    ]
+  },
+  "battery#bat1": {
+    "_comment": "same block pinned to BAT1 for laptops whose battery is not BAT0; each module hides when its battery is absent, and the pins keep the bluetooth keyboard's battery (whose removal crashed waybar) out of both",
+    "bat": "BAT1",
     "states": {
       "warning": 30,
       "critical": 15
