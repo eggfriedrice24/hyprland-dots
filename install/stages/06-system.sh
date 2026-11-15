@@ -185,7 +185,10 @@ if has_cmd gsettings gsettings-desktop-schemas; then # gsettings is glib2's, pul
     # adw-gtk3 draws everything from named colors, which gtk-3.0/gtk.css redefines from the palette
     gset gtk-theme "'adw-gtk3-dark'"
     # Papirus-Dark with the palette's folders, built into ~/.local/share/icons by papirus-folders.sh
-    if run "$DOTFILES_DIR/install/papirus-folders.sh"; then
+    # only when its stamp says the palette, the script or Papirus changed (install/theme-apply.sh)
+    # shellcheck source=install/theme-apply.sh
+    source "${DOTFILES_DIR}/install/theme-apply.sh"
+    if theme_apply_papirus; then
         gset icon-theme "'Papirus-Dark-eggfriedrice'"
     else
         warn "Papirus folder recolor failed, icon theme left as is"

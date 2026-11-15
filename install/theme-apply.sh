@@ -3,6 +3,7 @@
 # them, which no symlink can carry. Each part rebuilds only when its input is newer than its output.
 #   bat       bat's theme cache, from bat/themes/*.tmTheme (links into extras/bat)
 #   fsh       fast-syntax-highlighting's generated theme, from extras/fsh/eggfriedrice.ini
+#   papirus   the Papirus-Dark-eggfriedrice icon theme, from extras/papirus (install/papirus-folders.sh)
 #   starship  check only: the [palettes.eggfriedrice] block pasted into starship/starship.toml
 #             against extras/starship (the installer never rewrites the tracked file)
 #
@@ -115,6 +116,37 @@ theme_apply_fsh() {
     try "fast-theme $ini" zsh -ic "fast-theme '$ini'"
 }
 
+# papirus: Papirus-Dark-eggfriedrice, built by install/papirus-folders.sh, which stamps its inputs
+# (folder colours, the script, the installed Papirus) and answers --check from that stamp
+theme_apply_papirus() {
+    local script="${DOTFILES_DIR}/install/papirus-folders.sh" out status=0
+    if [[ ! -f /usr/share/icons/Papirus/index.theme ]]; then
+        if [[ "${DRY_RUN:-0}" == "1" ]] && has_pkg papirus-icon-theme; then
+            dry "$script"
+            return 0
+        fi
+        warn "Papirus is not installed, folder icons not recoloured"
+        return 1
+    fi
+    if [[ "$THEME_APPLY_FORCE" == "1" ]]; then
+        info "Rebuilding Papirus folder icons (forced)..."
+        run "$script" --force
+        return
+    fi
+    out="$("$script" --check 2>&1)" || status=$?
+    case "$status" in
+        0) success "Papirus folder icons are current" ;;
+        1)
+            info "Rebuilding Papirus folder icons (${out#papirus-folders: })..."
+            run "$script"
+            ;;
+        *)
+            warn "${out:-papirus-folders.sh --check failed}"
+            return 1
+            ;;
+    esac
+}
+
 # the palette's "name = value" lines, whitespace removed, from a [palettes.eggfriedrice] table
 _starship_palette() {
     awk '/^\[palettes\.eggfriedrice\]/ { on = 1; next } /^\[/ { on = 0 }
@@ -139,6 +171,7 @@ theme_apply_all() {
     local status=0
     theme_apply_bat || status=1
     theme_apply_fsh || status=1
+    theme_apply_papirus || status=1
     theme_check_starship || status=1
     return "$status"
 }
