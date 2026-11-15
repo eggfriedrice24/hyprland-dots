@@ -62,7 +62,16 @@ return {
 				},
 				prettier_markdown = {
 					command = "prettier",
-					args = { "--prose-wrap", "always", "--print-width", "120", "--parser", "markdown", "--stdin-filepath", "$FILENAME" },
+					args = {
+						"--prose-wrap",
+						"always",
+						"--print-width",
+						"120",
+						"--parser",
+						"markdown",
+						"--stdin-filepath",
+						"$FILENAME",
+					},
 					stdin = true,
 				},
 				prettier = {
@@ -163,7 +172,6 @@ return {
 					end
 				end,
 			})
-
 		end,
 	},
 
@@ -180,7 +188,11 @@ return {
 		cmd = "Trouble",
 		opts = {},
 		keys = {
-			{ "<leader>xx", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", desc = "Document Diagnostics (Trouble)" },
+			{
+				"<leader>xx",
+				"<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
+				desc = "Document Diagnostics (Trouble)",
+			},
 			{ "<leader>xX", "<cmd>Trouble diagnostics toggle<cr>", desc = "Workspace Diagnostics (Trouble)" },
 			{ "<leader>xL", "<cmd>Trouble loclist toggle<cr>", desc = "Location List (Trouble)" },
 			{ "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", desc = "Quickfix List (Trouble)" },
