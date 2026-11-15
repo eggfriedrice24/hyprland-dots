@@ -328,7 +328,8 @@ config at all.
 
 The migrations an old machine picks up remove catppuccin-gtk-theme-mocha, kitty and its config, and qt5ct, and swap
 swww for awww, rofi-wayland for rofi, t3code-bin for t3code-nightly-bin, and the AUR fnm-bin and pnpm-bin for the
-repository packages; `install/migrate.sh --status` lists them. Without `dots-update` (to see each step on its own):
+repository packages, and stop postgresql and valkey from starting at boot (`dbup` / `dbdown` start and stop them; a
+server already running keeps running until `dbdown` or a reboot); `install/migrate.sh --status` lists them. Without `dots-update` (to see each step on its own):
 `git -C ~/p/eggfriedrice.nvim pull --ff-only`, then `./install.sh --dry-run` and `./install.sh` in `~/dotfiles`.
 
 ## After install
