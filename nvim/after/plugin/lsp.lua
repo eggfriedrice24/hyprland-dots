@@ -20,7 +20,7 @@ vim.diagnostic.config({
 		focusable = true,
 		style = "minimal",
 		border = "rounded",
-		source = "always",
+		source = true,
 		header = "",
 		prefix = "",
 		max_width = 80,
@@ -48,9 +48,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			require("telescope.builtin").lsp_type_definitions({ reuse_win = false })
 		end, vim.tbl_extend("force", opts, { desc = "Goto Type Definition" }))
 
+		-- nowait: the built-in gra, grn, grr and friends would otherwise make
+		-- gr wait 'timeoutlen' for a second key
 		vim.keymap.set("n", "gr", function()
 			require("telescope.builtin").lsp_references({ reuse_win = false })
-		end, vim.tbl_extend("force", opts, { desc = "Find References" }))
+		end, vim.tbl_extend("force", opts, { nowait = true, desc = "Find References" }))
 
 		vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "Hover Documentation" }))
 
@@ -61,13 +63,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			vim.diagnostic.open_float,
 			vim.tbl_extend("force", opts, { desc = "Show diagnostic" })
 		)
-		vim.keymap.set("n", "]d", vim.diagnostic.goto_next, vim.tbl_extend("force", opts, { desc = "Next diagnostic" }))
-		vim.keymap.set(
-			"n",
-			"[d",
-			vim.diagnostic.goto_prev,
-			vim.tbl_extend("force", opts, { desc = "Previous diagnostic" })
-		)
+		vim.keymap.set("n", "]d", function()
+			vim.diagnostic.jump({ count = 1, float = true })
+		end, vim.tbl_extend("force", opts, { desc = "Next diagnostic" }))
+		vim.keymap.set("n", "[d", function()
+			vim.diagnostic.jump({ count = -1, float = true })
+		end, vim.tbl_extend("force", opts, { desc = "Previous diagnostic" }))
 		vim.keymap.set(
 			"n",
 			"<leader>q",
