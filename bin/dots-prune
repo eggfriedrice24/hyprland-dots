@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # dots-prune: remove the packages this machine has that the dotfiles do not list.
 #
-# Candidates are the explicitly installed packages that none of these name:
+# Candidates are the explicitly installed packages no other package requires and none of these name:
 #   install/packages/*.txt, and for each layer of the machine's profile machines/<layer>/packages.txt,
 #   aur.txt and keep.txt (keep.txt: what this machine keeps on purpose, tracked, one package per line)
 #   the packages bootstrap.sh installs (read from its pacstrap line), microcode and the Vulkan drivers
@@ -72,32 +72,41 @@ add_known amd-ucode intel-ucode snap-pac yay yay-bin paru paru-bin
 add_known vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel nvidia-utils lib32-nvidia-utils
 
 # ---------------------------------------------------------------- candidates
-# name -> provides, for every explicitly installed package
-declare -A PROVIDES=()
-while IFS='|' read -r name provides; do
+# name -> provides, and the names another installed package requires, for every explicitly installed package
+declare -A PROVIDES=() REQUIRED=()
+while IFS='|' read -r name provides required_by; do
     PROVIDES["$name"]="$provides"
+    [[ -n "$required_by" ]] && REQUIRED["$name"]=1
 done < <(LC_ALL=C pacman -Qei | awk -F' *: ' '
-    /^Name /     { n = $2 }
-    /^Provides / { p = ($2 == "None") ? "" : $2 }
-    /^$/         { if (n != "") print n "|" p; n = ""; p = "" }')
+    /^Name /        { n = $2 }
+    /^Provides /    { p = ($2 == "None") ? "" : $2 }
+    /^Required By / { r = ($2 == "None") ? "" : "1" }
+    /^$/            { if (n != "") print n "|" p "|" r; n = ""; p = ""; r = "" }')
 
-candidates=()
+# an unlisted package another one requires is accounted for by its dependent (pacman -Rns refuses it)
+candidates=() required=()
 for name in "${!PROVIDES[@]}"; do
     [[ -n "${KNOWN[$name]:-}" ]] && continue
     listed=0
     for provided in ${PROVIDES[$name]}; do
         [[ -n "${KNOWN[${provided%%[<>=]*}]:-}" ]] && { listed=1; break; }
     done
-    ((listed)) || candidates+=("$name")
+    ((listed)) && continue
+    if [[ -n "${REQUIRED[$name]:-}" ]]; then required+=("$name"); else candidates+=("$name"); fi
 done
 mapfile -t candidates < <(printf '%s\n' "${candidates[@]+"${candidates[@]}"}" | sed '/^$/d' | sort)
+mapfile -t required < <(printf '%s\n' "${required[@]+"${required[@]}"}" | sed '/^$/d' | sort)
 
 # "name<TAB>size<TAB>+N deps" per candidate; the deps are what -Rns would take along with it
 describe() {
-    local name size deps
+    local size deps
     size="$(LC_ALL=C pacman -Qi "$1" | awk -F' *: ' '/^Installed Size/ { print $2 }')"
-    deps="$(pacman -Rsp --print-format '%n' "$1" 2>/dev/null | grep -c -v -x "$1" || true)"
-    printf '%s\t%s\t+%s deps\n' "$1" "$size" "$deps"
+    if deps="$(pacman -Rsp --print-format '%n' "$1" 2>/dev/null)"; then
+        deps="+$(printf '%s' "$deps" | grep -c -v -x "$1" || true) deps"
+    else
+        deps="required" # pacman would refuse it: something still depends on it
+    fi
+    printf '%s\t%s\t%s\n' "$1" "$size" "$deps"
 }
 
 info "Profile: $PROFILE ($PROFILE_SOURCE), layers: ${PROFILE_LAYERS[*]}"
@@ -107,6 +116,9 @@ else
     info "${#candidates[@]} installed package(s) the dotfiles do not list:"
     table="$(for name in "${candidates[@]}"; do describe "$name"; done | column -t -s $'\t')"
     printf '%s\n' "$table" | sed 's/^/    /'
+fi
+if ((${#required[@]})); then
+    info "${#required[@]} more the dotfiles do not list stay, other packages need them (pacman -D --asdeps lets one go with its last dependent): ${required[*]}"
 fi
 
 mapfile -t orphans < <(pacman -Qdtq 2>/dev/null || true)
@@ -130,13 +142,18 @@ if ((${#candidates[@]})); then
         --preview='pacman -Qi {1}' --preview-window=right,60%,wrap | awk '{ print $1 }' || true)
     if ((${#picked[@]})); then
         info "Removing ${#picked[@]} package(s) and the dependencies nothing else needs:"
-        pacman -Rsp --print-format '%n %v' "${picked[@]}" | sed 's/^/    /'
-        read -r -p "Remove these? [y/N] " answer
-        if [[ "$answer" == [yY]* ]]; then
-            sudo pacman -Rns "${picked[@]}"
-            removed=("${picked[@]}")
+        # a refused or declined removal still goes on to the keep.txt offer and the orphans
+        if ! pacman -Rsp --print-format '%n %v' "${picked[@]}" | sed 's/^/    /'; then
+            warn "pacman cannot remove this selection (see above), nothing removed"
         else
-            info "Nothing removed"
+            read -r -p "Remove these? [y/N] " answer
+            if [[ "$answer" != [yY]* ]]; then
+                info "Nothing removed"
+            elif sudo pacman -Rns "${picked[@]}"; then
+                removed=("${picked[@]}")
+            else
+                warn "pacman -Rns did not finish, nothing removed"
+            fi
         fi
     fi
 fi
