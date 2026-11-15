@@ -42,7 +42,25 @@ export DOTFILES_DIR DRY_RUN MACHINE
 
 source "${DOTFILES_DIR}/install/utils.sh"
 
-trap 'error "Installation failed in ${CURRENT_STAGE}. Check the output above."' ERR
+# Name the file, line and command that failed. A command that failed inside `run` is reported
+# at the line that called run, with its arguments (BASH_COMMAND would only say "$@").
+# Subshells stay quiet: a failure that matters fails the parent command too and is reported there,
+# while one inside a process substitution (`< <(find ...)`) never stops the install.
+on_error() {
+    if (( BASH_SUBSHELL > 0 )); then
+        return 0
+    fi
+    local status="$1" line="$2" cmd="$3"
+    shift 3
+    local file="${BASH_SOURCE[1]:-$0}"
+    if [[ "${FUNCNAME[1]:-}" == "run" ]]; then
+        file="${BASH_SOURCE[2]:-$file}"
+        line="${BASH_LINENO[1]:-$line}"
+        cmd="$*"
+    fi
+    error "Installation failed in ${CURRENT_STAGE} (exit ${status}) at ${file#"$DOTFILES_DIR"/}:${line}: ${cmd}"
+}
+trap 'on_error "$?" "$LINENO" "$BASH_COMMAND" "$@"' ERR
 
 # Prerequisites the script cannot install for itself
 if [[ $EUID -eq 0 ]]; then
