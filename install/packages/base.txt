@@ -14,6 +14,10 @@ wget
 bind # dig, host, nslookup
 iw # Wi-Fi inspection (iw event, iw dev wlan0 link)
 7zip
+bc # decimal arithmetic for scripts
+strace # what a program opens, calls and fails on
+openbsd-netcat # nc: port checks and raw connections
+mtr # traceroute and ping per hop: where the lag or loss is
 networkmanager
 bluez
 bluez-utils
