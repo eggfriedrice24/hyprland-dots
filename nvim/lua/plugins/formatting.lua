@@ -88,8 +88,7 @@ return {
 			},
 		},
 		init = function()
-			-- If you want the formatters to have priority over the LSP
-			-- you can set this option to true
+			-- gq formats the motion with conform's formatters
 			vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 		end,
 	},

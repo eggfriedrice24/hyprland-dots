@@ -38,7 +38,8 @@ return {
 		},
 	},
 
-	-- 99 (ThePrimeagen's AI agent, uses Claude Code CLI)
+	-- 99 (ThePrimeagen's AI agent; starts on the OpenCode provider,
+	-- <leader>9p switches to Claude Code)
 	{
 		"ThePrimeagen/99",
 		dependencies = {
