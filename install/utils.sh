@@ -209,19 +209,20 @@ link_path() {
     run ln -sfn "$src" "$dest"
 }
 
-# Copy a tracked file into /etc (root, 0644) when it differs from what is there.
+# install_etc_file SRC DEST [MODE]: copy a tracked file to DEST (owned by root, MODE default 644,
+# 755 for a hook script) when its content or mode differs from what is there.
 # ETC_FILE_CHANGED is 1 afterwards when the file was (or in a dry run would be) replaced, so the
 # caller can add the note the change needs.
 ETC_FILE_CHANGED=0
 install_etc_file() {
-    local src="$1" dest="$2"
+    local src="$1" dest="$2" mode="${3:-644}"
     ETC_FILE_CHANGED=0
-    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest" && [[ "$(stat -c %a "$dest")" == "$mode" ]]; then
         success "Already in place: $dest"
         return 0
     fi
     info "Installing: $dest"
-    run sudo install -Dm644 "$src" "$dest"
+    run sudo install -Dm"$mode" "$src" "$dest"
     ETC_FILE_CHANGED=1
 }
 
@@ -278,6 +279,91 @@ enable_user_service() {
             warn "Could not enable $service, it may need an active user session"
         fi
     fi
+}
+
+# ---------------------------------------------------------------- root, removal, snapshots
+
+# as_root CMD...: run a command as root. sudo when it does not have to ask (cached credentials, or
+# NOPASSWD as in the bootstrap chroot) or has a terminal to ask on; pkexec and the polkit agent's
+# dialog when started without a terminal (a keybind, a launcher) inside the graphical session.
+# Stages keep `run sudo`; migrations use this.
+as_root() {
+    if [[ $EUID -eq 0 ]]; then
+        "$@"
+    elif sudo -n true 2>/dev/null || [[ -t 0 || -t 2 ]]; then
+        sudo "$@"
+    elif command -v pkexec &>/dev/null && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+        pkexec "$@"
+    else
+        error "Cannot become root (no terminal for sudo, no graphical session for pkexec): $*"
+        return 1
+    fi
+}
+
+# remove_packages PKG...: remove the installed ones, with the dependencies nothing else needs.
+# Without -c: a package something else still depends on makes pacman, and so the caller, fail.
+remove_packages() {
+    local -a installed=()
+    local pkg
+    for pkg in "$@"; do
+        # exact name only: pacman -Q also answers for a provider (frameit -> frameit-bin), which must stay
+        if [[ "$(pacman -Qq "$pkg" 2>/dev/null)" == "$pkg" ]]; then
+            installed+=("$pkg")
+        fi
+    done
+    if (( ${#installed[@]} == 0 )); then
+        success "Already absent: $*"
+        return 0
+    fi
+    info "Removing packages: ${installed[*]}"
+    run as_root pacman -Rns --noconfirm "${installed[@]}"
+}
+
+# remove_path PATH...: delete files or directories inside $HOME that an older version left behind
+remove_path() {
+    local path
+    for path in "$@"; do
+        if [[ "$path" != "$HOME"/?* || "$path" == *..* ]]; then
+            error "remove_path only deletes inside \$HOME: $path"
+            return 1
+        fi
+        if [[ -e "$path" || -L "$path" ]]; then
+            info "Removing: $path"
+            run rm -rf -- "$path"
+        else
+            success "Already absent: $path"
+        fi
+    done
+}
+
+# remove_etc_file PATH: delete a file under /etc that an older version installed (the counterpart
+# of install_etc_file). Sets ETC_FILE_CHANGED like install_etc_file.
+remove_etc_file() {
+    local path="$1"
+    ETC_FILE_CHANGED=0
+    if [[ "$path" != /etc/?* || "$path" == *..* ]]; then
+        error "remove_etc_file only deletes inside /etc: $path"
+        return 1
+    fi
+    if [[ -e "$path" || -L "$path" ]]; then
+        info "Removing: $path"
+        run as_root rm -f -- "$path"
+        ETC_FILE_CHANGED=1
+    else
+        success "Already absent: $path"
+    fi
+}
+
+# has_snapshots: the btrfs layout bootstrap.sh builds (/ on btrfs, /.snapshots its own @snapshots
+# subvolume) with snapper installed. ext4 machines, this desktop among them, and btrfs layouts made
+# by hand answer no, so nothing creates snapper configs there.
+has_snapshots() {
+    local fstype opts
+    fstype="$(findmnt -no FSTYPE / 2>/dev/null)" || return 1
+    [[ "$fstype" == btrfs ]] || return 1
+    opts="$(findmnt -no OPTIONS /.snapshots 2>/dev/null)" || return 1
+    [[ ",$opts," == *,subvol=@snapshots,* || ",$opts," == *,subvol=/@snapshots,* ]] || return 1
+    command -v snapper &>/dev/null
 }
 
 # ---------------------------------------------------------------- repositories and theme
