@@ -316,7 +316,7 @@ snapshot_pre() {
     ((DO_SNAPSHOT && SNAP_AVAILABLE)) || return 0
     local desc="dots-update from ${DOTS_OLD:0:7}" last
     local -a args=(pre)
-    # a rollback to this snapshot lists the migrations applied after it (install/migrate.sh --rearm)
+    # a label for snapper list only; a rollback finds the later migrations by date (migrations_after)
     last="$(applied_migrations | tail -n1)"
     if [[ -n "$last" ]]; then args+=(--userdata "migration=$last"); fi
     if ((DRY_RUN)); then
