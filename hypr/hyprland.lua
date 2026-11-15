@@ -72,6 +72,10 @@ hl.config({
 		mouse_move_focuses_monitor = true,
 		enable_swallow = true,
 		swallow_regex = "^(com\\.mitchellh\\.ghostty)$",
+		-- lets a fresh hyprlock take over the lock after the old one crashed. Did not help on its own
+		-- in the Sep 26 2026 incident: the cure there was `pkill hyprlock` plus
+		-- `hyprctl eval 'hl.clear_crashed_lockscreen()'` from a TTY (recipe in the README)
+		allow_session_lock_restore = true,
 	},
 })
 
