@@ -277,14 +277,18 @@ cp /etc/pacman.conf /mnt/etc/pacman.conf
 genfstab -U /mnt >>/mnt/etc/fstab
 # subvolid pins break snapper rollbacks; subvol= is enough
 sed -i 's/,subvolid=[0-9]*//; s/subvolid=[0-9]*,//' /mnt/etc/fstab
+# a /boot that fails to mount must not end in emergency mode (root is locked); /home stays a hard mount
+sed -i -E 's|^(\S+\s+/boot\s+vfat\s+)(\S+)|\1\2,nofail|' /mnt/etc/fstab
+grep -qE '^\S+\s+/boot\s+vfat\s+\S*nofail' /mnt/etc/fstab || warn "Could not mark /boot nofail in /etc/fstab"
 
 if [[ "$ENCRYPT" == y ]]; then
     # root is opened by the initramfs (cryptdevice= on the kernel line); the rest by systemd from crypttab
     if [[ -n "$SWAP_PART" ]]; then
-        # PARTUUID: the partition has no stable content to carry a UUID, it is re-encrypted every boot
+        # PARTUUID: the partition has no stable content to carry a UUID, it is re-encrypted every boot.
+        # nofail: a boot without swap is better than emergency mode on a locked root
         swap_partuuid="$(blkid -o value -s PARTUUID "$SWAP_PART")"
-        echo "cryptswap PARTUUID=$swap_partuuid /dev/urandom swap,cipher=aes-xts-plain64,size=512,discard" >>/mnt/etc/crypttab
-        echo "/dev/mapper/cryptswap none swap defaults 0 0" >>/mnt/etc/fstab
+        echo "cryptswap PARTUUID=$swap_partuuid /dev/urandom swap,cipher=aes-xts-plain64,size=512,discard,nofail" >>/mnt/etc/crypttab
+        echo "/dev/mapper/cryptswap none swap defaults,nofail 0 0" >>/mnt/etc/fstab
     fi
     if [[ "$HOME_MODE" == f ]]; then
         install -Dm400 /tmp/crypthome.key /mnt/etc/cryptsetup-keys.d/crypthome.key
@@ -317,7 +321,10 @@ EOF
 encrypt_hook=""
 [[ "$ENCRYPT" == y ]] && encrypt_hook="encrypt "
 mkdir -p /mnt/etc/mkinitcpio.conf.d
+# vfat is preloaded: a snapshot boots the newest kernel from the ESP with the older modules of its
+# own root, which do not match it, so without vfat in the initramfs /boot cannot be mounted
 cat >/mnt/etc/mkinitcpio.conf.d/bootstrap.conf <<EOF
+MODULES=(vfat)
 HOOKS=(base udev keyboard autodetect microcode modconf kms keymap consolefont block ${encrypt_hook}filesystems fsck grub-btrfs-overlayfs)
 EOF
 arch-chroot /mnt mkinitcpio -P
