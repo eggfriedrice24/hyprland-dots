@@ -486,6 +486,7 @@ THEME_REQUIRED_EXTRAS=(
     hyprland/eggfriedrice.conf
     lua/eggfriedrice.lua
     opencode/eggfriedrice.json
+    palette/eggfriedrice.json
     papirus/eggfriedrice.sh
     rofi/eggfriedrice.rasi
     zsh/eggfriedrice.zsh
