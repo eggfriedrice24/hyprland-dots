@@ -83,22 +83,6 @@ return {
 		end,
 	},
 
-	{
-		"snacks.nvim",
-		opts = {
-			scroll = { enabled = false },
-		},
-		keys = {
-			{
-				"<leader>t",
-				function()
-					Snacks.terminal.toggle(nil, { win = { position = "bottom", height = 0.3 } })
-				end,
-				desc = "Toggle Terminal",
-			},
-		},
-	},
-
 	-- buffer line
 	{
 		"akinsho/bufferline.nvim",
@@ -172,9 +156,23 @@ return {
 		opts = {},
 	},
 
+	-- snacks: loaded at startup, the dashboard is set up on UIEnter and
+	-- would never show if the plugin waited for <leader>t
 	{
 		"folke/snacks.nvim",
+		lazy = false,
+		priority = 1000,
+		keys = {
+			{
+				"<leader>t",
+				function()
+					Snacks.terminal.toggle(nil, { win = { position = "bottom", height = 0.3 } })
+				end,
+				desc = "Toggle Terminal",
+			},
+		},
 		opts = {
+			scroll = { enabled = false },
 			dashboard = {
 				preset = {
 					header = [[

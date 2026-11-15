@@ -41,7 +41,7 @@ local opts = {
 		component_separators = { left = "", right = "" },
 		section_separators = { left = "", right = "" },
 		disabled_filetypes = {
-			statusline = { "dashboard", "alpha", "starter" },
+			statusline = { "snacks_dashboard" },
 			winbar = {},
 		},
 		ignore_focus = {},
