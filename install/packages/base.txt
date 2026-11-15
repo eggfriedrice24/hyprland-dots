@@ -4,6 +4,7 @@ base-devel
 curl
 jq
 zsh
+keychain
 openssh
 unzip
 man-db

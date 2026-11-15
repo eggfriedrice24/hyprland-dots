@@ -7,7 +7,10 @@ source "$ZDOTDIR/session.zsh"
 
 export GPG_TTY="${TTY:-$(tty)}"
 
-# SSH agent: SSH_AUTH_SOCK comes from session.zsh (the stock ssh-agent.socket user unit)
+# SSH Agent (keychain reuses existing agent across terminals; the key is restored by hand, see README)
+if command -v keychain >/dev/null; then
+  eval "$(keychain --eval --quiet --noask efr)"
+fi
 
 # FNM (Fast Node Manager) - auto-switch Node versions from .nvmrc. Versions live in
 # ~/.local/share/fnm; session.zsh puts the binary and the default Node on PATH.
