@@ -18,23 +18,44 @@ if has_pkg zram-generator; then
     install_etc_file "$etc_src/systemd/zram-generator.conf" /etc/systemd/zram-generator.conf
 fi
 
-# Bluetooth: advertise as fast-connectable (quicker headphone and keyboard reconnects)
-if [[ -f /etc/bluetooth/main.conf ]]; then
-    if grep -q '^FastConnectable = true' /etc/bluetooth/main.conf; then
+# Bluetooth: advertise as fast-connectable (quicker headphone and keyboard reconnects).
+# The key lives in [General]; a main.conf without even the commented default gets it appended there.
+bt_conf=/etc/bluetooth/main.conf
+fc_active='^[[:space:]]*FastConnectable[[:space:]]*='
+fc_commented='^#[[:space:]]*FastConnectable[[:space:]]*='
+if [[ -f "$bt_conf" ]]; then
+    if grep -Eq "${fc_active}[[:space:]]*true[[:space:]]*$" "$bt_conf"; then
         success "bluetooth FastConnectable already on"
     else
         info "Enabling bluetooth FastConnectable..."
-        run sudo sed -i 's/^#\?FastConnectable = .*/FastConnectable = true/' /etc/bluetooth/main.conf
+        if grep -Eq "$fc_active" "$bt_conf"; then
+            run sudo sed -i -E "s/${fc_active}.*/FastConnectable = true/" "$bt_conf"
+        elif grep -Eq "$fc_commented" "$bt_conf"; then
+            # uncomment only the first commented default
+            run sudo sed -i -E "0,/${fc_commented}/ s/${fc_commented}.*/FastConnectable = true/" "$bt_conf"
+        elif grep -q '^\[General\]' "$bt_conf"; then
+            run sudo sed -i '0,/^\[General\]/ s/^\[General\].*/&\nFastConnectable = true/' "$bt_conf"
+        else
+            run sudo sed -i '$a [General]\nFastConnectable = true' "$bt_conf"
+        fi
     fi
 fi
 
-# Wireless regulatory domain
-if [[ -f /etc/conf.d/wireless-regdom ]]; then
-    if grep -q '^WIRELESS_REGDOM="FR"' /etc/conf.d/wireless-regdom; then
+# Wireless regulatory domain: FR active and no other domain active (the file is sourced, so a
+# second uncommented line would win or lose depending on its position)
+regdom_conf=/etc/conf.d/wireless-regdom
+if [[ -f "$regdom_conf" ]]; then
+    other_regdoms="$(grep '^WIRELESS_REGDOM=' "$regdom_conf" | grep -v '^WIRELESS_REGDOM="FR"$' || true)"
+    if [[ -z "$other_regdoms" ]] && grep -q '^WIRELESS_REGDOM="FR"$' "$regdom_conf"; then
         success "wireless regdom already FR"
     else
         info "Setting wireless regdom to FR..."
-        run sudo sed -i 's/^#WIRELESS_REGDOM="FR"$/WIRELESS_REGDOM="FR"/' /etc/conf.d/wireless-regdom
+        # comment every active domain, then enable FR (appended when the stock FR line is missing)
+        if grep -Eq '^#?WIRELESS_REGDOM="FR"$' "$regdom_conf"; then
+            run sudo sed -i -e 's/^WIRELESS_REGDOM=/#&/' -e 's/^#WIRELESS_REGDOM="FR"$/WIRELESS_REGDOM="FR"/' "$regdom_conf"
+        else
+            run sudo sed -i -e 's/^WIRELESS_REGDOM=/#&/' -e '$a WIRELESS_REGDOM="FR"' "$regdom_conf"
+        fi
     fi
 fi
 
