@@ -58,4 +58,15 @@ enable_user_service pipewire.socket
 enable_user_service pipewire-pulse.socket
 enable_user_service wireplumber.service
 
+# ssh-agent: openssh's socket-activated agent, one per user session; session.zsh points
+# SSH_AUTH_SOCK at it and AddKeysToAgent in ~/.ssh/config loads a key on first use
+if has_pkg openssh; then
+    agent_was_enabled=0
+    systemctl --user is-enabled ssh-agent.socket &>/dev/null && agent_was_enabled=1
+    enable_user_service ssh-agent.socket
+    if (( ! agent_was_enabled )); then
+        note relogin "ssh-agent.socket starts with the next session; until then shells point SSH_AUTH_SOCK at a socket nothing listens on"
+    fi
+fi
+
 success "=== Stage 5: Complete ==="

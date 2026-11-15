@@ -43,11 +43,18 @@ export BROWSER="zen-browser"
 export VISUAL="nvim"
 export EDITOR="nvim"
 
+# ssh-agent: openssh's ssh-agent.socket user unit (enabled in install stage 5). An SSH login
+# that forwarded an agent keeps the forwarded one.
+if [[ -z $SSH_CONNECTION || -z $SSH_AUTH_SOCK ]]; then
+  export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+fi
+
 # Names .zprofile hands to systemd and D-Bus activation before it starts Hyprland
 session_env=(
   PATH
   XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CONFIG_DIRS XDG_DATA_DIRS
   EDITOR VISUAL TERMINAL BROWSER
+  SSH_AUTH_SOCK
 )
 
 # Machine-only additions (project bin dirs and the like) go in zsh/local.zsh, which git

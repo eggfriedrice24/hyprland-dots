@@ -144,7 +144,7 @@ if (( ${#NOTES[@]} )) && [[ -z "${DOTS_NOTES_FILE:-}" ]]; then
 fi
 if [[ "${QUIET:-0}" != "1" ]]; then
     info "Manual steps the installer does not cover (details in README.md):"
-    echo "  - restore ~/.ssh (keys and config) and ~/.gitconfig, then: gh auth login"
+    echo "  - restore ~/.ssh (keys and config; 'AddKeysToAgent yes' there hands keys to ssh-agent) and ~/.gitconfig, then: gh auth login"
     echo "  - tailscale up"
     echo "  - pair Bluetooth devices with bluetoothctl"
     echo "  - default apps: xdg-mime default zen.desktop x-scheme-handler/http (full list in README.md)"
