@@ -1,4 +1,4 @@
-# dunst - colours come from the eggfriedrice drop-in in dunstrc.d/
+# dunst - colours and the font come from the eggfriedrice drop-in in dunstrc.d/
 
 [global]
     ### Geometry
@@ -13,9 +13,9 @@
     notification_limit = 4
 
     ### Look
-    font = Cartograph CF 10.5
+    # the summary in the typography tokens' emphasis weight; bold would be heavier than the scale
     markup = full
-    format = "<b>%s</b>\n%b"
+    format = "<span weight='semibold'>%s</span>\n%b"
     alignment = left
     vertical_alignment = center
     show_indicators = false

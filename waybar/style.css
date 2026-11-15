@@ -1,9 +1,10 @@
 @import url("eggfriedrice.css");
+/* the theme's ui font with the icon font behind it, at the ui weight (500) and the default
+   size (sm, 10pt); GTK3 CSS has no variables, so other sizes and weights below are written
+   out on the same scale: xs 9pt, md 11pt, lg 13pt, emphasis 600 */
+@import url("font.css");
 
 * {
-  font-family: "Cartograph CF", "Symbols Nerd Font Mono", monospace;
-  font-size: 13px;
-  font-weight: 500;
   min-height: 0;
 }
 
@@ -38,7 +39,7 @@ window#waybar {
   padding: 0 5px;
   margin: 6px 2px;
   border-radius: 3px;
-  font-size: 11px;
+  font-size: 9pt;
   color: @bg_dark;
   background: @yellow;
   border: none;
@@ -50,10 +51,9 @@ window#waybar {
   color: @bg_dark;
 }
 
-/* Active Window Title */
+/* Active Window Title: dimmed by colour; the ui weight stays, Regular is too thin on the navy */
 #window {
   color: @comment;
-  font-weight: 400;
   padding-left: 8px;
 }
 
