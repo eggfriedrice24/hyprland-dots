@@ -32,6 +32,7 @@ warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; }
 success() { printf "${GREEN}[OK]${NC} %s\n" "$*"; }
 die() { error "$*"; exit 1; }
+heading() { printf '%b%s%b\n' "$BOLD" "$*" "$NC"; }
 trap 'error "bootstrap failed at line $LINENO: $BASH_COMMAND"' ERR
 # the temporary NOPASSWD file must not outlive the run, whether it ends, dies or is interrupted.
 # An EXIT trap only: bash runs it on INT and TERM too, while an INT handler would let the script go on.
@@ -92,7 +93,7 @@ sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
 # ---------------------------------------------------------------- questions
 ISO_DISK="$(iso_boot_disk)"
 echo
-printf "${BOLD}Disks:${NC}\n"
+heading "Disks:"
 # USB disks stay listed and selectable (Framework storage expansion cards are USB)
 lsblk -dpno NAME,SIZE,TRAN,MODEL -e 7,11 | awk -v b="$ISO_DISK" '$1 != b && $1 !~ /zram/'
 [[ -n "$ISO_DISK" ]] && echo "  ($ISO_DISK is the live ISO and not listed)"
@@ -112,7 +113,7 @@ root_min=${ROOT_GB:-20} # without a root size, leave at least 20 GiB for it
     die "${ESP_GB} GiB ESP + ${SWAP_GB} GiB swap + ${root_min} GiB root does not fit on $ROOT_DISK (${disk_gib} GiB)"
 
 echo
-printf "${BOLD}Partitions:${NC}\n"
+heading "Partitions:"
 lsblk -pno NAME,SIZE,FSTYPE,LABEL -e 7,11 | grep -v zram
 echo
 echo "Home: [k]eep an existing ext4 partition (not formatted), [f]ormat a whole disk as ext4, [s]ubvolume on the root disk"
@@ -177,7 +178,7 @@ fi
 
 # ---------------------------------------------------------------- confirm
 echo
-printf "${BOLD}Summary${NC}\n"
+heading "Summary"
 echo "  System disk:  $ROOT_DISK  (wiped: ${ESP_GB} GiB ESP, ${SWAP_GB} GiB swap, btrfs root ${ROOT_GB:-rest}${ROOT_GB:+ GiB})"
 case "$HOME_MODE" in
     k) echo "  /home:        $HOME_DEV (kept, NOT formatted; a kept ~/dotfiles is $([[ "$PULL_KEPT" =~ ^[Yy] ]] || printf 'not ')fast-forwarded)" ;;
