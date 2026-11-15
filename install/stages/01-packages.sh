@@ -55,7 +55,25 @@ for list in base system audio hyprland apps dev fonts; do
     install_packages "${DOTFILES_DIR}/install/packages/${list}.txt"
 done
 
+# Clone and build yay-bin; returns non-zero instead of aborting (AUR down, makepkg failure)
+bootstrap_yay() {
+    local tmpdir status=0
+    tmpdir="$(mktemp -d)" || return 1
+    if ! git clone --quiet https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin" ||
+        ! (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm); then
+        status=1
+    fi
+    rm -rf "$tmpdir"
+    return "$status"
+}
+
+aur_lists=(aur)
+if [[ "$MACHINE" == "desktop" ]]; then
+    aur_lists+=(aur-desktop)
+fi
+
 # AUR helper: yay is what the existing machines use; bootstrap yay-bin when nothing is present
+AUR_HELPER=""
 if command -v yay &>/dev/null; then
     AUR_HELPER="yay"
     success "AUR helper found: yay"
@@ -66,20 +84,22 @@ else
     info "No AUR helper found, bootstrapping yay-bin..."
     if [[ "${DRY_RUN:-0}" == "1" ]]; then
         dry "clone and install yay-bin from AUR"
-    else
-        tmpdir="$(mktemp -d)"
-        git clone https://aur.archlinux.org/yay-bin.git "$tmpdir/yay-bin"
-        (cd "$tmpdir/yay-bin" && makepkg -si --noconfirm)
-        rm -rf "$tmpdir"
+        AUR_HELPER="yay"
+    elif bootstrap_yay; then
         success "yay installed"
+        AUR_HELPER="yay"
+    else
+        # the official packages are in; everything after this stage still works without the AUR ones
+        warn "Could not build yay-bin, skipping the AUR lists: ${aur_lists[*]}"
+        FAILED+=("yay-bin bootstrap; AUR lists not installed: ${aur_lists[*]}")
     fi
-    AUR_HELPER="yay"
 fi
 export AUR_HELPER
 
-install_aur_packages "${DOTFILES_DIR}/install/packages/aur.txt"
-if [[ "$MACHINE" == "desktop" ]]; then
-    install_aur_packages "${DOTFILES_DIR}/install/packages/aur-desktop.txt"
+if [[ -n "$AUR_HELPER" ]]; then
+    for list in "${aur_lists[@]}"; do
+        install_aur_packages "${DOTFILES_DIR}/install/packages/${list}.txt"
+    done
 fi
 
 success "=== Stage 1: Complete ==="
