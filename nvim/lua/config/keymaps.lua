@@ -20,8 +20,6 @@ keymap("x", "p", [["_dP]])
 
 -- New tab
 keymap("n", "te", ":tabedit<Return>")
-keymap("n", "<tab>", ":tabnext<Return>", opts)
-keymap("n", "<s-tab>", ":tabprev<Return>", opts)
 
 -- Builtin explorer
 keymap("n", "ex", ":Ex<Return>")
