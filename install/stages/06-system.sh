@@ -111,13 +111,25 @@ grub_add_param() {
     grub_changed=1
 }
 
-if [[ -f "$grub_file" ]]; then
-    grub_add_param GRUB_CMDLINE_LINUX "zswap.enabled=0" # zram replaces zswap
-    if [[ "$MACHINE" == "desktop" ]]; then
-        # ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see hypr/hyprland.lua).
-        # The key also matches an older video=DP-N: entry (the monitor was on DP-3 until Sep 10).
-        grub_add_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240" 'video=DP-[0-9]+:'
+# kernel_param VAR PARAM [KEY]: through grub_add_param where GRUB is the bootloader, otherwise
+# collected for one warning (this stage only knows how to edit GRUB)
+manual_params=()
+kernel_param() {
+    if [[ -f "$grub_file" ]]; then
+        grub_add_param "$@"
+    else
+        manual_params+=("$2")
     fi
+}
+
+kernel_param GRUB_CMDLINE_LINUX "zswap.enabled=0" # zram replaces zswap
+if [[ "$MACHINE" == "desktop" ]]; then
+    # ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see hypr/hyprland.lua).
+    # The key also matches an older video=DP-N: entry (the monitor was on DP-3 until Sep 10).
+    kernel_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240" 'video=DP-[0-9]+:'
+fi
+
+if [[ -f "$grub_file" ]]; then
     if grep -q '^GRUB_TIMEOUT=2$' "$grub_file"; then
         success "GRUB timeout already 2s"
     else
@@ -134,7 +146,7 @@ if [[ -f "$grub_file" ]]; then
         fi
     fi
 else
-    info "No /etc/default/grub, skipping kernel command line"
+    warn "No $grub_file, so GRUB is not the bootloader here; add these kernel parameters to its boot entries by hand: ${manual_params[*]}"
 fi
 
 # GTK theme and dark mode live in dconf; nothing in the dotfiles carries them otherwise
