@@ -2,7 +2,8 @@
    leaks into other GTK apps. One translucent surface for the whole window (Hyprland blurs
    behind it; GTK3 drops its opaque region when the background has alpha), every pane
    transparent on top of it, so the window reads as a single panel like the rofi launcher.
-   Colors are the named colors from eggfriedrice-adw.css. Text is GTK's own font-name
+   Colors are the toolkit roles from eggfriedrice-adw.css plus raw palette names from
+   eggfriedrice.css (@bg_dark, @comment, @fg_bright, @selection). Text is GTK's own font-name
    setting (the theme's ui font, set by install/stages/06-system.sh), so nothing here names
    a family. */
 
