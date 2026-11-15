@@ -1,14 +1,24 @@
 #!/usr/bin/env sh
 # Laptop battery watcher using sysfs + dunst
-# Thresholds: caution <35%, critical <25%. Only fires when discharging on battery.
+# While discharging on battery: low notice at 25%, critical notice at 10%, and at 5% a last
+# warning followed by a suspend one check later if still discharging (no hibernate: swap is zram
+# only). Each level fires once; plugging in or climbing above 30% re-arms them.
 # Only real batteries (BAT*) are considered, so peripherals that also show up
 # under /sys/class/power_supply (e.g. a Bluetooth keyboard) are ignored.
 # Exits immediately on machines without a battery (desktop).
+#
+# Test overrides: PS_DIR (power_supply tree), BATTERY_CHECK_EVERY (seconds),
+# BATTERY_WATCHER_DRY=1 prints the notices and the suspend instead of acting.
 
 PS=${PS_DIR:-/sys/class/power_supply}
 TAG="notifybat"
 RID=91234
-CHECK_EVERY=60
+CHECK_EVERY=${BATTERY_CHECK_EVERY:-60}
+DRY=${BATTERY_WATCHER_DRY:-0}
+LOW=25
+CRIT=10
+SUSPEND_AT=5
+REARM_ABOVE=30
 last_level=-1
 
 ls -d "$PS"/BAT* >/dev/null 2>&1 || exit 0
@@ -33,15 +43,29 @@ notify() {
   msg="$2"
   icon="$3"
 
+  if [ "$DRY" = "1" ]; then
+    echo "dry: notify $urgency: $msg"
+    return
+  fi
   dunstify -a "Battery" -i "$icon" -u "$urgency" \
     -h string:x-dunst-stack-tag:$TAG \
     -r $RID \
     "$msg"
 }
 
+suspend_now() {
+  if [ "$DRY" = "1" ]; then
+    echo "dry: systemctl suspend"
+    return
+  fi
+  systemctl suspend
+}
+
 # forget the last alert; close it on screen if one is showing
 rearm() {
-  [ "$last_level" -ne -1 ] && dunstify -C $RID 2>/dev/null
+  if [ "$last_level" -ne -1 ] && [ "$DRY" != "1" ]; then
+    dunstify -C $RID 2>/dev/null
+  fi
   last_level=-1
 }
 
@@ -51,17 +75,27 @@ while :; do
 
   if [ -z "$cap" ] || on_ac || [ "$status" != "Discharging" ]; then
     rearm
-  elif [ "$cap" -lt 25 ]; then
-    if [ "$last_level" -ne 25 ]; then
+  elif [ "$cap" -le "$SUSPEND_AT" ]; then
+    if [ "$last_level" -eq "$SUSPEND_AT" ]; then
+      # warned one check ago and still discharging
+      suspend_now
+      # after resume, warn again before the next suspend
+      last_level=-1
+    else
+      notify critical "Battery at ${cap}%: suspending in a minute, plug in now" "battery-empty"
+      last_level=$SUSPEND_AT
+    fi
+  elif [ "$cap" -le "$CRIT" ]; then
+    if [ "$last_level" -ne "$CRIT" ]; then
       notify critical "Battery critical: ${cap}%" "battery-empty"
-      last_level=25
+      last_level=$CRIT
     fi
-  elif [ "$cap" -lt 35 ]; then
-    if [ "$last_level" -ne 35 ]; then
+  elif [ "$cap" -le "$LOW" ]; then
+    if [ "$last_level" -ne "$LOW" ]; then
       notify normal "Battery low: ${cap}%" "battery-caution"
-      last_level=35
+      last_level=$LOW
     fi
-  elif [ "$cap" -gt 40 ]; then
+  elif [ "$cap" -gt "$REARM_ABOVE" ]; then
     rearm
   fi
 
