@@ -295,6 +295,14 @@ return {
 			},
 			sources = {
 				default = { "lsp", "path", "snippets", "buffer" },
+				-- 99's prompt buffer: its @file and #rule items, registered as an
+				-- nvim-cmp source and read through blink.compat
+				per_filetype = {
+					["99prompt"] = { "99" },
+				},
+				providers = {
+					["99"] = { name = "99", module = "blink.compat.source" },
+				},
 			},
 		},
 	},
