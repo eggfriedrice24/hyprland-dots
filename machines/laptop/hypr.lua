@@ -6,4 +6,12 @@ return {
 		-- anything plugged in: its preferred mode, placed by Hyprland
 		{ output = "", mode = "preferred", position = "auto", scale = 1 },
 	},
+
+	-- dim, lock, display off, and suspend on battery (the desktop keeps the lock-only hypr/hypridle.conf)
+	hypridle = "hypridle.conf",
+
+	config = {
+		-- the idle config turns the display off; a key press wakes it, not only the mouse
+		misc = { key_press_enables_dpms = true },
+	},
 }

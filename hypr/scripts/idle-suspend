@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+# Suspend after idle, but only on battery. Called by machines/laptop/hypridle.conf.
+# On AC (any Mains supply online), while charging or full, or without a BAT* battery it does
+# nothing, so a docked or plugged-in laptop only locks and turns its display off.
+#
+# PS_DIR overrides /sys/class/power_supply for tests; IDLE_SUSPEND_DRY=1 prints instead of suspending.
+
+PS=${PS_DIR:-/sys/class/power_supply}
+
+on_battery() {
+  found=0
+  for d in "$PS"/*; do
+    [ -e "$d/type" ] || continue
+    case $(cat "$d/type" 2>/dev/null) in
+      Mains)
+        [ "$(cat "$d/online" 2>/dev/null)" = "1" ] && return 1
+        ;;
+      Battery)
+        # only the system battery; a Bluetooth keyboard or mouse is a Battery too
+        case ${d##*/} in
+          BAT*)
+            [ "$(cat "$d/status" 2>/dev/null)" = "Discharging" ] && found=1
+            ;;
+        esac
+        ;;
+    esac
+  done
+  [ "$found" -eq 1 ]
+}
+
+on_battery || exit 0
+
+if [ "${IDLE_SUSPEND_DRY:-0}" = "1" ]; then
+  echo "dry: systemctl suspend"
+else
+  systemctl suspend
+fi
