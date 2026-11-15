@@ -101,8 +101,10 @@ enable_system_service snapper-cleanup.timer
 if has_pkg grub-btrfs; then
     enable_system_service grub-btrfsd
 fi
-# bootstrap.sh installs snap-pac last, after this stage; elsewhere its absence is worth a word
-if ! has_pkg snap-pac && ! systemd-detect-virt --chroot &>/dev/null; then
+# bootstrap.sh installs snap-pac last, after this stage; elsewhere its absence is worth a word.
+# bootstrap says it is running the installer with DOTFILES_BOOTSTRAP=1, since systemd-detect-virt
+# --chroot cannot see arch-chroot from the unprivileged user (see install.sh)
+if ! has_pkg snap-pac && [[ "${DOTFILES_BOOTSTRAP:-0}" != 1 ]] && ! systemd-detect-virt --chroot &>/dev/null; then
     warn "snap-pac is not installed, so pacman runs outside dots-update get no snapshots: sudo pacman -S snap-pac"
 fi
 
