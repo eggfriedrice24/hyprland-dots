@@ -284,6 +284,8 @@ The `.gitignore` excludes:
 - Zsh modules are sourced dynamically via the loop in `.zshrc`
 - Neovim plugins are auto-discovered in `lua/plugins/` directory
 - Hyprland scripts are centralized in `hypr/scripts/` directory
+- Keybinds live in `hypr/keybinds.lua`, machine-only ones in a profile's `setup()`; README.md has the table, keep it
+  in step with both
 
 ### Plugin Management
 

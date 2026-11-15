@@ -354,6 +354,63 @@ hyprctl eval 'hl.clear_crashed_lockscreen()'
 and go back with Ctrl+Alt+F1. `misc.allow_session_lock_restore` is set in `hypr/hyprland.lua`, so
 `hyprctl eval "hl.exec_cmd('hyprlock')"` may let a new hyprlock take over, but the recipe above is the reliable way out.
 
+## Keybinds
+
+Defined in `hypr/keybinds.lua`, plus the profile binds at the end. Caps Lock switches between the US and Georgian
+layouts.
+
+| Keys | Action |
+| --- | --- |
+| **Apps** | |
+| SUPER+Return | Ghostty |
+| SUPER+T / SUPER+B | Zen / Helium |
+| SUPER+E | Thunar |
+| SUPER+D | launcher (rofi) |
+| SUPER+period | emoji picker, Enter copies |
+| SUPER+equal | calculator, Enter copies the result |
+| SUPER+V | clipboard history: Enter copies, Shift+Delete removes, Ctrl+Shift+Delete wipes |
+| **Capture** | |
+| Print | screenshot of the focused monitor, saved to `~/Pictures/Screenshots` and copied |
+| SUPER+SHIFT+S | screenshot of an area, saved and copied |
+| SUPER+SHIFT+R / SUPER+SHIFT+V | start / stop recording the focused monitor (to `~/Videos/Recordings`, no audio) |
+| SUPER+SHIFT+Z | frameit: highlight a region while screen sharing |
+| SUPER+SHIFT+X | colour picker, copies the hex |
+| **Session** | |
+| CTRL+ALT+L | lock |
+| CTRL+ALT+S | suspend |
+| SUPER+SHIFT+Escape | exit Hyprland |
+| **Windows** | |
+| SUPER+Q | close |
+| SUPER+SHIFT+Q | force-kill (the Steam client gets a clean `steam -shutdown` instead) |
+| SUPER+F | fullscreen |
+| SUPER+Space / SUPER+SHIFT+Space | float the window / every window on the workspace |
+| SUPER+P / SUPER+SHIFT+P | pseudotile the window / every window on the workspace |
+| SUPER+S | toggle the split direction |
+| SUPER+arrows | preselect where the next window opens |
+| SUPER+C | center a floating window |
+| SUPER+G | toggle a tabbed group |
+| SUPER+Tab | next window (and next tab of a group) |
+| ALT+arrows | move focus |
+| ALT+SHIFT+arrows | move the window |
+| SUPER+CTRL+arrows | resize |
+| SUPER+left drag / SUPER+right drag | move / resize with the mouse |
+| **Workspaces and monitors** | |
+| SUPER+1..0 | go to workspace 1 to 10, pulled onto the focused monitor |
+| SUPER+SHIFT+1..0 | send the window to workspace 1 to 10 |
+| SUPER+ALT+up/down, SUPER+scroll | next / previous workspace |
+| SUPER+A / SUPER+SHIFT+A | show the special workspace / send the window there |
+| ALT+Tab | focus the next monitor |
+| SUPER+SHIFT+comma / period | move the workspace to the left / right monitor |
+| **Hardware keys** (also on the lock screen) | |
+| volume up, down, mute | volume, capped at 100 percent, repeats while held |
+| brightness up, down | panel backlight, or DDC/CI on an external monitor |
+| play/pause, next, previous | the active player (playerctl) |
+| mic mute | toggle the microphone, with a notification |
+| **Profiles** | |
+| SUPER+O (desktop) | turn the HP between portrait and landscape |
+| three-finger swipe (framework) | switch workspace |
+| lid closed on a dock (framework) | the internal panel turns off, back on when opened |
+
 ## Structure
 
 ```
