@@ -270,12 +270,71 @@ migration_new() {
 # Runs once on each machine that already used these dotfiles, after the stages have converged it;
 # new machines record it as baseline without running it. Check before acting, so it is a no-op
 # where there is nothing to do, and make every change through run or a helper (remove_packages,
-# remove_path, remove_etc_file, as_root) so --dry-run only prints. DOTFILES_DIR,
+# remove_path, remove_etc_file, swap_package, as_root) so --dry-run only prints. DOTFILES_DIR,
 # PROFILE and DRY_RUN are set. Any failing command leaves it pending for the next run; `return 0`
 # ends it early as done. Never edit it once pushed: add a new migration instead.
 
 TEMPLATE
     success "Created ${file/#$HOME/\~}"
+}
+
+# ---------------------------------------------------------------- helpers for migrations
+
+# has_exact_pkg PKG: PKG itself is installed. `pacman -Qq swww` also answers for awww, which
+# provides swww; a provider must not count as the package a migration removes.
+has_exact_pkg() { [[ "$(pacman -Qq "$1" 2>/dev/null)" == "$1" ]]; }
+
+# require_package PKG WHY: stop the migration, leaving it pending, until PKG is installed (stage 1
+# installs every listed package before the migrations run). A dry run only warns, because the
+# stage 1 of a real run would have installed it by then.
+require_package() {
+    local pkg="$1" why="$2"
+    has_exact_pkg "$pkg" && return 0
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        warn "$pkg is not installed yet ($why); a real run installs it in stage 1 first"
+        return 0
+    fi
+    error "$pkg is not installed ($why); run ./install.sh so stage 1 installs it, then this migration runs again"
+    return 1
+}
+
+# swap_package OLD NEW [aur]: replace OLD with NEW, which takes over its commands.
+# When NEW is already installed next to OLD, OLD is removed normally. Otherwise the two conflict:
+# pacman -S --noconfirm answers No to "Remove OLD?", so OLD goes first without a dependency check
+# (-Rdd; whatever depends on it is satisfied again by NEW a moment later) and NEW is installed,
+# from the AUR with "aur". If that install fails the migration fails, and the next installer run
+# installs NEW in stage 1 because nothing provides it any more.
+swap_package() {
+    local old="$1" new="$2" from="${3:-repo}" helper=""
+    if ! has_exact_pkg "$old"; then
+        success "Already absent: $old"
+        return 0
+    fi
+    if has_exact_pkg "$new"; then
+        remove_packages "$old"
+        return 0
+    fi
+    if [[ "$from" == aur ]]; then
+        helper="$(command -v yay || command -v paru || true)"
+        if [[ -z "$helper" && "${DRY_RUN:-0}" == "1" ]]; then
+            warn "No AUR helper yet; stage 1 of a real run builds yay before this migration"
+            helper=yay
+        elif [[ -z "$helper" ]]; then
+            error "No AUR helper (yay or paru) to install $new with; run ./install.sh so stage 1 builds yay"
+            return 1
+        fi
+    fi
+    info "Replacing $old with $new"
+    run as_root pacman -Rdd --noconfirm "$old"
+    if [[ -n "$helper" ]]; then
+        if ! run "${helper##*/}" -S --needed --noconfirm "$new"; then
+            error "$old is removed but $new did not install; install it by hand: ${helper##*/} -S $new"
+            return 1
+        fi
+    elif ! run as_root pacman -S --needed --noconfirm "$new"; then
+        error "$old is removed but $new did not install; install it by hand: sudo pacman -S $new"
+        return 1
+    fi
 }
 
 # ---------------------------------------------------------------- command line
