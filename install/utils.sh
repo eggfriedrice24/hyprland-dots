@@ -7,11 +7,22 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-info() { printf "${BLUE}[INFO]${NC} %s\n" "$*"; }
-warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
-error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; }
-success() { printf "${GREEN}[OK]${NC} %s\n" "$*"; }
-dry() { printf "${YELLOW}[DRY-RUN]${NC} %s\n" "$*"; }
+# Every helper line is also appended, uncoloured, to $LOG_FILE when it is set (install.sh sets
+# its own for a real run, dots-update passes one in). Command output is not captured, so pacman,
+# sudo and makepkg keep the terminal.
+_log() {
+    [[ -n "${LOG_FILE:-}" ]] && printf '%s %-5s %s\n' "$(date +%H:%M:%S)" "$1" "$2" >>"$LOG_FILE"
+    return 0
+}
+info() { printf "${BLUE}[INFO]${NC} %s\n" "$*"; _log INFO "$*"; }
+warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; _log WARN "$*"; }
+error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; _log ERROR "$*"; }
+# QUIET=1 keeps the "already done" lines out of the terminal; they still reach the log
+success() {
+    [[ "${QUIET:-0}" == "1" ]] || printf "${GREEN}[OK]${NC} %s\n" "$*"
+    _log OK "$*"
+}
+dry() { printf "${YELLOW}[DRY-RUN]${NC} %s\n" "$*"; _log DRY "$*"; }
 
 # Dry-run wrapper: prints the command if DRY_RUN=1, otherwise executes it.
 # Pipelines cannot be passed directly; wrap them as: run bash -c '... | ...'
@@ -19,6 +30,7 @@ run() {
     if [[ "${DRY_RUN:-0}" == "1" ]]; then
         dry "$*"
     else
+        _log RUN "$*"
         "$@"
     fi
 }

@@ -7,6 +7,7 @@ ASSUME_YES=0
 PROFILE_FLAG=""
 PRINT_PROFILE=0
 CURRENT_STAGE="preflight"
+INSTALL_ARGS="$*" # for the log header; the parser below consumes the arguments
 
 usage() {
     echo "Usage: $0 [--dry-run] [--yes] [--profile NAME|auto] [--print-profile] [--help]"
@@ -125,6 +126,21 @@ if [[ "$DRY_RUN" -eq 0 && "$ASSUME_YES" -eq 0 ]]; then
     [[ "$confirm" =~ ^[Yy]$ ]] || { info "Aborted."; exit 0; }
 fi
 
+# A real run keeps its own log unless a caller (dots-update) passed one in; a dry run writes nothing
+if [[ -z "${LOG_FILE:-}" && "$DRY_RUN" -eq 0 ]]; then
+    log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/install"
+    if mkdir -p "$log_dir" 2>/dev/null; then
+        LOG_FILE="$log_dir/$(date +%Y-%m-%dT%H-%M-%S).log"
+    else
+        warn "Cannot create $log_dir, this run is not logged"
+    fi
+fi
+if [[ -n "${LOG_FILE:-}" ]]; then
+    export LOG_FILE
+    _log START "install.sh ${INSTALL_ARGS} | profile ${PROFILE} (${PROFILE_SOURCE}) | dotfiles $(git -C "$DOTFILES_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    [[ "$DRY_RUN" -eq 1 ]] || info "Logging to ${LOG_FILE/#$HOME/\~}"
+fi
+
 # A profile given by flag or pin can differ from what the hardware says; show both
 if [[ "$PROFILE_SOURCE" == "flag" || "$PROFILE_SOURCE" == "pinned" ]]; then
     read -r detected_profile _ < <(detect_profile auto)
@@ -162,3 +178,4 @@ for stage in "${DOTFILES_DIR}"/install/stages/[0-9]*.sh; do
     source "$stage"
 done
 CURRENT_STAGE="done"
+_log END "install.sh finished"
