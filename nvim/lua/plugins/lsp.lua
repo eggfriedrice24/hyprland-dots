@@ -241,6 +241,34 @@ return {
 				end,
 			})
 
+			-- Astro Language Server
+			-- It needs a TypeScript SDK. nvim-lspconfig only looks in the
+			-- project's node_modules, so a project without typescript (or a
+			-- loose .astro file) fails with "typescript.tsdk is required".
+			-- Fall back to the copy Mason installs with the server.
+			local astro_defaults = vim.lsp.config.astro
+			vim.lsp.config("astro", {
+				before_init = function(params, config)
+					if astro_defaults.before_init then
+						astro_defaults.before_init(params, config)
+					end
+					config.init_options = config.init_options or {}
+					local ts = config.init_options.typescript or {}
+					config.init_options.typescript = ts
+					if ts.tsdk and ts.tsdk ~= "" then
+						return
+					end
+					local packages = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "packages")
+					for _, pkg in ipairs({ "astro-language-server", "typescript-language-server" }) do
+						local lib = vim.fs.joinpath(packages, pkg, "node_modules", "typescript", "lib")
+						if vim.uv.fs_stat(lib) then
+							ts.tsdk = lib
+							return
+						end
+					end
+				end,
+			})
+
 			-- Enable all servers
 			vim.lsp.enable({
 				"astro",
