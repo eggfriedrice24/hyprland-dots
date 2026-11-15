@@ -21,10 +21,11 @@ fi
 # valkey and postgresql are installed but not started at boot: two database servers running all day
 # cost battery for nothing. Start them when a project needs them: `dbup` / `dbdown` (zsh/aliases.zsh).
 # postgresql still gets its cluster initialised here, so `dbup` works on the first try.
+# A dry run looks only when sudo needs no password (-n never prompts).
 if has_pkg postgresql; then
-    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    if [[ "${DRY_RUN:-0}" == "1" ]] && ! sudo -n test -f /var/lib/postgres/data/PG_VERSION 2>/dev/null; then
         dry "initdb the postgresql cluster when /var/lib/postgres/data is empty"
-    elif sudo test -f /var/lib/postgres/data/PG_VERSION; then
+    elif [[ "${DRY_RUN:-0}" == "1" ]] || sudo test -f /var/lib/postgres/data/PG_VERSION; then
         success "postgresql cluster initialised (started on demand: dbup)"
     else
         info "Initialising postgresql cluster..."
