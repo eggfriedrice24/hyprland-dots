@@ -310,8 +310,8 @@ The `.gitignore` excludes:
 
 Hyprland utility scripts live in `hypr/scripts/`:
 
-- `battery-watcher.sh` (laptop battery: notices at 25 and 10 percent, suspend at 5 while discharging) and
-  `kbd-battery-watcher.sh` (the Keychron K4, found by model name), started by `startup.lua`
+- `battery-watcher.sh` (laptop battery: notices at 25 and 10 percent, suspend at 5 while discharging), started by
+  `startup.lua`; it exits at once on a machine without a battery
 - `brightnesscontrol.sh` (backlight or DDC/CI, serialized with flock) and `volumecontrol.sh`, both with an OSD
 - `idle-suspend` (suspends only on battery; called by `machines/laptop/hypridle.conf`)
 - `screensht`, `screenrecord` and `colorpicker`; `clipboard` (the cliphist picker on SUPER+V)

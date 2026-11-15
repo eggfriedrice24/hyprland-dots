@@ -2,8 +2,7 @@
 
 -- start a watcher script from hypr/scripts unless one already runs (a restarted session would
 -- otherwise stack a second copy). The pattern is anchored on the interpreter ("sh /path/x.sh")
--- so the sh -c wrapper of this very command, which also contains the path, never matches it,
--- and the leading slash keeps battery-watcher.sh from matching kbd-battery-watcher.sh
+-- so the sh -c wrapper of this very command, which also contains the path, never matches it
 local function start_watcher(script)
   local pattern = "^(/usr)?(/bin/)?(ba)?sh [^ ]*/hypr/scripts/" .. (script:gsub("%.", "[.]")) .. "( |$)"
   hl.exec_cmd("pgrep -f '" .. pattern .. "' >/dev/null || exec ~/.config/hypr/scripts/" .. script)
@@ -26,8 +25,7 @@ hl.on("hyprland.start", function()
     "mkdir -p ~/.local/state; mv -f ~/.local/state/waybar.log ~/.local/state/waybar.log.1 2>/dev/null;"
       .. " sleep 2 && waybar >> ~/.local/state/waybar.log 2>&1"
   )
-  start_watcher("battery-watcher.sh") -- laptop battery low notifications (sysfs)
-  start_watcher("kbd-battery-watcher.sh") -- Keychron K4 low battery notifications
+  start_watcher("battery-watcher.sh") -- laptop battery low notifications (sysfs); exits on machines without one
   -- a machine profile can bring its own idle config (machines/<profile>/hypr.lua, field hypridle)
   local ok, machine = pcall(require, "machine")
   local idle_conf = ok and type(machine) == "table" and machine.hypridle
