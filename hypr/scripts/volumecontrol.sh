@@ -27,10 +27,11 @@ notify_vol() {
 }
 
 case $1 in
-    i) pactl set-sink-volume @DEFAULT_SINK@ +5%
+    # -l 1.0 caps the volume at 100 percent
+    i) wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+
         notify_vol
         ;;
-    d) pactl set-sink-volume @DEFAULT_SINK@ -5%
+    d) wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%-
         notify_vol
         ;;
     m) pactl set-sink-mute @DEFAULT_SINK@ toggle
