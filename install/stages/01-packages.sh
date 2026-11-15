@@ -9,6 +9,7 @@ if grep -q '^\[multilib\]' /etc/pacman.conf; then
 else
     info "Enabling multilib repository..."
     run sudo sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
+    multilib_enabled=1
 fi
 
 # Packages the lists replace through a conflict. `pacman -S --noconfirm` answers No to "Remove rust?",
@@ -40,8 +41,9 @@ fi
 
 # Full upgrade first: installing on top of a stale database is a partial upgrade.
 # The keyring goes first so packages signed by newly added packager keys verify.
-# --no-upgrade: the caller (dots-update) has just synced the databases and upgraded.
-if [[ "${NO_UPGRADE:-0}" == "1" ]]; then
+# --no-upgrade: the caller (dots-update) has just synced the databases and upgraded, but not
+# multilib's when it was enabled just now, so that case syncs and upgrades here all the same.
+if [[ "${NO_UPGRADE:-0}" == "1" && "${multilib_enabled:-0}" != "1" ]]; then
     success "Keyring refresh and full upgrade already done by the caller"
 else
     info "Refreshing package database and archlinux-keyring..."
