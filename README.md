@@ -16,7 +16,7 @@ Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [M
 - **GTK** - adw-gtk3-dark and libadwaita recolored from the palette, Thunar styling, Papirus folders in the palette
 - **GRUB** - a boot menu theme with the eggfriedrice.code logo, built from the palette
 - dunst, bat, btop, eza, frameit, pipewire and wireplumber drop-ins
-- `dots-update`, `dots-snapshot`, `dots-prune` and the installer described below
+- `dots-update`, `dots-snapshot`, `dots-prune`, `dots-sync` and the installer described below
 
 ## Theme
 
@@ -212,6 +212,32 @@ Orphans, dependencies nothing needs any more, are offered last. `dots-prune --dr
 Two things keep a machine from collecting such packages in the first place: `/etc/makepkg.conf.d/no-debug.conf`
 (stage 1) stops AUR builds from installing `<pkg>-debug` packages, and the AUR helper runs with `--removemake`, so
 build-only dependencies do not stay behind.
+
+## Carrying Claude and projects between machines
+
+The installer sets a machine up; `dots-sync` carries what only lives on disk: Claude Code's setup and the project
+folders. One run at a time, in either direction, over SSH (tailscale names work):
+
+```bash
+dots-sync --from t --dry-run   # on the laptop: what would come from the desktop
+dots-sync --from t             # pull it (asks first)
+dots-sync --to tt              # on the desktop: push to the ThinkPad
+dots-sync --to tf --only claude --sessions   # Claude only, with the chat transcripts
+```
+
+Nothing is deleted on the receiving side and a file that is newer there is never overwritten, so runs both ways
+converge. What moves is listed in `sync.conf`:
+
+- **Claude**, for `claude` (`~/.claude`) and `claudew` (`~/.claude-work`): `CLAUDE.md`, settings, skills, agents,
+  commands, plugins, every project's memory, and the user MCP servers (merged into the receiver's `.claude.json`). Not
+  the login tokens: run `claude` and `claudew` once on a new machine and log in. Transcripts only with `--sessions`.
+- **Projects** in `~/p`, `~/tth` and `~/nox`: a repo the receiver lacks arrives with its history, uncommitted work and
+  `.env` files, without what git ignores (`node_modules`, `target`, ...). A repo both sides have is left to git: only
+  the `.env`-style files move, and the run lists the repos whose commits or uncommitted work differ so you push or
+  pull. Folders that are not repos are copied minus `node_modules` and the like. `skip` lines leave entries out.
+
+The receiving machine has to accept this one's SSH key: `dots-sync --pair HOST` sets that up (the laptops take keys
+only; there it prints the line to run on the laptop instead).
 
 ## Migrations
 
@@ -442,7 +468,8 @@ layouts.
 dotfiles/
 ├── install.sh           # installer entry point
 ├── bootstrap.sh         # fresh install from the Arch ISO
-├── bin/                 # dots-update, dots-snapshot, dots-prune (linked into ~/.local/bin)
+├── bin/                 # dots-update, dots-snapshot, dots-prune, dots-sync (linked into ~/.local/bin)
+├── sync.conf            # what dots-sync carries between machines
 ├── install/
 │   ├── stages/          # 01-packages ... 09-finalize
 │   ├── packages/        # package lists for every machine

@@ -25,7 +25,10 @@ machine-specific: `hypr.lua` (monitors, config, setup, hypridle), `extends`, `pa
 snapshots, upgrades packages and runs `install.sh --no-upgrade`. `bin/dots-snapshot` owns every snapper call (status,
 pre, post, discard, create, list, rollback, undo, cleanup); it is a no-op on this ext4 desktop. `bin/dots-prune` (also
 `up --prune`) offers the packages the lists do not account for, and records kept ones in `machines/<profile>/keep.txt`.
-`install/migrate.sh` runs and lists the one-off migrations in `install/migrations/`. README.md documents all four.
+`bin/dots-sync --from|--to HOST` carries Claude Code's setup (both `~/.claude` and claudew's `~/.claude-work`, never
+the login tokens) and the project roots between machines over SSH, never deleting or overwriting newer files; what it
+carries is in `sync.conf`. `install/migrate.sh` runs and lists the one-off migrations in `install/migrations/`.
+README.md documents all five.
 
 **Zsh XDG Setup:** `~/.zshenv` is a symlink to `zsh/.zshenv`, which sets `ZDOTDIR="$HOME/.config/zsh"`.
 
