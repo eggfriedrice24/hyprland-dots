@@ -40,10 +40,15 @@ fi
 
 # Full upgrade first: installing on top of a stale database is a partial upgrade.
 # The keyring goes first so packages signed by newly added packager keys verify.
-info "Refreshing package database and archlinux-keyring..."
-run sudo pacman -Sy --needed --noconfirm archlinux-keyring
-info "Upgrading the system..."
-run sudo pacman -Su --noconfirm
+# --no-upgrade: the caller (dots-update) has just synced the databases and upgraded.
+if [[ "${NO_UPGRADE:-0}" == "1" ]]; then
+    success "Keyring refresh and full upgrade already done by the caller"
+else
+    info "Refreshing package database and archlinux-keyring..."
+    run sudo pacman -Sy --needed --noconfirm archlinux-keyring
+    info "Upgrading the system..."
+    run sudo pacman -Su --noconfirm
+fi
 
 # Hardware-specific packages: CPU microcode and Vulkan driver by detected vendor.
 # Installed before apps so steam's vulkan-driver dependency resolves to the right provider.

@@ -6,11 +6,23 @@ DRY_RUN=0
 ASSUME_YES=0
 PROFILE_FLAG=""
 PRINT_PROFILE=0
+NO_UPGRADE=0
+QUIET=0
+SKIP_STAGES=""
 CURRENT_STAGE="preflight"
-INSTALL_ARGS="$*" # for the log header; the parser below consumes the arguments
+INSTALL_CMDLINE="$*" # for the log header; the parser below consumes the arguments
+
+# stage names for --skip: the file names without their number (01-packages.sh -> packages)
+stage_names() {
+    local stage name
+    for stage in "${DOTFILES_DIR}"/install/stages/[0-9]*.sh; do
+        name="$(basename "$stage" .sh)"
+        printf '%s\n' "${name#*-}"
+    done
+}
 
 usage() {
-    echo "Usage: $0 [--dry-run] [--yes] [--profile NAME|auto] [--print-profile] [--help]"
+    echo "Usage: $0 [--dry-run] [--yes] [--profile NAME|auto] [--print-profile] [--no-upgrade] [--skip=STAGES] [--quiet] [--help]"
     echo "  --dry-run         Print actions without executing"
     echo "  --yes             Do not ask for confirmation (used by bootstrap.sh)"
     echo "  --profile NAME    Use machines/NAME and pin it in ~/.config/dotfiles/profile (Hyprland reads it too)"
@@ -18,6 +30,9 @@ usage() {
     echo "  --laptop          Same as --profile laptop"
     echo "  --desktop         Same as --profile desktop"
     echo "  --print-profile   Print the resolved profile and how it was found, then exit"
+    echo "  --no-upgrade      No keyring refresh and full upgrade in stage 1 (dots-update has just done both)"
+    echo "  --skip=a,b        Skip these stages: $(stage_names | paste -sd' ')"
+    echo "  --quiet           Only print what changes: no banner, no [OK] lines, no closing notes"
     exit "${1:-0}"
 }
 
@@ -34,11 +49,26 @@ while (( $# )); do
         --laptop)  PROFILE_FLAG="laptop" ;;
         --desktop) PROFILE_FLAG="desktop" ;;
         --print-profile) PRINT_PROFILE=1 ;;
+        --no-upgrade) NO_UPGRADE=1 ;;
+        --skip=*) SKIP_STAGES="${SKIP_STAGES:+$SKIP_STAGES,}${1#--skip=}" ;;
+        --quiet|-q) QUIET=1 ;;
         --help|-h) usage 0 ;;
         *) echo "Unknown option: $1" >&2; usage 1 ;;
     esac
     shift
 done
+
+# a misspelt stage name would otherwise run the stage it was meant to skip
+if [[ -n "$SKIP_STAGES" ]]; then
+    mapfile -t known_stages < <(stage_names)
+    IFS=, read -ra skip_list <<<"$SKIP_STAGES"
+    for name in "${skip_list[@]}"; do
+        if [[ -n "$name" && " ${known_stages[*]} " != *" $name "* ]]; then
+            echo "Unknown stage for --skip: $name (stages: ${known_stages[*]})" >&2
+            exit 1
+        fi
+    done
+fi
 
 # Machine profile (machines/<name>): flag, pin, DMI match, then battery -> laptop, else generic.
 # hypr/machine.lua resolves the same way, so Hyprland and the installer agree.
@@ -53,7 +83,7 @@ mapfile -t PROFILE_LAYERS < <(profile_layers "$PROFILE")
 
 # tools installed by the stages themselves (claude, uv tools) land here
 export PATH="$HOME/.local/bin:$PATH"
-export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE PROFILE_DIR
+export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE PROFILE_DIR NO_UPGRADE QUIET
 
 source "${DOTFILES_DIR}/install/utils.sh"
 
@@ -110,16 +140,18 @@ fi
 
 DISPLAY_DIR="${DOTFILES_DIR/#$HOME/\~}"
 
-echo
-echo "  ┌─────────────────────────────┐"
-echo "  │     dotfiles installer      │"
-echo "  ├─────────────────────────────┤"
-printf "  │  Profile:  %-16s │\n" "$PROFILE"
-printf "  │  Found by: %-16s │\n" "$PROFILE_SOURCE"
-printf "  │  Path:     %-16s │\n" "$DISPLAY_DIR"
-printf "  │  Dry run:  %-16s │\n" "$( [[ $DRY_RUN -eq 1 ]] && echo 'yes' || echo 'no' )"
-echo "  └─────────────────────────────┘"
-echo
+if [[ "$QUIET" -eq 0 ]]; then
+    echo
+    echo "  ┌─────────────────────────────┐"
+    echo "  │     dotfiles installer      │"
+    echo "  ├─────────────────────────────┤"
+    printf "  │  Profile:  %-16s │\n" "$PROFILE"
+    printf "  │  Found by: %-16s │\n" "$PROFILE_SOURCE"
+    printf "  │  Path:     %-16s │\n" "$DISPLAY_DIR"
+    printf "  │  Dry run:  %-16s │\n" "$( [[ $DRY_RUN -eq 1 ]] && echo 'yes' || echo 'no' )"
+    echo "  └─────────────────────────────┘"
+    echo
+fi
 
 if [[ "$DRY_RUN" -eq 0 && "$ASSUME_YES" -eq 0 ]]; then
     read -rp "Continue? [y/N] " confirm
@@ -137,7 +169,7 @@ if [[ -z "${LOG_FILE:-}" && "$DRY_RUN" -eq 0 ]]; then
 fi
 if [[ -n "${LOG_FILE:-}" ]]; then
     export LOG_FILE
-    _log START "install.sh ${INSTALL_ARGS} | profile ${PROFILE} (${PROFILE_SOURCE}) | dotfiles $(git -C "$DOTFILES_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    _log START "install.sh ${INSTALL_CMDLINE} | profile ${PROFILE} (${PROFILE_SOURCE}) | dotfiles $(git -C "$DOTFILES_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
     [[ "$DRY_RUN" -eq 1 ]] || info "Logging to ${LOG_FILE/#$HOME/\~}"
 fi
 
@@ -148,7 +180,7 @@ if [[ "$PROFILE_SOURCE" == "flag" || "$PROFILE_SOURCE" == "pinned" ]]; then
         info "Using profile ${PROFILE} (${PROFILE_SOURCE}). Detection says ${detected_profile}."
     fi
 fi
-if (( ${#PROFILE_LAYERS[@]} > 1 )); then
+if (( ${#PROFILE_LAYERS[@]} > 1 && ! QUIET )); then
     info "Profile layers, base first: ${PROFILE_LAYERS[*]}"
 fi
 
@@ -175,6 +207,10 @@ fi
 
 for stage in "${DOTFILES_DIR}"/install/stages/[0-9]*.sh; do
     CURRENT_STAGE="$(basename "$stage" .sh)"
+    if [[ ",$SKIP_STAGES," == *",${CURRENT_STAGE#*-},"* ]]; then
+        info "=== Skipping stage ${CURRENT_STAGE#*-} ==="
+        continue
+    fi
     source "$stage"
 done
 CURRENT_STAGE="done"

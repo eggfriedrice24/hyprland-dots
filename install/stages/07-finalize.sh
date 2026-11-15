@@ -93,9 +93,12 @@ if has_cmd flatpak; then
 fi
 
 success "=== Stage 7: Complete ==="
-echo
-info "Installation complete. Reboot and log in on TTY1 to start Hyprland."
-echo
+# --quiet (dots-update): only what went wrong; the caller prints its own summary and notes
+if [[ "${QUIET:-0}" != "1" ]]; then
+    echo
+    info "Installation complete. Reboot and log in on TTY1 to start Hyprland."
+    echo
+fi
 if (( ${#AUR_FAILED[@]} )); then
     warn "These AUR packages failed to build; install them by hand: yay -S ${AUR_FAILED[*]}"
     echo
@@ -106,26 +109,28 @@ if (( ${#FAILED[@]} )); then
     echo
 fi
 # shellcheck disable=SC2153 # NOTES is filled by note() in install/utils.sh
-if (( ${#NOTES[@]} )); then
+if (( ${#NOTES[@]} )) && [[ -z "${DOTS_NOTES_FILE:-}" ]]; then
     warn "Before this run's changes are all in effect:"
     printf '  - %s\n' "${NOTES[@]}"
     echo
 fi
-info "Manual steps the installer does not cover (details in README.md):"
-echo "  - restore ~/.ssh (keys and config) and ~/.gitconfig, then: gh auth login"
-echo "  - tailscale up"
-echo "  - pair Bluetooth devices with bluetoothctl"
-echo "  - default apps: xdg-mime default zen.desktop x-scheme-handler/http (full list in README.md)"
-echo "  - fill in opencode/google-workspace.env; paste the Slack theme from ~/p/eggfriedrice.nvim/extras/slack"
-echo "  - Neovim: start nvim once, then :Lazy restore to pin plugins to lazy-lock.json"
+if [[ "${QUIET:-0}" != "1" ]]; then
+    info "Manual steps the installer does not cover (details in README.md):"
+    echo "  - restore ~/.ssh (keys and config) and ~/.gitconfig, then: gh auth login"
+    echo "  - tailscale up"
+    echo "  - pair Bluetooth devices with bluetoothctl"
+    echo "  - default apps: xdg-mime default zen.desktop x-scheme-handler/http (full list in README.md)"
+    echo "  - fill in opencode/google-workspace.env; paste the Slack theme from ~/p/eggfriedrice.nvim/extras/slack"
+    echo "  - Neovim: start nvim once, then :Lazy restore to pin plugins to lazy-lock.json"
 
-# Machine profile notes (machines/<layer>/notes): every line that is not a comment is a manual step
-mapfile -t note_files < <(profile_files notes)
-for notes in "${note_files[@]}"; do
-    mapfile -t note_lines < <(sed 's/^[[:space:]]*//; /^#/d; /^$/d' "$notes")
-    if (( ${#note_lines[@]} )); then
-        echo
-        info "For the $(layer_of "$notes") profile:"
-        printf '  - %s\n' "${note_lines[@]}"
-    fi
-done
+    # Machine profile notes (machines/<layer>/notes): every line that is not a comment is a manual step
+    mapfile -t note_files < <(profile_files notes)
+    for notes in "${note_files[@]}"; do
+        mapfile -t note_lines < <(sed 's/^[[:space:]]*//; /^#/d; /^$/d' "$notes")
+        if (( ${#note_lines[@]} )); then
+            echo
+            info "For the $(layer_of "$notes") profile:"
+            printf '  - %s\n' "${note_lines[@]}"
+        fi
+    done
+fi
