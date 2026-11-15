@@ -12,3 +12,5 @@ zip
 unrar
 tree
 cronie # cron daemon for scheduled jobs; runs in the background, enabled in stage 5
+freetype2 # grub-mkfont: the GRUB theme's fonts (install/grub-theme.sh)
+librsvg # rsvg-convert: the GRUB theme's logo and boxes (install/grub-theme.sh)
