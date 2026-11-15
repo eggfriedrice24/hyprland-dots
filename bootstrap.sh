@@ -311,12 +311,14 @@ cat >/mnt/etc/hosts <<EOF
 EOF
 
 # busybox hooks so grub-btrfs-overlayfs can make read-only snapshots bootable
-# (encrypt asks for the root passphrase; keyboard and keymap come before it so the passphrase types right)
+# (encrypt asks for the root passphrase; keyboard and keymap come before it so the passphrase types right.
+# keyboard sits before autodetect so every keyboard driver is included, not only the ones plugged in
+# during the install: an external or docked keyboard still works at the LUKS prompt)
 encrypt_hook=""
 [[ "$ENCRYPT" == y ]] && encrypt_hook="encrypt "
 mkdir -p /mnt/etc/mkinitcpio.conf.d
 cat >/mnt/etc/mkinitcpio.conf.d/bootstrap.conf <<EOF
-HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block ${encrypt_hook}filesystems fsck grub-btrfs-overlayfs)
+HOOKS=(base udev keyboard autodetect microcode modconf kms keymap consolefont block ${encrypt_hook}filesystems fsck grub-btrfs-overlayfs)
 EOF
 arch-chroot /mnt mkinitcpio -P
 
