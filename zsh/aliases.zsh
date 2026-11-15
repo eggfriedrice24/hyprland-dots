@@ -9,8 +9,10 @@ alias lt="ls --tree"
 alias cat="bat --plain --paging=never"
 alias grep='grep --color=auto'
 alias mv='mv -v'
-alias cp='cp -vr'
-alias rm='rm -vr'
+# verbose; rm asks once before removing more than three files or recursing, and
+# directories need an explicit -r for both
+alias cp='cp -v'
+alias rm='rm -vI'
 
 alias c="clear"
 alias q="exit"
