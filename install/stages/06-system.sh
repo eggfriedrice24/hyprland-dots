@@ -153,11 +153,56 @@ if [[ -f "$grub_file" ]]; then
         run sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=2/' "$grub_file"
         grub_changed=1
     fi
-    if [[ $grub_changed -eq 1 ]]; then
+
+    # Boot screen: the eggfriedrice.code egg over the palette (install/grub-theme.sh builds it into
+    # /boot/grub/themes/eggfriedrice when its stamp is stale). grub.cfg names the theme's fonts, so
+    # a rebuilt theme needs grub-mkconfig as well, but no reboot note.
+    grub_theme_changed=0
+    grub_theme="/boot/grub/themes/eggfriedrice/theme.txt"
+    grub_theme_status=0
+    grub_theme_out="$(THEME_DIR="$THEME_DIR" "${DOTFILES_DIR}/install/grub-theme.sh" --check 2>&1)" || grub_theme_status=$?
+    case "$grub_theme_status" in
+        0) success "GRUB theme is current" ;;
+        1)
+            info "Building the GRUB theme (${grub_theme_out#grub-theme: })..."
+            if try "GRUB theme" env THEME_DIR="$THEME_DIR" "${DOTFILES_DIR}/install/grub-theme.sh"; then
+                grub_theme_changed=1
+            fi
+            ;;
+        *)
+            if [[ "${DRY_RUN:-0}" == "1" ]]; then
+                dry "install/grub-theme.sh once its tools and the theme repo are in place"
+            else
+                warn "${grub_theme_out:-install/grub-theme.sh --check failed}, GRUB theme not built"
+            fi
+            ;;
+    esac
+    install_etc_file "$etc_src/grub.d/01_eggfriedrice" /etc/grub.d/01_eggfriedrice 755
+    if (( ETC_FILE_CHANGED )); then
+        grub_theme_changed=1
+    fi
+    if grep -qxF "GRUB_THEME=\"$grub_theme\"" "$grub_file"; then
+        success "GRUB_THEME already $grub_theme"
+    else
+        info "Setting GRUB_THEME to $grub_theme"
+        if grep -qE '^#?GRUB_THEME=' "$grub_file"; then
+            run sudo sed -i -E "s|^#?GRUB_THEME=.*|GRUB_THEME=\"$grub_theme\"|" "$grub_file"
+        else
+            run sudo sh -c "printf '%s\n' 'GRUB_THEME=\"$grub_theme\"' >>'$grub_file'"
+        fi
+        grub_theme_changed=1
+    fi
+    if grep -qE '^GRUB_TERMINAL_OUTPUT="?console' "$grub_file"; then
+        warn "GRUB_TERMINAL_OUTPUT=console in $grub_file hides the theme; comment it out for gfxterm"
+    fi
+
+    if (( grub_changed || grub_theme_changed )); then
         if command -v grub-mkconfig &>/dev/null; then
             info "Regenerating grub.cfg..."
             run sudo grub-mkconfig -o /boot/grub/grub.cfg
-            note reboot "the kernel command line changed"
+            if (( grub_changed )); then
+                note reboot "the kernel command line changed"
+            fi
         else
             warn "grub-mkconfig not found, regenerate the bootloader config by hand"
         fi
