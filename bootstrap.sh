@@ -145,6 +145,11 @@ ask TIMEZONE "Timezone" Europe/Paris
 ask LOCALE "Locale" en_US.UTF-8
 ask KEYMAP "Console keymap" us
 ask RUN_DOTFILES "Run the dotfiles installer inside the new system now? [y/n]" y
+PULL_KEPT=n
+if [[ "$HOME_MODE" == k ]]; then
+    # asked now so the run needs no answer after the wipe; a kept checkout is never pulled unasked
+    ask PULL_KEPT "If the kept home has ~/dotfiles, fast-forward it to origin before installing? [y/n]" n
+fi
 
 echo
 enc_default=n
@@ -161,7 +166,7 @@ echo
 printf "${BOLD}Summary${NC}\n"
 echo "  System disk:  $ROOT_DISK  (wiped: 1 GiB ESP, ${SWAP_GB} GiB swap, btrfs root ${ROOT_GB:-rest}${ROOT_GB:+ GiB})"
 case "$HOME_MODE" in
-    k) echo "  /home:        $HOME_DEV (kept, NOT formatted)" ;;
+    k) echo "  /home:        $HOME_DEV (kept, NOT formatted; a kept ~/dotfiles is $([[ "$PULL_KEPT" =~ ^[Yy] ]] || printf 'not ')fast-forwarded)" ;;
     f) echo "  /home:        $HOME_DISK (wiped, ext4)" ;;
     s) echo "  /home:        @home subvolume on the root disk" ;;
 esac
@@ -377,16 +382,36 @@ done
 
 # ---------------------------------------------------------------- dotfiles
 DOTS="/home/$USERNAME/dotfiles"
+as_user() { arch-chroot /mnt sudo -u "$USERNAME" -H "$@"; }
+# the disk is already wiped here: a failed clone or pull skips the installer instead of killing the run
+repo_ok=0
 if [[ -d "/mnt$DOTS/.git" ]]; then
     success "Dotfiles already present in the kept home: $DOTS"
+    as_user git -C "$DOTS" log -1 --format='  HEAD %h %s (%cr)' || warn "Could not read HEAD of $DOTS"
+    as_user git -C "$DOTS" status --short --branch || warn "Could not read the status of $DOTS"
+    if [[ "$PULL_KEPT" =~ ^[Yy] ]]; then
+        if as_user git -C "$DOTS" pull --ff-only; then
+            success "Fast-forwarded $DOTS"
+        else
+            warn "Could not fast-forward $DOTS; the installer runs on the checkout as it is"
+        fi
+    else
+        info "Not pulled; the installer runs on the checkout as it is"
+    fi
+    repo_ok=1
 else
     info "Cloning dotfiles to $DOTS"
-    arch-chroot /mnt sudo -u "$USERNAME" -H git clone "$DOTFILES_REPO" "$DOTS"
-    arch-chroot /mnt sudo -u "$USERNAME" -H git -C "$DOTS" remote set-url --push origin "$DOTFILES_PUSH"
+    if as_user git clone "$DOTFILES_REPO" "$DOTS"; then
+        repo_ok=1
+        as_user git -C "$DOTS" remote set-url --push origin "$DOTFILES_PUSH" ||
+            warn "Could not set the push URL of $DOTS to $DOTFILES_PUSH"
+    else
+        warn "Could not clone $DOTFILES_REPO; the dotfiles installer is skipped"
+    fi
 fi
 
 dotfiles_ok=0
-if [[ "$RUN_DOTFILES" =~ ^[Yy] ]]; then
+if (( repo_ok )) && [[ "$RUN_DOTFILES" =~ ^[Yy] ]]; then
     info "Running the dotfiles installer in the new system"
     # temporary passwordless sudo: the installer runs unattended as the user
     SUDOERS_TMP=/mnt/etc/sudoers.d/99-bootstrap
@@ -413,6 +438,10 @@ arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 # ---------------------------------------------------------------- done
 echo
 success "Install finished."
-(( dotfiles_ok )) || echo "  After the first boot: cd ~/dotfiles && ./install.sh"
+if (( ! repo_ok )); then
+    echo "  After the first boot: git clone $DOTFILES_REPO ~/dotfiles && cd ~/dotfiles && ./install.sh"
+elif (( ! dotfiles_ok )); then
+    echo "  After the first boot: cd ~/dotfiles && ./install.sh"
+fi
 echo "  Then the manual steps in ~/dotfiles/README.md (ssh keys, gh auth, tailscale up, bluetooth)."
 echo "  Review /mnt if you want, then: umount -R /mnt && reboot"
