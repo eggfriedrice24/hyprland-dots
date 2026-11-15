@@ -28,6 +28,8 @@
     min_icon_size = 16
     max_icon_size = 40
     enable_recursive_icon_lookup = true
+    # the recoloured Papirus from install/papirus-folders.sh first, then stock Papirus; a list needs the recursive lookup above
+    icon_theme = "Papirus-Dark-eggfriedrice, Papirus-Dark, Adwaita"
 
     ### Progress bar (volume / brightness)
     progress_bar = true
