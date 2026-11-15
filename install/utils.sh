@@ -132,7 +132,6 @@ install_packages() {
     fi
     local -a pkgs
     mapfile -t pkgs < <(parse_package_list "$file")
-    info "Installing ${name} packages..."
     install_package_names "$name" "${pkgs[@]}"
 }
 
@@ -152,7 +151,6 @@ install_aur_packages() {
 
     local -a pkgs to_install=()
     mapfile -t pkgs < <(parse_package_list "$file")
-    info "Installing ${name} (AUR) packages..."
     local pkg
     for pkg in "${pkgs[@]}"; do
         has_pkg "$pkg" || to_install+=("$pkg")
