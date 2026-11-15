@@ -15,22 +15,18 @@ fi
 if has_pkg tailscale; then
     enable_system_service tailscaled
 fi
-if has_pkg valkey; then
-    enable_system_service valkey
-fi
-
-# postgresql needs an initialised cluster before the service can start. An enabled unit had its
-# cluster initialised before it was enabled, so the root-only data dir is not even looked at then.
+# valkey and postgresql are installed but not started at boot: two database servers running all day
+# cost battery for nothing. Start them when a project needs them: `dbup` / `dbdown` (zsh/aliases.zsh).
+# postgresql still gets its cluster initialised here, so `dbup` works on the first try.
 if has_pkg postgresql; then
-    if systemctl is-enabled postgresql &>/dev/null; then
-        : # enable_system_service below reports it
-    elif [[ "${DRY_RUN:-0}" == "1" ]]; then
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
         dry "initdb the postgresql cluster when /var/lib/postgres/data is empty"
-    elif ! sudo test -f /var/lib/postgres/data/PG_VERSION; then
+    elif sudo test -f /var/lib/postgres/data/PG_VERSION; then
+        success "postgresql cluster initialised (started on demand: dbup)"
+    else
         info "Initialising postgresql cluster..."
         run sudo -u postgres initdb --locale=C.UTF-8 -E UTF8 -D /var/lib/postgres/data
     fi
-    enable_system_service postgresql
 fi
 
 # docker is started on demand, only the group membership is permanent

@@ -107,8 +107,9 @@ The stages in `install/stages/` run in order:
    links into the repo whose target is gone are removed
 4. **shell** - `chsh` to zsh, first zinit run, then the fast-syntax-highlighting theme and the bat cache, each rebuilt
    only when the theme is newer; a warning when the Starship palette drifted from the theme
-5. **services** - NetworkManager, sshd, timesyncd, fstrim, bluetooth, tailscaled, valkey, postgresql (with `initdb`),
-   docker group, the profile's `services`, pipewire user sockets
+5. **services** - NetworkManager, sshd, timesyncd, fstrim, bluetooth, tailscaled, docker group, the profile's
+   `services`, pipewire user sockets. postgresql (cluster initialised) and valkey are installed but not started at
+   boot: `dbup` / `dbdown` start and stop both
 6. **system** - the profile's `/etc` files (`machines/<profile>/etc/`), zram, wireless regdom FR, GRUB command line
    (`zswap.enabled=0` plus the profile's `grub` file), GTK theme (adw-gtk3-dark, recolored from the palette by
    `gtk-3.0/` and `gtk-4.0/`), Papirus-Dark with the palette's folders (`install/papirus-folders.sh`, rebuilt only when
