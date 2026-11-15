@@ -1,14 +1,6 @@
 ## Modular Zsh config: one module per concern, sourced in this order
 
-while read -r file
-do
+for file in theme env aliases options efr plugins keybinds prompt; do
   source "$ZDOTDIR/$file.zsh"
-done <<-EOF
-theme
-env
-aliases
-options
-efr
-plugins
-keybinds
-prompt
+done
+unset file
