@@ -6,6 +6,7 @@ local notifycmd  = "notify-send -h string:x-canonical-private-synchronous:hypr-c
 local term        = "ghostty"
 local volume      = scriptsDir .. "/volumecontrol.sh"
 local screenshot  = scriptsDir .. "/screensht"
+local screenrecord = scriptsDir .. "/screenrecord"
 local colorpicker = scriptsDir .. "/colorpicker"
 local files       = "thunar"
 local browser     = "zen-browser"
@@ -30,9 +31,9 @@ hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
 hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(micmute), { locked = true })
 
--- Screenshot and recording
-hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("wf-recorder -f $(xdg-user-dir VIDEOS)/$(date +'%H:%M:%S_%d-%m-%Y.mp4')"))
-hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("killall -s SIGINT wf-recorder"))
+-- Screenshot and recording: R records the focused monitor to ~/Videos/Recordings, V stops it
+hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd(screenrecord .. " screen"))
+hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd(screenrecord .. " stop"))
 hl.bind("Print", hl.dsp.exec_cmd(screenshot .. " full"))
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd(screenshot .. " area"))
 hl.bind("SUPER + SHIFT + Z", hl.dsp.exec_cmd("frameit")) -- highlight a region while screen sharing
