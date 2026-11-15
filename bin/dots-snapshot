@@ -1,0 +1,435 @@
+#!/usr/bin/env bash
+# dots-snapshot: labelled snapper snapshots around system updates.
+#
+# Only the layout bootstrap.sh builds has snapshots: / on the btrfs subvolume @, /.snapshots on
+# @snapshots, snapper's "root" config. Everywhere else (this ext4 desktop among them) `status` says
+# why and exits 1, and `pre` is a silent no-op, so callers need no checks of their own.
+# dots-update is the only caller of pre, post and discard; snap-pac keeps snapshotting ad-hoc pacman runs.
+#
+# Messages go to stderr; stdout carries only what a caller reads (snapshot numbers, status, list).
+
+usage() {
+    cat <<'EOF'
+Usage: dots-snapshot COMMAND [options]
+
+  status                 0 snapshots available, 1 not available (prints why), 2 booted into a
+                         snapshot or a rollback waits for a reboot
+  pre [DESC]             pre-update snapshot (important, dots=pre-update, commit=<dotfiles HEAD>);
+                         prints its number, prints nothing where snapshots are not available
+  post PRE [DESC]        the matching post snapshot; prints its number
+  discard PRE            delete a pre-update snapshot and its post again (nothing was changed)
+  create [DESC]          one important snapshot now (dots=manual); prints its number
+  list [--tsv]           the snapshots; --tsv prints: number, type, pre number, date (UTC),
+                         dots label, commit, kernels, description
+
+Options:
+  --userdata KEY=VALUE   extra snapper userdata for pre and create (repeatable)
+  -h, --help             this text
+
+Test overrides: PROC_CMDLINE, SNAPSHOTS_DIR, RUN_DIR.
+EOF
+}
+
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+DOTFILES_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
+PROC_CMDLINE="${PROC_CMDLINE:-/proc/cmdline}"
+SNAPSHOTS_DIR="${SNAPSHOTS_DIR:-/.snapshots}"
+# tmpfs: a marker here is gone after the reboot that completes a rollback
+RUN_DIR="${RUN_DIR:-/run/dots-snapshot}"
+SNAPPER_CONFIG=root
+
+# shellcheck source=install/utils.sh
+source "${DOTFILES_DIR}/install/utils.sh"
+
+# utils.sh prints to stdout; here stdout belongs to the caller
+_say() {
+    local colour="$1" tag="$2"
+    shift 2
+    if [[ -t 2 ]]; then
+        printf "${colour}[%s]${NC} %s\n" "$tag" "$*" >&2
+    else
+        printf '[%s] %s\n' "$tag" "$*" >&2
+    fi
+}
+info() { _say "$BLUE" INFO "$*"; _log INFO "$*"; }
+warn() { _say "$YELLOW" WARN "$*"; _log WARN "$*"; }
+error() { _say "$RED" ERROR "$*"; _log ERROR "$*"; }
+success() { _say "$GREEN" OK "$*"; _log OK "$*"; }
+dry() { _say "$YELLOW" DRY-RUN "$*"; _log DRY "$*"; }
+die() {
+    error "$*"
+    exit 1
+}
+
+# ---------------------------------------------------------------- parsers (no side effects)
+
+# subvol_snapshot SUBVOL: the snapper number when SUBVOL is a snapshot (@snapshots/N/snapshot as
+# bootstrap.sh lays them out, .snapshots/N/snapshot as snapper does by default), nothing otherwise
+subvol_snapshot() {
+    local re='^/?(@snapshots|@/\.snapshots|\.snapshots)/([0-9]+)/snapshot/?$'
+    if [[ "$1" =~ $re ]]; then
+        printf '%s\n' "${BASH_REMATCH[2]}"
+    fi
+    return 0
+}
+
+# cmdline_snapshot [FILE]: the snapper number when the kernel command line boots a snapshot, as
+# grub-btrfs writes it (rootflags=subvol=@snapshots/N/snapshot, possibly quoted, possibly next to
+# other root flags); the last rootflags= wins, as in the kernel
+cmdline_snapshot() {
+    local file="${1:-$PROC_CMDLINE}" word flags="" opt
+    local -a words=() opts=()
+    [[ -r "$file" ]] || return 0
+    read -ra words <"$file" || true
+    for word in "${words[@]}"; do
+        if [[ "$word" == rootflags=* ]]; then
+            flags="${word#rootflags=}"
+        fi
+    done
+    flags="${flags//\"/}"
+    IFS=, read -ra opts <<<"$flags" || true
+    for opt in "${opts[@]}"; do
+        if [[ "$opt" == subvol=* ]]; then
+            subvol_snapshot "${opt#subvol=}"
+        fi
+    done
+    return 0
+}
+
+# mounted_root_snapshot: the snapper number when / itself is mounted from a snapshot (a read-only
+# snapshot boot without the overlayfs hook)
+mounted_root_snapshot() {
+    local opts opt
+    local -a list=()
+    opts="$(findmnt -no OPTIONS / 2>/dev/null)" || return 0
+    IFS=, read -ra list <<<"$opts" || true
+    for opt in "${list[@]}"; do
+        if [[ "$opt" == subvol=* ]]; then
+            subvol_snapshot "${opt#subvol=}"
+        fi
+    done
+    return 0
+}
+
+# booted_snapshot: the number of the snapshot this system runs from, nothing on a normal boot
+booted_snapshot() {
+    local num
+    num="$(cmdline_snapshot)"
+    [[ -n "$num" ]] || num="$(mounted_root_snapshot)"
+    printf '%s' "$num"
+}
+
+xml_unescape() {
+    local s="$1"
+    s="${s//&lt;/<}"
+    s="${s//&gt;/>}"
+    s="${s//&quot;/\"}"
+    s="${s//&apos;/\'}"
+    s="${s//&amp;/\&}" # a bare & in the replacement is the match itself (bash 5.2 patsub_replacement)
+    printf '%s' "$s"
+}
+
+# snapshot_info FILE: read a snapper info.xml into SNAP_NUM, SNAP_TYPE (single, pre, post),
+# SNAP_PRE (the pre number of a post), SNAP_DATE (UTC, "YYYY-MM-DD HH:MM:SS"), SNAP_DESC
+# and SNAP_DATA (userdata, key -> value). Returns 1 when FILE is unreadable.
+declare -A SNAP_DATA=()
+SNAP_NUM="" SNAP_TYPE="" SNAP_PRE="" SNAP_DATE="" SNAP_DESC=""
+snapshot_info() {
+    local file="$1" line tag value key=""
+    local re='<([a-z_]+)>(.*)</([a-z_]+)>'
+    SNAP_NUM="" SNAP_TYPE="" SNAP_PRE="" SNAP_DATE="" SNAP_DESC=""
+    SNAP_DATA=()
+    [[ -r "$file" ]] || return 1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ $re && "${BASH_REMATCH[1]}" == "${BASH_REMATCH[3]}" ]] || continue
+        tag="${BASH_REMATCH[1]}"
+        value="$(xml_unescape "${BASH_REMATCH[2]}")"
+        case "$tag" in
+            num) SNAP_NUM="$value" ;;
+            type) SNAP_TYPE="$value" ;;
+            pre_num) SNAP_PRE="$value" ;;
+            date) SNAP_DATE="$value" ;;
+            description) SNAP_DESC="$value" ;;
+            key) key="$value" ;;
+            value)
+                if [[ -n "$key" ]]; then
+                    SNAP_DATA["$key"]="$value"
+                fi
+                key=""
+                ;;
+        esac
+    done <"$file"
+    return 0
+}
+
+# snapshot_numbers [DIR]: every snapshot number with a readable info.xml, oldest first
+snapshot_numbers() {
+    local dir="${1:-$SNAPSHOTS_DIR}" entry num
+    for entry in "$dir"/[0-9]*; do
+        num="${entry##*/}"
+        if [[ "$num" =~ ^[0-9]+$ && -r "$entry/info.xml" ]]; then
+            printf '%s\n' "$num"
+        fi
+    done | sort -n
+}
+
+# snapshot_kernels ROOT: "pkgbase version" of every kernel package installed in the tree at ROOT
+# (/usr/lib/modules/<version>/ with a pkgbase file and its vmlinuz)
+snapshot_kernels() {
+    local root="$1" pkgbase_file dir pkgbase
+    for pkgbase_file in "$root"/usr/lib/modules/*/pkgbase; do
+        [[ -r "$pkgbase_file" ]] || continue
+        dir="${pkgbase_file%/pkgbase}"
+        [[ -f "$dir/vmlinuz" ]] || continue
+        read -r pkgbase <"$pkgbase_file" || true
+        if [[ -n "$pkgbase" ]]; then
+            printf '%s %s\n' "$pkgbase" "${dir##*/}"
+        fi
+    done
+}
+
+# ---------------------------------------------------------------- availability
+
+# availability: STATUS_CODE and STATUS_TEXT, the answer `status` gives
+availability() {
+    local num fstype opts
+    num="$(booted_snapshot)"
+    if [[ -n "$num" ]]; then
+        STATUS_CODE=2
+        STATUS_TEXT="booted into snapshot #$num: changes made now are lost at the next boot; to keep this state: dots-snapshot rollback $num"
+        return 0
+    fi
+    if [[ -s "$RUN_DIR/pending" ]]; then
+        STATUS_CODE=2
+        STATUS_TEXT="$(head -n1 "$RUN_DIR/pending") is waiting for a reboot"
+        return 0
+    fi
+    STATUS_CODE=1
+    fstype="$(findmnt -no FSTYPE / 2>/dev/null || true)"
+    if [[ "$fstype" != btrfs ]]; then
+        STATUS_TEXT="/ is ${fstype:-unknown}, not btrfs; snapshots need the layout bootstrap.sh builds"
+        return 0
+    fi
+    opts="$(findmnt -no OPTIONS "$SNAPSHOTS_DIR" 2>/dev/null || true)"
+    if [[ ",$opts," != *,subvol=@snapshots,* && ",$opts," != *,subvol=/@snapshots,* ]]; then
+        STATUS_TEXT="$SNAPSHOTS_DIR is not the @snapshots subvolume; snapshots need the layout bootstrap.sh builds"
+        return 0
+    fi
+    if ! command -v snapper &>/dev/null; then
+        STATUS_TEXT="snapper is not installed"
+        return 0
+    fi
+    if [[ ! -e "/etc/snapper/configs/$SNAPPER_CONFIG" ]]; then
+        STATUS_TEXT="snapper has no '$SNAPPER_CONFIG' config (install.sh stage 7 creates it)"
+        return 0
+    fi
+    STATUS_CODE=0
+    STATUS_TEXT="snapshots available (snapper config '$SNAPPER_CONFIG' on btrfs)"
+}
+
+# ---------------------------------------------------------------- snapper
+
+# snapper as this user when its config allows it (ALLOW_GROUPS=wheel, through snapperd), else as root
+SNAPPER_AS=""
+snap() {
+    if [[ -z "$SNAPPER_AS" ]]; then
+        if [[ $EUID -eq 0 ]] || snapper -c "$SNAPPER_CONFIG" get-config &>/dev/null; then
+            SNAPPER_AS=self
+        else
+            SNAPPER_AS=root
+        fi
+    fi
+    if [[ "$SNAPPER_AS" == self ]]; then
+        snapper -c "$SNAPPER_CONFIG" "$@"
+    else
+        as_root snapper -c "$SNAPPER_CONFIG" "$@"
+    fi
+}
+
+# userdata STRING for snapper from the defaults given plus --userdata (a later key wins)
+declare -A EXTRA_USERDATA=()
+EXTRA_USERDATA_KEYS=()
+userdata() {
+    local -A data=()
+    local -a order=()
+    local pair key
+    for pair in "$@"; do
+        key="${pair%%=*}"
+        [[ -n "${data[$key]+set}" ]] || order+=("$key")
+        data["$key"]="${pair#*=}"
+    done
+    for key in "${EXTRA_USERDATA_KEYS[@]}"; do
+        [[ -n "${data[$key]+set}" ]] || order+=("$key")
+        data["$key"]="${EXTRA_USERDATA[$key]}"
+    done
+    local out=""
+    for key in "${order[@]}"; do
+        out+="${out:+,}${key}=${data[$key]}"
+    done
+    printf '%s' "$out"
+}
+
+dotfiles_commit() {
+    git -C "$DOTFILES_DIR" rev-parse --short=12 HEAD 2>/dev/null || true
+}
+
+# snapshot_number OUTPUT: the number snapper printed, or a failure
+snapshot_number() {
+    local out="$1"
+    out="${out//[[:space:]]/}"
+    if [[ ! "$out" =~ ^[0-9]+$ ]]; then
+        error "snapper printed no snapshot number (${out:-nothing})"
+        return 1
+    fi
+    printf '%s\n' "$out"
+}
+
+# require_available: snapshots usable now, or exit (0 and silent for status 1 when QUIET_NA=1)
+require_available() {
+    availability
+    case "$STATUS_CODE" in
+        0) return 0 ;;
+        1)
+            if [[ "${QUIET_NA:-0}" == 1 ]]; then
+                exit 0
+            fi
+            die "No snapshots here: $STATUS_TEXT"
+            ;;
+        *) die "Not now: $STATUS_TEXT" ;;
+    esac
+}
+
+cmd_pre() {
+    local desc="${1:-dots-snapshot pre}" commit out
+    QUIET_NA=1 require_available
+    commit="$(dotfiles_commit)"
+    out="$(snap create --type pre --print-number --cleanup-algorithm number \
+        --userdata "$(userdata important=yes dots=pre-update ${commit:+"commit=$commit"})" \
+        --description "$desc")" || die "snapper could not create the pre-update snapshot"
+    snapshot_number "$out" || exit 1
+}
+
+cmd_post() {
+    local pre="${1:-}" desc="${2:-dots-snapshot post}" out
+    [[ "$pre" =~ ^[0-9]+$ ]] || die "post needs the number pre printed"
+    QUIET_NA=1 require_available
+    if snapshot_info "$SNAPSHOTS_DIR/$pre/info.xml" && [[ "$SNAP_TYPE" != pre ]]; then
+        die "Snapshot #$pre is a $SNAP_TYPE snapshot, not a pre snapshot"
+    fi
+    out="$(snap create --type post --pre-number "$pre" --print-number --cleanup-algorithm number \
+        --userdata "important=yes,dots=post-update" --description "$desc")" ||
+        die "snapper could not create the post snapshot for #$pre"
+    snapshot_number "$out" || exit 1
+}
+
+cmd_create() {
+    local desc="${1:-dots-snapshot}" commit out
+    require_available
+    commit="$(dotfiles_commit)"
+    out="$(snap create --type single --print-number --cleanup-algorithm number \
+        --userdata "$(userdata important=yes dots=manual ${commit:+"commit=$commit"})" \
+        --description "$desc")" || die "snapper could not create the snapshot"
+    snapshot_number "$out" || exit 1
+}
+
+# discard PRE: delete a pre-update snapshot and the post snapshots that point at it. Only ones this
+# tool made: snap-pac's snapshots are snapper's to clean up.
+cmd_discard() {
+    local pre="${1:-}" num
+    local -a doomed=()
+    [[ "$pre" =~ ^[0-9]+$ ]] || die "discard needs a snapshot number"
+    QUIET_NA=1 require_available
+    snapshot_info "$SNAPSHOTS_DIR/$pre/info.xml" || die "No snapshot #$pre in $SNAPSHOTS_DIR"
+    [[ "${SNAP_DATA[dots]:-}" == pre-update ]] || die "Snapshot #$pre is not a dots-snapshot pre-update snapshot, not deleting it"
+    doomed+=("$pre")
+    while IFS= read -r num; do
+        if snapshot_info "$SNAPSHOTS_DIR/$num/info.xml" && [[ "$SNAP_TYPE" == post && "$SNAP_PRE" == "$pre" ]]; then
+            doomed+=("$num")
+        fi
+    done < <(snapshot_numbers)
+    snap delete "${doomed[@]}" || die "snapper could not delete ${doomed[*]}"
+    info "Discarded snapshot(s) ${doomed[*]}: the run changed nothing"
+}
+
+# list [--tsv]
+cmd_list() {
+    local num booted kernels local_date mark
+    availability
+    if (( STATUS_CODE == 1 )); then
+        die "No snapshots here: $STATUS_TEXT"
+    fi
+    [[ -r "$SNAPSHOTS_DIR" && -x "$SNAPSHOTS_DIR" ]] ||
+        die "Cannot read $SNAPSHOTS_DIR (it is root:wheel 750; is $USER in the wheel group?)"
+    booted="$(booted_snapshot)"
+    if (( ! LIST_TSV )); then
+        printf '%5s  %-6s %-16s  %-26s %s\n' '#' type date kernel description
+    fi
+    while IFS= read -r num; do
+        snapshot_info "$SNAPSHOTS_DIR/$num/info.xml" || continue
+        kernels="$(snapshot_kernels "$SNAPSHOTS_DIR/$num/snapshot" | paste -sd, -)"
+        if (( LIST_TSV )); then
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$SNAP_NUM" "$SNAP_TYPE" "$SNAP_PRE" "$SNAP_DATE" \
+                "${SNAP_DATA[dots]:-}" "${SNAP_DATA[commit]:-}" "$kernels" "${SNAP_DESC//$'\t'/ }"
+            continue
+        fi
+        local_date="$(date -d "$SNAP_DATE UTC" '+%Y-%m-%d %H:%M' 2>/dev/null || printf '%s' "$SNAP_DATE")"
+        mark=""
+        [[ "$SNAP_TYPE" == post && -n "$SNAP_PRE" ]] && mark+=" (after #$SNAP_PRE)"
+        [[ -n "${SNAP_DATA[dots]:-}" ]] && mark+=" [${SNAP_DATA[dots]}${SNAP_DATA[commit]:+ ${SNAP_DATA[commit]:0:7}}]"
+        [[ "$num" == "$booted" ]] && mark+=" <- booted"
+        printf '%5s  %-6s %-16s  %-26s %s%s\n' "$SNAP_NUM" "$SNAP_TYPE" "$local_date" "${kernels//,/, }" "$SNAP_DESC" "$mark"
+    done < <(snapshot_numbers)
+}
+
+main() {
+    set -Eeuo pipefail
+    trap 'error "dots-snapshot failed at line $LINENO: $BASH_COMMAND"' ERR
+
+    local cmd=""
+    local -a args=()
+    LIST_TSV=0
+    while (( $# )); do
+        case "$1" in
+            --userdata)
+                [[ "${2:-}" =~ ^[A-Za-z0-9_]+=[A-Za-z0-9_.:/@+-]+$ ]] ||
+                    die "--userdata needs KEY=VALUE (letters, digits and _.:/@+- only, no commas)"
+                local key="${2%%=*}"
+                [[ -n "${EXTRA_USERDATA[$key]+set}" ]] || EXTRA_USERDATA_KEYS+=("$key")
+                EXTRA_USERDATA["$key"]="${2#*=}"
+                shift
+                ;;
+            --userdata=*) set -- --userdata "${1#--userdata=}" "${@:2}"; continue ;;
+            --tsv) LIST_TSV=1 ;;
+            -h|--help) usage; exit 0 ;;
+            -*) error "Unknown option: $1"; usage >&2; exit 1 ;;
+            *)
+                if [[ -z "$cmd" ]]; then
+                    cmd="$1"
+                else
+                    args+=("$1")
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    case "$cmd" in
+        status)
+            availability
+            printf '%s\n' "$STATUS_TEXT"
+            exit "$STATUS_CODE"
+            ;;
+        pre) cmd_pre "${args[@]}" ;;
+        post) cmd_post "${args[@]}" ;;
+        discard) cmd_discard "${args[@]}" ;;
+        create) cmd_create "${args[@]}" ;;
+        list) cmd_list ;;
+        "") usage >&2; exit 1 ;;
+        *) error "Unknown command: $cmd"; usage >&2; exit 1 ;;
+    esac
+}
+
+# sourcing the file (fixture tests) only defines the functions
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
