@@ -47,7 +47,9 @@ else
             warn "zsh exited with an error while bootstrapping zinit (pass $zinit_pass)"
         fi
         [[ -d "$fsh_plugin" ]] && break
-        info "Not every zinit plugin is installed yet, running the shell again..."
+        if (( zinit_pass < 3 )); then
+            info "Not every zinit plugin is installed yet, running the shell again..."
+        fi
     done
 fi
 
