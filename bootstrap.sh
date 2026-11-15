@@ -359,6 +359,16 @@ printf '%s:%s\n' "$USERNAME" "$USER_PASS" | arch-chroot /mnt chpasswd
 arch-chroot /mnt passwd -l root
 echo '%wheel ALL=(ALL:ALL) ALL' >/mnt/etc/sudoers.d/10-wheel
 chmod 440 /mnt/etc/sudoers.d/10-wheel
+# with root locked, sulogin refuses the emergency and rescue shells and a failed boot is a dead end.
+# On an encrypted install the disk passphrase already stands in front of that shell, so let it open
+if [[ "$ENCRYPT" == y ]]; then
+    for unit in emergency rescue; do
+        install -Dm644 /dev/stdin "/mnt/etc/systemd/system/$unit.service.d/sulogin-force.conf" <<'EOF'
+[Service]
+Environment=SYSTEMD_SULOGIN_FORCE=1
+EOF
+    done
+fi
 
 # Snapper: what "snapper create-config /" does, but on the separate @snapshots subvolume
 install -Dm640 /mnt/usr/share/snapper/config-templates/default /mnt/etc/snapper/configs/root
