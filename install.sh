@@ -79,12 +79,11 @@ if [[ "$PRINT_PROFILE" -eq 1 ]]; then
     echo "$PROFILE $PROFILE_SOURCE"
     exit 0
 fi
-PROFILE_DIR="${MACHINES_DIR}/${PROFILE}"
 mapfile -t PROFILE_LAYERS < <(profile_layers "$PROFILE")
 
 # tools installed by the stages themselves (claude, uv tools) land here
 export PATH="$HOME/.local/bin:$PATH"
-export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE PROFILE_DIR NO_UPGRADE QUIET
+export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE NO_UPGRADE QUIET
 
 source "${DOTFILES_DIR}/install/utils.sh"
 # shellcheck source=install/migrate.sh
