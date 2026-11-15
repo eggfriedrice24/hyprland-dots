@@ -1,3 +1,9 @@
+-- Colours come from the eggfriedrice palette (with this config's setup
+-- options), never from literals. The colorscheme loads first (priority 1000).
+local function palette()
+	return require("eggfriedrice.colors").get(require("eggfriedrice").config)
+end
+
 return {
 	-- messages, cmdline and the popupmenu
 	{
@@ -68,10 +74,13 @@ return {
 
 	{
 		"rcarriga/nvim-notify",
-		opts = {
-			timeout = 5000,
-			background_colour = "#000000",
-		},
+		opts = function()
+			return {
+				timeout = 5000,
+				-- the colorscheme is transparent, so notify blends its fade over this
+				background_colour = palette().bg,
+			}
+		end,
 	},
 
 	{
@@ -114,11 +123,13 @@ return {
 		event = "BufReadPre",
 		priority = 1200,
 		config = function()
+			local c = palette()
 			require("incline").setup({
 				highlight = {
 					groups = {
-						InclineNormal = { guibg = "#82aaff", guifg = "#1d2433" },
-						InclineNormalNC = { guifg = "#717cb4", guibg = "#171c28" },
+						-- active matches lualine's normal-mode block
+						InclineNormal = { guibg = c.yellow, guifg = c.bg },
+						InclineNormalNC = { guifg = c.fg_gutter_ui, guibg = c.bg_dark },
 					},
 				},
 				window = { margin = { vertical = 0, horizontal = 1 } },

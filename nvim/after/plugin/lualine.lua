@@ -3,6 +3,8 @@ if not status_ok then
 	return
 end
 
+local palette = require("eggfriedrice.colors").get(require("eggfriedrice").config)
+
 -- Custom components
 local function lsp_clients()
 	local clients = vim.lsp.get_clients({ bufnr = 0 })
@@ -87,7 +89,7 @@ lualine.setup({
 			},
 			{
 				modified_indicator,
-				color = { fg = "#ff9e64" },
+				color = { fg = palette.git_change },
 			},
 		},
 		lualine_x = {
@@ -99,7 +101,7 @@ lualine.setup({
 				cond = function()
 					return package.loaded["noice"] and require("noice").api.status.command.has()
 				end,
-				color = { fg = "#ff9e64" },
+				color = { fg = palette.yellow },
 			},
 			{
 				function()
@@ -108,12 +110,12 @@ lualine.setup({
 				cond = function()
 					return package.loaded["noice"] and require("noice").api.status.mode.has()
 				end,
-				color = { fg = "#ff9e64" },
+				color = { fg = palette.yellow },
 			},
 			-- LSP clients
 			{
 				lsp_clients,
-				color = { fg = "#7aa2f7" },
+				color = { fg = palette.cyan },
 				cond = function()
 					return #vim.lsp.get_clients({ bufnr = 0 }) > 0
 				end,
