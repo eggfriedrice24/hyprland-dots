@@ -8,7 +8,11 @@
 #   root disk (wiped):  2 GiB ESP at /boot (vfat, room for the .old kernels) | optional swap (default none) | btrfs root
 #     btrfs subvolumes: @ /, @snapshots /.snapshots, @log /var/log, @pkg /var/cache/pacman/pkg, @docker /var/lib/docker,
 #     @flatpak /var/lib/flatpak (kept out of root snapshots; postgres, valkey, bluetooth and tailscale stay in @)
-#     snapper + snap-pac (snapshot per pacman transaction) + grub-btrfs (boot snapshots from the GRUB menu)
+#     snapper + snap-pac (snapshot per pacman transaction, keeps 10 plus 5 important) + grub-btrfs (boot
+#     snapshots from the GRUB menu); vfat in the initramfs keeps /boot mountable when a snapshot boots with
+#     a newer kernel; the dotfiles keep the outgoing kernel as .old on the ESP, and `dots-snapshot rollback`
+#     puts a snapshot back together with its own kernel
+#     monthly btrfs scrub of / (btrfs-scrub@-.timer)
 #   /home: keep an existing ext4 partition untouched, format a whole second disk as ext4, or a @home subvolume
 #   optional LUKS2: passphrase for root at boot, key file on root for a new /home disk, random-key swap
 #   zram swap comes from the dotfiles (install/etc/systemd/zram-generator.conf)
@@ -375,7 +379,7 @@ install -Dm640 /mnt/usr/share/snapper/config-templates/default /mnt/etc/snapper/
 sed -i \
     -e 's/^ALLOW_GROUPS=.*/ALLOW_GROUPS="wheel"/' \
     -e 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/' \
-    -e 's/^NUMBER_LIMIT=.*/NUMBER_LIMIT="15"/' \
+    -e 's/^NUMBER_LIMIT=.*/NUMBER_LIMIT="10"/' \
     -e 's/^NUMBER_LIMIT_IMPORTANT=.*/NUMBER_LIMIT_IMPORTANT="5"/' \
     /mnt/etc/snapper/configs/root
 if grep -q '^SNAPPER_CONFIGS=' /mnt/etc/conf.d/snapper 2>/dev/null; then
@@ -396,8 +400,9 @@ if [[ "$ENCRYPT" == y ]]; then
 fi
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 
-# sshd here too, not only in the dotfiles: if that step fails, the machine is still reachable to fix it
-for svc in NetworkManager sshd fstrim.timer snapper-cleanup.timer grub-btrfsd; do
+# sshd here too, not only in the dotfiles: if that step fails, the machine is still reachable to fix it.
+# btrfs-scrub@-.timer scrubs the root filesystem monthly (btrfs-progs ships the unit)
+for svc in NetworkManager sshd fstrim.timer snapper-cleanup.timer grub-btrfsd btrfs-scrub@-.timer; do
     arch-chroot /mnt systemctl enable "$svc"
 done
 
