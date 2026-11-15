@@ -28,8 +28,6 @@ ALLOW=(
     "hypr/windowrule.lua palette"
     # Papirus's stock folder colours, the ones the script replaces
     "install/papirus-folders.sh any"
-    # orphaned old power menu; drop this entry together with the directory
-    "rofi/powermenu/* any"
 )
 
 # #rrggbb, #rrggbbaa and hyprland's rgb(rrggbb) / rgba(rrggbbaa)
