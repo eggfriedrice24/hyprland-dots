@@ -8,6 +8,12 @@ keychain
 openssh
 unzip
 man-db
+man-pages # Linux and C man pages (man 2 open, man 7 signal)
+fd
+wget
+bind # dig, host, nslookup
+iw # Wi-Fi inspection (iw event, iw dev wlan0 link)
+7zip
 networkmanager
 bluez
 bluez-utils
