@@ -23,4 +23,5 @@ slurp
 wf-recorder
 brightnessctl
 ddcutil
+playerctl
 imagemagick

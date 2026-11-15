@@ -19,6 +19,17 @@ hl.bind("XF86AudioMute", hl.dsp.exec_cmd(volume .. " m"), { locked = true })
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontrol.sh i"), { locked = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontrol.sh d"), { locked = true })
 
+-- Media and mic mute: playerctl drives whichever MPRIS player is active; mic mute toggles the
+-- default source and says which way it went, since most keyboards have no mic LED
+local micmute = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q MUTED; then "
+  .. notifycmd .. " -i microphone-sensitivity-muted-symbolic 'Microphone muted'; else "
+  .. notifycmd .. " -i microphone-sensitivity-high-symbolic 'Microphone on'; fi"
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"), { locked = true })
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(micmute), { locked = true })
+
 -- Screenshot and recording
 hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("wf-recorder -f $(xdg-user-dir VIDEOS)/$(date +'%H:%M:%S_%d-%m-%Y.mp4')"))
 hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd("killall -s SIGINT wf-recorder"))
