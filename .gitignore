@@ -20,7 +20,6 @@ opencode/google-workspace.env
 # Hypr
 hypr/hyprland.log
 
-CLAUDE.md
 audio-reference.md
 
 # Ghostty per-machine overrides

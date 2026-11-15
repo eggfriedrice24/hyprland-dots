@@ -185,7 +185,7 @@ The `.gitignore` excludes:
 - Machine-local files: `ghostty/local`, the GTK state files apps write into the linked config dirs
   (`gtk-3.0/bookmarks`, `gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`), `opencode/google-workspace.env`
 
-`AGENTS.md` is tracked. Keep machine-local and runtime files out of the repo by adding them to `.gitignore`.
+`AGENTS.md` is tracked, and so is `CLAUDE.md`, a one-line `@AGENTS.md` import: edit `AGENTS.md`, never copy it. Keep machine-local and runtime files out of the repo by adding them to `.gitignore`.
 
 ## System Requirements
 
