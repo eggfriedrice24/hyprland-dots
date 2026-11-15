@@ -23,20 +23,20 @@ export XDG_MUSIC_DIR="$HOME/Music"
 export XDG_PICTURES_DIR="$HOME/Pictures"
 export XDG_VIDEOS_DIR="$HOME/Videos"
 
-export PNPM_HOME="$HOME/.local/share/pnpm"
-export PATH="$PNPM_HOME:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
+# Each dir once, however often this runs: nested shells source it again and the first
+# (newest) entry wins
+typeset -U path PATH
+# No pnpm lines: /etc/profile.d/pnpm.sh (pnpm 11 and later) sets PNPM_HOME and appends
+# $PNPM_HOME/bin, where global commands live now
+path=(~/.local/bin $path)
 # toolchain bins that only exist once the tool has been used
-for _dir in "$HOME/.cargo/bin" "$HOME/go/bin" "$HOME/uni/t-mesh/bin"; do
-  [[ -d "$_dir" ]] && export PATH="$_dir:$PATH"
-done
-unset _dir
+path=(~/uni/t-mesh/bin(N/) ~/go/bin(N/) ~/.cargo/bin(N/) $path)
 
-# fnm: the binary when it came from its curl installer, then the default Node, so
-# anything started outside a shell (launchers, user units) finds node and npm. Interactive
-# shells put fnm's per-shell dir in front of this in env.zsh.
-[[ -d "$XDG_DATA_HOME/fnm" ]] && export PATH="$XDG_DATA_HOME/fnm:$PATH"
-[[ -d "$XDG_DATA_HOME/fnm/aliases/default/bin" ]] && export PATH="$XDG_DATA_HOME/fnm/aliases/default/bin:$PATH"
+# fnm: the binary when it came from its curl installer (pacman's lives in /usr/bin), then
+# the default Node, so anything started outside a shell (launchers, user units) finds node
+# and npm. Interactive shells put fnm's per-shell dir in front of this in env.zsh.
+[[ -x $XDG_DATA_HOME/fnm/fnm ]] && path=($XDG_DATA_HOME/fnm $path)
+path=($XDG_DATA_HOME/fnm/aliases/default/bin(N/) $path)
 
 export TERMINAL="ghostty"
 export BROWSER="zen-browser"

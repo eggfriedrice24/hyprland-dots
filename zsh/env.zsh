@@ -15,6 +15,8 @@ fi
 # FNM (Fast Node Manager) - auto-switch Node versions from .nvmrc. Versions live in
 # ~/.local/share/fnm; session.zsh puts the binary and the default Node on PATH.
 if command -v fnm >/dev/null; then
+  # a nested shell inherits its parent's per-shell dir; drop it so only this shell's is on PATH
+  path=(${path:#*/fnm_multishells/*})
   eval "$(fnm env --use-on-cd)"
 fi
 
