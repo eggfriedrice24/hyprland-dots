@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# dots-prune: remove the packages this machine has that the dotfiles do not list.
+#
+# Candidates are the explicitly installed packages that none of these name:
+#   install/packages/*.txt, and for each layer of the machine's profile machines/<layer>/packages.txt,
+#   aur.txt and keep.txt (keep.txt: what this machine keeps on purpose, tracked, one package per line)
+#   the packages bootstrap.sh installs (read from its pacstrap line), microcode, snap-pac, the AUR helper
+# A package that provides a listed name counts as listed (frameit-bin for frameit).
+#
+# Interactive and opt-in: candidates come up in fzf with their size and how many dependencies would
+# go with them; nothing is removed without a confirmation. The ones left are offered for keep.txt so
+# the next run does not ask again, then the orphans (dependencies nothing needs any more).
+#
+#   dots-prune            pick and remove
+#   dots-prune --dry-run  list the candidates and orphans, change nothing
+#   up --prune            the same after a dots-update run (up --prune --dry-run lists them)
+set -euo pipefail
+
+DOTFILES_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+export DOTFILES_DIR
+DRY_RUN=0
+case "${1:-}" in
+    -n | --dry-run) DRY_RUN=1 ;;
+    -h | --help)
+        sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0
+        ;;
+    "") ;;
+    *)
+        echo "dots-prune: unknown option: $1" >&2
+        exit 2
+        ;;
+esac
+export DRY_RUN
+
+# shellcheck source=install/utils.sh
+source "$DOTFILES_DIR/install/utils.sh"
+# shellcheck source=install/machine.sh
+source "$DOTFILES_DIR/install/machine.sh"
+
+read -r PROFILE PROFILE_SOURCE < <(detect_profile "")
+mapfile -t PROFILE_LAYERS < <(profile_layers "$PROFILE")
+
+# ---------------------------------------------------------------- what the dotfiles account for
+declare -A KNOWN=()
+add_known() {
+    local name
+    for name in "$@"; do
+        [[ -n "$name" ]] && KNOWN["$name"]=1
+    done
+    return 0
+}
+
+for list in "$DOTFILES_DIR"/install/packages/*.txt; do
+    mapfile -t names < <(parse_package_list "$list")
+    add_known "${names[@]}"
+done
+for kind in packages.txt aur.txt keep.txt; do
+    while IFS= read -r list; do
+        mapfile -t names < <(parse_package_list "$list")
+        add_known "${names[@]}"
+    done < <(profile_files "$kind")
+done
+
+# bootstrap.sh's pacstrap line, so the base system (kernel, bootloader, filesystems) is never offered
+mapfile -t names < <(awk '/^pacstrap -K \/mnt/ { on = 1 } on { print } on && !/\\$/ { exit }' "$DOTFILES_DIR/bootstrap.sh" |
+    sed 's/\\$//' | tr -s ' ' '\n' | grep -E '^[a-z0-9][a-z0-9@._+-]*$' | grep -v -x -e pacstrap)
+add_known "${names[@]}"
+add_known amd-ucode intel-ucode snap-pac yay yay-bin paru paru-bin
+
+# ---------------------------------------------------------------- candidates
+# name -> provides, for every explicitly installed package
+declare -A PROVIDES=()
+while IFS='|' read -r name provides; do
+    PROVIDES["$name"]="$provides"
+done < <(LC_ALL=C pacman -Qei | awk -F' *: ' '
+    /^Name /     { n = $2 }
+    /^Provides / { p = ($2 == "None") ? "" : $2 }
+    /^$/         { if (n != "") print n "|" p; n = ""; p = "" }')
+
+candidates=()
+for name in "${!PROVIDES[@]}"; do
+    [[ -n "${KNOWN[$name]:-}" ]] && continue
+    listed=0
+    for provided in ${PROVIDES[$name]}; do
+        [[ -n "${KNOWN[${provided%%[<>=]*}]:-}" ]] && { listed=1; break; }
+    done
+    ((listed)) || candidates+=("$name")
+done
+mapfile -t candidates < <(printf '%s\n' "${candidates[@]+"${candidates[@]}"}" | sed '/^$/d' | sort)
+
+# "name<TAB>size<TAB>+N deps" per candidate; the deps are what -Rns would take along with it
+describe() {
+    local name size deps
+    size="$(LC_ALL=C pacman -Qi "$1" | awk -F' *: ' '/^Installed Size/ { print $2 }')"
+    deps="$(pacman -Rsp --print-format '%n' "$1" 2>/dev/null | grep -c -v -x "$1" || true)"
+    printf '%s\t%s\t+%s deps\n' "$1" "$size" "$deps"
+}
+
+info "Profile: $PROFILE ($PROFILE_SOURCE), layers: ${PROFILE_LAYERS[*]}"
+if ((${#candidates[@]} == 0)); then
+    success "Every explicitly installed package is accounted for by the dotfiles"
+else
+    info "${#candidates[@]} installed package(s) the dotfiles do not list:"
+    table="$(for name in "${candidates[@]}"; do describe "$name"; done | column -t -s $'\t')"
+    printf '%s\n' "$table" | sed 's/^/    /'
+fi
+
+mapfile -t orphans < <(pacman -Qdtq 2>/dev/null || true)
+if ((${#orphans[@]})); then
+    info "${#orphans[@]} orphan(s), dependencies nothing needs any more: ${orphans[*]}"
+fi
+
+if ((DRY_RUN)); then
+    dry "dots-prune would let you pick from the list above and remove the chosen packages with pacman -Rns"
+    exit 0
+fi
+((${#candidates[@]} + ${#orphans[@]})) || exit 0
+[[ -t 0 && -t 1 ]] || { error "dots-prune is interactive; run it in a terminal"; exit 1; }
+
+# ---------------------------------------------------------------- pick and remove
+removed=()
+if ((${#candidates[@]})); then
+    command -v fzf >/dev/null || { error "fzf is needed to pick packages"; exit 1; }
+    mapfile -t picked < <(printf '%s\n' "$table" | fzf --multi --reverse --height=80% \
+        --header=$'TAB marks packages to remove, Enter confirms, Esc removes nothing\nthe size is the package alone; +N deps go with it' \
+        --preview='pacman -Qi {1}' --preview-window=right,60%,wrap | awk '{ print $1 }' || true)
+    if ((${#picked[@]})); then
+        info "Removing ${#picked[@]} package(s) and the dependencies nothing else needs:"
+        pacman -Rsp --print-format '%n %v' "${picked[@]}" | sed 's/^/    /'
+        read -r -p "Remove these? [y/N] " answer
+        if [[ "$answer" == [yY]* ]]; then
+            sudo pacman -Rns "${picked[@]}"
+            removed=("${picked[@]}")
+        else
+            info "Nothing removed"
+        fi
+    fi
+fi
+
+# the candidates still installed go to the profile's keep.txt on request, so the next run skips them
+kept=()
+for name in "${candidates[@]+"${candidates[@]}"}"; do
+    pacman -Qq "$name" &>/dev/null && kept+=("$name")
+done
+if ((${#kept[@]})); then
+    keep_file="$DOTFILES_DIR/machines/$PROFILE/keep.txt"
+    read -r -p "Keep the other ${#kept[@]} for good (add them to ${keep_file/#$HOME/\~})? [y/N] " answer
+    if [[ "$answer" == [yY]* ]]; then
+        if [[ ! -f "$keep_file" ]]; then
+            printf '# Packages this machine keeps on purpose though no list installs them; dots-prune skips them\n' >"$keep_file"
+        fi
+        printf '%s\n' "${kept[@]}" >>"$keep_file"
+        success "Added ${#kept[@]} to ${keep_file/#$HOME/\~} (commit it in ~/dotfiles to keep it)"
+    fi
+fi
+
+mapfile -t orphans < <(pacman -Qdtq 2>/dev/null || true)
+if ((${#orphans[@]})); then
+    info "Orphans: ${orphans[*]}"
+    read -r -p "Remove the ${#orphans[@]} orphan(s)? [y/N] " answer
+    if [[ "$answer" == [yY]* ]] && sudo pacman -Rns "${orphans[@]}"; then
+        removed+=("${orphans[@]}")
+    fi
+fi
+((${#removed[@]})) && success "Removed: ${removed[*]}"
+exit 0

@@ -29,7 +29,7 @@ RELOGIN_PKGS=(hyprland aquamarine hyprutils hyprgraphics hyprlang hyprcursor xdg
 RESTART_PKGS=(waybar dunst ghostty hypridle hyprlock)
 
 DRY_RUN=0 ASSUME_YES=0 VERBOSE=0 CHECK=0
-DO_PULL=1 DO_PACKAGES=1 DO_CONVERGE=1 DO_SNAPSHOT=1
+DO_PULL=1 DO_PACKAGES=1 DO_CONVERGE=1 DO_SNAPSHOT=1 DO_PRUNE=0
 INSTALL_ARGS=()
 PHASE="preflight"
 WARNINGS=() # shown again in the summary; any entry makes the exit status 2
@@ -49,6 +49,8 @@ Usage: dots-update [options] [-- install.sh options]
       --no-snapshot   no pre/post snapshot around the run
       --check         refresh and print what is pending (packages, repos, migrations, reboot),
                       change nothing but the status file; needs no sudo
+      --prune         afterwards, offer to remove the packages the dotfiles do not list (dots-prune;
+                      with --dry-run only lists them)
   -v, --verbose       show install.sh's "already done" lines
   -h, --help
 Anything after -- goes to install.sh, for example: dots-update -- --profile framework
@@ -69,6 +71,7 @@ parse_args() {
             --no-converge) DO_CONVERGE=0 ;;
             --no-snapshot) DO_SNAPSHOT=0 ;;
             --check) CHECK=1 ;;
+            --prune) DO_PRUNE=1 ;;
             -v | --verbose) VERBOSE=1 ;;
             -h | --help) usage 0 ;;
             --)
@@ -651,6 +654,17 @@ main() {
     snapshot_post
     PHASE=report
     report
+    if ((DO_PRUNE)); then
+        # after the report, so the update's own result is already on screen; pruning is optional
+        # and interactive, a failure in it does not change the update's exit status
+        PHASE=prune
+        echo
+        if ((DRY_RUN)); then
+            "$DOTFILES_DIR/bin/dots-prune" --dry-run || true
+        else
+            "$DOTFILES_DIR/bin/dots-prune" || true
+        fi
+    fi
     ((${#WARNINGS[@]})) && exit 2
     exit 0
 }
