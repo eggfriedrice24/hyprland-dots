@@ -180,11 +180,12 @@ All components use unified colors:
 
 The `.gitignore` excludes:
 
-- Runtime files: `.zcompdump`, `.zsh_history`
+- Runtime files: `.zcompdump`, `.zsh_history`, `nvim/.netrwhist`, `nvim/plugin/`
 - Logs and swap files
-- `AGENTS.md` itself
+- Machine-local files: `ghostty/local`, the GTK state files apps write into the linked config dirs
+  (`gtk-3.0/bookmarks`, `gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`), `opencode/google-workspace.env`
 
-When making changes, preserve this exclusion pattern.
+`AGENTS.md` is tracked. Keep machine-local and runtime files out of the repo by adding them to `.gitignore`.
 
 ## System Requirements
 
