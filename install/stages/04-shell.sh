@@ -17,6 +17,9 @@ fi
 # ~/.zshenv is linked to zsh/.zshenv in stage 3 and sets ZDOTDIR
 if [[ -L "$HOME/.zshenv" && "$(readlink -f "$HOME/.zshenv")" == "$(readlink -f "${DOTFILES_DIR}/zsh/.zshenv")" ]]; then
     success "~/.zshenv points at the dotfiles"
+elif [[ "${DRY_RUN:-0}" == "1" ]]; then
+    # a dry run reads the real home: stage 3 only planned the link (and the backup of a file in its way)
+    dry "stage 3 links $HOME/.zshenv to ${DOTFILES_DIR}/zsh/.zshenv"
 else
     warn "~/.zshenv is not the dotfiles link, zsh will not find ZDOTDIR"
 fi
