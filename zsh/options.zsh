@@ -12,8 +12,7 @@ HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
 HISTSIZE=50000
 SAVEHIST=50000
 setopt EXTENDED_HISTORY       # timestamps and durations
-setopt INC_APPEND_HISTORY     # write as commands run, not at exit
-setopt SHARE_HISTORY          # visible across open shells
+setopt SHARE_HISTORY          # written as commands run and visible across open shells
 setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
 setopt HIST_REDUCE_BLANKS
