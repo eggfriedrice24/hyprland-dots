@@ -1,0 +1,11 @@
+# Framework Laptop 13 Pro, on top of the laptop layer (sof-firmware comes from there)
+intel-media-driver # VA-API for the Intel GPU (iHD), hardware video decode
+libva-utils # vainfo, to check the decoder
+fwupd # BIOS and EC updates through LVFS
+powertop # power baseline and tuning hints (machines/framework/ARRIVAL.md)
+framework-system # framework_tool: EC charge limit, firmware versions
+power-profiles-daemon # power profiles; enabled through services
+# Only once the measurements in ARRIVAL.md justify them:
+# thermald
+# intel-lpmd
+# fprintd # also needs PAM and hyprlock changes

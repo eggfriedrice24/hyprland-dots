@@ -1,0 +1,5 @@
+# System units stage 5 enables on this profile, one per line
+power-profiles-daemon
+# Only once the measurements in machines/framework/ARRIVAL.md justify them:
+# thermald
+# intel-lpmd

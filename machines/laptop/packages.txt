@@ -1,0 +1,2 @@
+# Shared laptop layer (thinkpad, framework and any unmatched laptop)
+sof-firmware # Intel SOF audio DSP firmware: without it most laptop sound cards do not show up
