@@ -26,14 +26,16 @@ fsh_plugin="$zinit_home/plugins/zdharma-continuum---fast-syntax-highlighting"
 
 # zinit clones its plugins on the first interactive shell; do it here, visibly, so fast-theme can run.
 # A failed bootstrap (offline, GitHub down) only costs the plugins until the next shell, so it warns
-# instead of aborting; `exit 0` keeps the rc's last status out of it.
+# instead of aborting; `exit 0` keeps the rc's last status out of it. The plugins load in turbo mode
+# (wait ice), so a shell that exits at once would clone none of them: `@zinit-scheduler burst` runs
+# every queued load before exiting.
 if [[ -d "$fsh_plugin" ]]; then
     success "zinit plugins already installed"
 elif [[ "${DRY_RUN:-0}" == "1" ]]; then
-    dry "zsh -ic 'exit 0' (bootstrap zinit and its plugins)"
+    dry "zsh -ic '@zinit-scheduler burst; exit 0' (bootstrap zinit and its plugins)"
 else
     info "Installing zinit and its plugins (first interactive shell)..."
-    if ! zsh -ic 'exit 0'; then
+    if ! zsh -ic '@zinit-scheduler burst; exit 0'; then
         warn "zsh exited with an error while bootstrapping zinit; the next shell retries"
     fi
 fi
