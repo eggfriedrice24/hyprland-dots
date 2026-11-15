@@ -478,12 +478,10 @@ THEME_REQUIRED_EXTRAS=(
     ghostty/eggfriedrice
     gtk/eggfriedrice.css
     hyprland/eggfriedrice.conf
-    lazygit/eggfriedrice.yml
     lua/eggfriedrice.lua
     opencode/eggfriedrice.json
     papirus/eggfriedrice.sh
     rofi/eggfriedrice.rasi
-    tmux/eggfriedrice.tmux
     zsh/eggfriedrice.zsh
 )
 

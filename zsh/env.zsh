@@ -44,7 +44,4 @@ fi
 
 # eza: picks up ~/.config/eza/theme.yml only while LS_COLORS and EZA_COLORS stay unset
 
-# lazygit: user config first, generated theme layered on top
-export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml,$EGGFRIEDRICE_EXTRAS/lazygit/eggfriedrice.yml"
-
 # vim:ft=zsh:nowrap
