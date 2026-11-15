@@ -245,6 +245,11 @@ All components use unified colors and typography:
   rofi imports `extras/rofi` (colours, launcher roles, `@font-ui-sm` and friends); dunst, bat, eza, btop, opencode and
   frameit link or include their extras
 - GTK apps: `gtk-3.0/` and `gtk-4.0/` import `extras/adw` (named colors that recolor adw-gtk3 and libadwaita) plus `extras/gtk`; `gtk-3.0/thunar.css` styles Thunar; the UI font is the gsettings `font-name` stage 6 sets; `install/papirus-folders.sh` builds Papirus-Dark-eggfriedrice from `extras/papirus` (`install/theme-apply.sh` reruns it when needed)
+- GRUB: `grub/theme.txt` and `grub/logo.svg` (the eggfriedrice.code egg) are templates that `install/grub-theme.sh`
+  fills from `extras/palette` (colours, font.ui at its weight, font.mono as PF2 fonts, sizes scaled to the panel) and
+  installs in `/boot/grub/themes/eggfriedrice`; stage 6 runs it when its stamp is stale, sets `GRUB_THEME`, installs
+  `install/etc/grub.d/01_eggfriedrice` (the console background) and reruns grub-mkconfig. GRUB draws a progress bar
+  at least 200x28 and a selection box's corners outside the item, hence the nine-piece PNGs it generates
 - Every extra the dotfiles reference is listed in `THEME_REQUIRED_EXTRAS` (`install/utils.sh`); stage 2 and
   `dots-update` fail when one is missing. `install/lint-colors.sh` reports hex literals outside its allowlist.
 

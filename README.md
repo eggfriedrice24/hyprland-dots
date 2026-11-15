@@ -14,6 +14,7 @@ Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [M
 - **[OpenCode](https://opencode.ai/)** - AI coding assistant configuration
 - **[rofi](https://github.com/davatorium/rofi)** - launcher, emoji picker, calculator and clipboard history
 - **GTK** - adw-gtk3-dark and libadwaita recolored from the palette, Thunar styling, Papirus folders in the palette
+- **GRUB** - a boot menu theme with the eggfriedrice.code logo, built from the palette
 - dunst, bat, btop, eza, frameit, pipewire and wireplumber drop-ins
 - `dots-update`, `dots-snapshot`, `dots-prune` and the installer described below
 
@@ -22,9 +23,9 @@ Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [M
 All configurations share the eggfriedrice design system from `~/p/eggfriedrice.nvim`: colours and typography (Nunito
 Medium for every UI surface, Cartograph CF only for terminal text, a small size scale). Every config that carries
 either points at a generated file under its `extras/`: ghostty, waybar, rofi, dunst, hyprland, hyprlock, GTK 3 and 4,
-Thunar, zsh, fzf, fast-syntax-highlighting, bat, eza, btop, opencode and frameit, with the Papirus folders and the
-Starship palette derived from it. The palette lives in one place: `make extras` in that repo, then
-`install/theme-apply.sh` here for the derived caches. The links are relative (`../../p/eggfriedrice.nvim/...`), so
+Thunar, zsh, fzf, fast-syntax-highlighting, bat, eza, btop, opencode and frameit, with the Papirus folders, the
+Starship palette and the GRUB theme derived from it. The palette lives in one place: `make extras` in that repo, then
+`install/theme-apply.sh` here for the derived caches (the GRUB theme, which needs root, on the next `up`). The links are relative (`../../p/eggfriedrice.nvim/...`), so
 the dotfiles and the theme repo have to be siblings under `$HOME`. The installer clones the theme repo before it links
 anything, and `install/lint-colors.sh` reports colour literals that bypass the palette.
 
@@ -113,7 +114,8 @@ The stages in `install/stages/` run in order:
 6. **system** - the profile's `/etc` files (`machines/<profile>/etc/`), zram, wireless regdom FR, GRUB command line
    (`zswap.enabled=0` plus the profile's `grub` file), GTK theme (adw-gtk3-dark, recolored from the palette by
    `gtk-3.0/` and `gtk-4.0/`), Papirus-Dark with the palette's folders (`install/papirus-folders.sh`, rebuilt only when
-   something changed), dark mode and the UI font via gsettings, then the profile's `system.sh` hook
+   something changed), dark mode and the UI font via gsettings, the GRUB theme (`install/grub-theme.sh`, rebuilt only
+   when the palette, the fonts or the panel changed), then the profile's `system.sh` hook
 7. **snapshots** - on the btrfs layout bootstrap.sh builds only: snapper retention, the pacman hook that keeps the
    outgoing kernel, vfat in the initramfs; one line and no change anywhere else
 8. **migrations** - the one-off changes in `install/migrations/` this machine has not run yet (see [Migrations](#migrations))
@@ -446,15 +448,17 @@ dotfiles/
 │   ├── stages/          # 01-packages ... 09-finalize
 │   ├── packages/        # package lists for every machine
 │   ├── migrations/      # one-off changes, run once per machine as stage 8
-│   ├── etc/             # /etc files every machine gets (zram, keep-old-kernel hook, mkinitcpio and makepkg drop-ins)
+│   ├── etc/             # /etc files every machine gets (zram, keep-old-kernel hook, mkinitcpio, makepkg, grub.d)
 │   ├── hooks/           # keep-old-kernel, run by that pacman hook
 │   ├── utils.sh         # helpers for the stages, migrations and commands
 │   ├── machine.sh       # machine profile resolver
 │   ├── migrate.sh       # migration runner and CLI
 │   ├── theme-apply.sh   # bat cache, fast-syntax-highlighting theme, Papirus folders, Starship check
 │   ├── papirus-folders.sh
+│   ├── grub-theme.sh    # the GRUB theme from grub/, into /boot/grub/themes
 │   └── lint-colors.sh   # colour literals outside the palette
 ├── machines/            # index (DMI -> profile) and one directory per profile
+├── grub/                # GRUB theme templates: theme.txt and the eggfriedrice.code logo
 ├── hypr/                # Hyprland (Lua), machine.lua, hyprlock, hypridle, scripts/
 ├── waybar/              # status bar
 ├── ghostty/             # terminal
