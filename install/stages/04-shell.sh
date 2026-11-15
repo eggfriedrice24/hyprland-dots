@@ -28,14 +28,19 @@ fsh_plugin="$zinit_home/plugins/zdharma-continuum---fast-syntax-highlighting"
 # A failed bootstrap (offline, GitHub down) only costs the plugins until the next shell, so it warns
 # instead of aborting; `exit 0` keeps the rc's last status out of it. The plugins load in turbo mode
 # (wait ice), so a shell that exits at once would clone none of them: `@zinit-scheduler burst` runs
-# every queued load before exiting.
+# every queued load before exiting. Without a usable TERM (the bootstrap chroot has none) zinit stops
+# after the first plugin it downloads, so it gets a sane one when the environment lacks it.
+case "${TERM:-}" in
+    "" | dumb | unknown) zinit_term=xterm-256color ;;
+    *) zinit_term="$TERM" ;;
+esac
 if [[ -d "$fsh_plugin" ]]; then
     success "zinit plugins already installed"
 elif [[ "${DRY_RUN:-0}" == "1" ]]; then
-    dry "zsh -ic '@zinit-scheduler burst; exit 0' (bootstrap zinit and its plugins)"
+    dry "TERM=$zinit_term zsh -ic '@zinit-scheduler burst; exit 0' (bootstrap zinit and its plugins)"
 else
     info "Installing zinit and its plugins (first interactive shell)..."
-    if ! zsh -ic '@zinit-scheduler burst; exit 0'; then
+    if ! TERM="$zinit_term" zsh -ic '@zinit-scheduler burst; exit 0'; then
         warn "zsh exited with an error while bootstrapping zinit; the next shell retries"
     fi
 fi
