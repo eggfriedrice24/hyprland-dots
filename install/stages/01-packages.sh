@@ -145,7 +145,6 @@ else
         FAILED+=("yay-bin bootstrap; AUR lists not installed: ${aur_labels[*]}")
     fi
 fi
-export AUR_HELPER
 
 if [[ -n "$AUR_HELPER" ]]; then
     for i in "${!aur_lists[@]}"; do
