@@ -39,7 +39,9 @@ hl.window_rule({ match = { class = "^(slack)$" }, workspace = "4" })
 hl.window_rule({ match = { class = "^(discord)$" }, workspace = "6" })
 hl.window_rule({ match = { class = "^(signal)$" }, workspace = "7" })
 hl.window_rule({ match = { class = "^(tally-desktop)$" }, workspace = "8" })
-hl.window_rule({ match = { class = "^(com.stremio.stremio)$" }, workspace = "9" })
+-- the flatpak's app id is com.stremio.Stremio and its desktop file names the class stremio; the old
+-- all-lowercase com.stremio.stremio matched neither
+hl.window_rule({ match = { class = "^(com.stremio.Stremio|stremio)$" }, workspace = "9" })
 hl.window_rule({ match = { class = "^(steam)$" }, workspace = "10" })
 hl.window_rule({ match = { class = "^(steam_app_.*)$" }, workspace = "8" })
 hl.window_rule({ match = { class = "^(steam_app_.*)$" }, fullscreen = true })
