@@ -73,7 +73,7 @@
       "/sys/devices/platform/coretemp.0/hwmon"
     ],
     "input-filename": "temp1_input",
-    "critical-threshold": 80,
+    "critical-threshold": 90,
     "format": "󰔏 {temperatureC}°C",
     "format-critical": "󰔏 {temperatureC}°C",
     "tooltip-format": "CPU Temp: {temperatureC}°C"
@@ -102,8 +102,8 @@
   "battery": {
     "bat": "BAT0",
     "states": {
-      "warning": 30,
-      "critical": 15
+      "warning": 25,
+      "critical": 10
     },
     "format": "{icon} {capacity}%",
     "format-charging": "󰂄 {capacity}%",
@@ -120,8 +120,8 @@
     "_comment": "same block pinned to BAT1 for laptops whose battery is not BAT0; each module hides when its battery is absent, and the pins keep the bluetooth keyboard's battery (whose removal crashed waybar) out of both",
     "bat": "BAT1",
     "states": {
-      "warning": 30,
-      "critical": 15
+      "warning": 25,
+      "critical": 10
     },
     "format": "{icon} {capacity}%",
     "format-charging": "󰂄 {capacity}%",
