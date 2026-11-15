@@ -69,6 +69,10 @@ return {
 			-- file defines root_dir, root_markers here would be ignored, and
 			-- servers without a root already run single-file.
 
+			-- blink.cmp loads on InsertEnter; take its completion capabilities
+			-- now so servers started before the first insert still get them.
+			vim.lsp.config("*", { capabilities = require("blink.cmp").get_lsp_capabilities() })
+
 			-- TypeScript Language Server
 			vim.lsp.config("ts_ls", {
 				settings = {
