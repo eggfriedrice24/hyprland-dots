@@ -3,8 +3,8 @@
 
 info "=== Stage 4: Shell ==="
 
-# Login shell
-zsh_path="$(command -v zsh)"
+# Login shell (a dry run on a fresh machine has not installed zsh yet; stage 1 puts it in /usr/bin)
+zsh_path="$(command -v zsh || echo /usr/bin/zsh)"
 current_shell="$(getent passwd "$USER" | cut -d: -f7)"
 if [[ -n "$current_shell" && "$(readlink -f "$current_shell")" == "$(readlink -f "$zsh_path")" ]]; then
     success "Default shell is already zsh"
