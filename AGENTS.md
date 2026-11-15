@@ -27,12 +27,15 @@ one-off migrations in `install/migrations/`. README.md documents all three.
 
 **Zsh XDG Setup:** `~/.zshenv` is a symlink to `zsh/.zshenv`, which sets `ZDOTDIR="$HOME/.config/zsh"`.
 
-**Hyprland Auto-Start:** Configured in `zsh/.zprofile` to start Hyprland automatically on TTY1 login.
+**Hyprland Auto-Start:** `zsh/.zprofile` sources `zsh/session.zsh` (PATH, XDG dirs, EDITOR, BROWSER, TERMINAL,
+SSH_AUTH_SOCK), hands those names to systemd and D-Bus activation, and execs Hyprland on a TTY1 login outside any
+graphical session.
 
 **Bootstrap Process:**
 
-- Zsh auto-installs Zinit plugin manager on first run
-- Neovim auto-installs Lazy.nvim plugin manager on first run
+- Zsh auto-installs Zinit plugin manager on first run (stage 4 runs that first shell)
+- Neovim auto-installs Lazy.nvim on first run; stage 9 restores the plugins from `lazy-lock.json` and installs the Mason
+  tools headless on a machine that has none
 - Both use lazy-loading for optimal performance
 
 ## Key Architectural Patterns
@@ -43,7 +46,8 @@ All major components use a source/import pattern to split configs into logical m
 
 **Hyprland** - Lua config (0.55+ format), main config at `hypr/hyprland.lua` requires:
 
-- `startup.lua` - Autostart applications (XDG portal, polkit, pipewire, dunst, cliphist, waybar)
+- `startup.lua` - Autostart (environment for the portals, polkit agent, pipewire restart, dunst, cliphist text watcher,
+  awww, waybar logging to `~/.local/state/waybar.log`, the battery watchers, hypridle with the profile's config)
 - `env.lua` - Environment variables
 - `windowrule.lua` - Window and layer rules
 - `keybinds.lua` - Keyboard shortcuts
@@ -55,22 +59,25 @@ All major components use a source/import pattern to split configs into logical m
 `hypr/hyprlock.conf` belong to hypridle/hyprlock (separate tools, still hyprlang).
 Lua API reference: `/usr/share/hypr/stubs/hl.meta.lua` (lua-ls picks it up via `hypr/.luarc.json`).
 
-**Zsh** - `.zshrc` dynamically sources modules in order:
+**Zsh** - `.zshrc` sources the modules in a plain loop, in order:
 
 ```bash
 theme.zsh → env.zsh → aliases.zsh → options.zsh → efr.zsh → plugins.zsh → keybinds.zsh → prompt.zsh
 ```
 
+`env.zsh` sources `session.zsh` first, the same file `.zprofile` reads before Hyprland starts; machine-only paths go in
+the untracked `zsh/local.zsh`, which `session.zsh` sources. `options.zsh` selects the emacs keymap.
+
 **Neovim** - `init.lua` imports from `lua/config/`, Lazy.nvim auto-imports from `lua/plugins/`:
 
 - `lua/config/` - Core configuration (options, keymaps, lazy setup)
-- `lua/plugins/` - Plugin specs organized by category (lsp.lua, coding.lua, editor.lua, formatting.lua, treesitter.lua,
-  ui.lua, colorscheme.lua)
-- `after/plugin/` - Plugin-specific configurations
+- `lua/plugins/` - Plugin specs organized by category (lsp.lua, coding.lua, editor.lua, formatting.lua, lualine.lua,
+  treesitter.lua, ui.lua, colorscheme.lua)
+- `after/plugin/` - `lsp.lua` (diagnostics display) and `theme-dev.lua` (`:ThemeReload` for the local theme build)
 
 ### XDG Base Directory Compliance
 
-All configurations follow XDG specification defined in `zsh/env.zsh`:
+All configurations follow XDG specification defined in `zsh/session.zsh` (shared by shells and the graphical session):
 
 - XDG_CONFIG_HOME: `~/.config`
 - XDG_CACHE_HOME: `~/.cache`
@@ -99,14 +106,22 @@ Key plugins:
 
 - Location: `~/.local/share/nvim/lazy/`
 - Configuration: `nvim/lua/config/lazy.lua`
-- plugins pinned in `lazy-lock.json` (tracked; `:Lazy restore` on a fresh machine)
+- plugins pinned in `lazy-lock.json` (tracked; the installer restores it headless on a new machine, `:Lazy restore`
+  by hand)
 
 ### Mason - LSP/Tools Manager
 
-Configured in `nvim/lua/plugins/lsp.lua`:
+`mason-tool-installer` in `nvim/lua/plugins/lsp.lua` keeps these installed (checked at every start, and by
+`MasonToolsInstallSync` headless); every name must exist in the Mason registry:
 
-**LSPs:** lua_ls, ts_ls, cssls, tailwindcss, html, yamlls **Formatters:** stylua, prettier, black, isort, gofumpt,
-goimports, rustfmt **Linters:** luacheck, selene, eslint_d, shellcheck, flake8, golangci-lint, markdownlint
+**LSPs:** lua-language-server, gopls, json-lsp, typescript-language-server, astro-language-server, css-lsp,
+tailwindcss-language-server, html-lsp, yaml-language-server, jdtls, basedpyright, emmet-language-server, rust-analyzer
+**Formatters:** stylua, prettier, black, isort, gofumpt, goimports, google-java-format, shfmt **Linters:** eslint-lsp,
+selene, shellcheck, golangci-lint, markdownlint
+
+Not from Mason: rustfmt comes with rustup (Mason dropped it), oxfmt and oxlint are taken from a project's
+`node_modules` when present. Formatters are wired in `formatting.lua` (conform.nvim, format on save) and linters in
+the same file (nvim-lint: selene, golangcilint, markdownlint, shellcheck; zsh is not shellchecked).
 
 ## Common Commands
 
@@ -131,36 +146,57 @@ zinit update --all   # Update all plugins
 ### Hyprland
 
 ```bash
-# Reload configuration
-hyprctl reload
+# Check a config without loading it (safe; a plain edit in ~/dotfiles reloads the live session)
+Hyprland --verify-config --config <path>/hypr/hyprland.lua
 
-# Run utility scripts (in hypr/scripts/)
-./scripts/volumecontrol.sh    # Volume control
-./scripts/brightnesscontrol.sh  # Brightness control (backlight or DDC)
-./scripts/screensht full|area  # Screenshots
+# The Lua config manager rejects `hyprctl keyword`; dispatch takes hl.dsp.* Lua, eval runs Lua
+hyprctl eval 'hl.config({ misc = { vrr = 0 } })'
+
+# Utility scripts (in hypr/scripts/)
+./scripts/volumecontrol.sh i|d|m      # Volume (capped at 100 percent) with an OSD
+./scripts/brightnesscontrol.sh i|d    # Backlight on the panel, DDC/CI on an external monitor
+./scripts/screensht full|area         # Screenshots
+./scripts/screenrecord screen|area|stop|toggle
+```
+
+### Installer and theme checks
+
+```bash
+./install.sh --dry-run --yes          # every action, nothing changed
+./install.sh --print-profile          # the machine profile and its source
+install/migrate.sh --status           # migrations and their state
+install/theme-apply.sh                # rebuild the derived theme caches after `make extras` in the theme repo
+install/lint-colors.sh                # colour literals that bypass the palette
 ```
 
 ## Development Workflow
 
 ### Multi-Language Support
 
-The Neovim configuration supports these languages with full LSP/formatting/linting:
+The Neovim configuration supports these languages with LSP, formatting and linting:
 
-- **TypeScript/JavaScript** - ts_ls, prettier, eslint_d
-- **Lua** - lua_ls, stylua, luacheck/selene
-- **Python** - black, isort, flake8
-- **Go** - gofumpt, goimports, golangci-lint
-- **Rust** - rustfmt
-- **CSS/HTML/YAML** - Full LSP support
+- **TypeScript/JavaScript** - ts_ls, eslint, prettier (oxfmt and oxlint when the project has them)
+- **Astro, CSS, Tailwind, HTML, emmet** - astro (falls back to Mason's bundled TypeScript), cssls, tailwindcss, html,
+  emmet_language_server, prettier
+- **Lua** - lua_ls, stylua, selene
+- **Python** - basedpyright, isort, black
+- **Go** - gopls, goimports, gofumpt, golangci-lint
+- **Rust** - rust_analyzer, rustfmt (rustup)
+- **Java** - jdtls, google-java-format
+- **Shell** - shfmt, shellcheck (sh and bash)
+- **JSON/YAML/Markdown** - jsonls, yamlls, prettier, markdownlint
 
 ### Version Managers
 
-**FNM (Fast Node Manager)** - Configured in `zsh/env.zsh`:
+**FNM (Fast Node Manager)** - the binary and the default Node are on PATH from `zsh/session.zsh`, so launchers and user
+units find `node` too; `zsh/env.zsh` adds `fnm env --use-on-cd`:
 
 - Auto-switches Node versions based on `.nvmrc` files
-- Integrated with shell initialization
+- Node 22 is the default the installer sets up
 
-**PNPM** - Package manager for Node.js projects
+**PNPM** - from the repository package (pnpm 11 sets `PNPM_HOME` through `/etc/profile.d/pnpm.sh`)
+
+**rustup** - the installer selects the nightly toolchain
 
 ## Important Configuration Details
 
@@ -194,15 +230,21 @@ Configured in `hypr/hyprland.lua`:
 
 ### Theme Consistency
 
-All components use unified colors:
+All components use unified colors and typography:
 
-- Source of truth: `~/p/eggfriedrice.nvim/lua/eggfriedrice/colors.lua`; generated per-app files under its `extras/` (regenerate with `make extras` there)
-- Hyprland and hyprlock: `hypr/eggfriedrice.lua` symlink and `source =` of `extras/hyprland`
-- Neovim: eggfriedrice.nvim as a local `dir =` build
-- Starship: the `[palettes.eggfriedrice]` block in `starship/starship.toml` is copied from `extras/starship` (re-paste after `make extras`)
+- Source of truth: `~/p/eggfriedrice.nvim/lua/eggfriedrice/colors.lua` and `typography.lua` (Nunito Medium for UI,
+  Cartograph CF for terminal text only, sizes xs 9, sm 10, md 11, lg 13); generated per-app files under its `extras/`
+  (regenerate with `make extras` there, then run `install/theme-apply.sh` here)
+- Hyprland and hyprlock: `hypr/eggfriedrice.lua` symlink and `source =` of `extras/hyprland` (colours and `$font_ui`)
+- Neovim: eggfriedrice.nvim as a local `dir =` build; lualine, incline and notify take colours from `eggfriedrice.colors`
+- Starship: the `[palettes.eggfriedrice]` block in `starship/starship.toml` is copied from `extras/starship` (re-paste after `make extras`; stage 4 warns on drift)
 - Shell: `zsh/theme.zsh` sources `extras/zsh`, `zsh/env.zsh` sources `extras/fzf`, fast-syntax-highlighting uses `extras/fsh` via `fast-theme`
-- waybar and ghostty tabs import `extras/gtk`; rofi imports `extras/rofi`; dunst, bat, eza, btop, opencode, lazygit and tmux link or source their extras
-- GTK apps: `gtk-3.0/` and `gtk-4.0/` import `extras/adw` (named colors that recolor adw-gtk3 and libadwaita) plus `extras/gtk`; `gtk-3.0/thunar.css` styles Thunar; `install/papirus-folders.sh` builds Papirus-Dark-eggfriedrice from `extras/papirus` (rerun after `make extras`)
+- waybar imports `extras/gtk` (colours, `font.css`); ghostty's tab bar imports `extras/gtk` (colours, `typography.css`);
+  rofi imports `extras/rofi` (colours, launcher roles, `@font-ui-sm` and friends); dunst, bat, eza, btop, opencode and
+  frameit link or include their extras
+- GTK apps: `gtk-3.0/` and `gtk-4.0/` import `extras/adw` (named colors that recolor adw-gtk3 and libadwaita) plus `extras/gtk`; `gtk-3.0/thunar.css` styles Thunar; the UI font is the gsettings `font-name` stage 6 sets; `install/papirus-folders.sh` builds Papirus-Dark-eggfriedrice from `extras/papirus` (`install/theme-apply.sh` reruns it when needed)
+- Every extra the dotfiles reference is listed in `THEME_REQUIRED_EXTRAS` (`install/utils.sh`); stage 2 and
+  `dots-update` fail when one is missing. `install/lint-colors.sh` reports hex literals outside its allowlist.
 
 ### Git Workflow
 
@@ -210,7 +252,7 @@ The `.gitignore` excludes:
 
 - Runtime files: `.zcompdump`, `.zsh_history`, `nvim/.netrwhist`, `nvim/plugin/`
 - Logs and swap files
-- Machine-local files: `ghostty/local`, the GTK state files apps write into the linked config dirs
+- Machine-local files: `ghostty/local`, `zsh/local.zsh`, the GTK state files apps write into the linked config dirs
   (`gtk-3.0/bookmarks`, `gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`), `opencode/google-workspace.env`
 
 `AGENTS.md` is tracked, and so is `CLAUDE.md`, a one-line `@AGENTS.md` import: edit `AGENTS.md`, never copy it. Keep machine-local and runtime files out of the repo by adding them to `.gitignore`.
@@ -223,8 +265,8 @@ The `.gitignore` excludes:
 - **Terminal:** Ghostty
 - **Shell:** Zsh
 - **Editor:** Neovim
-- **Font:** Cartograph CF with icon support
-- **Additional tools:** waybar, dunst, awww, cliphist, polkit-kde-agent, pipewire
+- **Fonts:** Nunito (UI), Cartograph CF (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji
+- **Additional tools:** waybar, dunst, rofi, awww, cliphist, hypridle, hyprlock, polkit-kde-agent, pipewire, Thunar
 
 ## Code Modification Guidelines
 
@@ -260,10 +302,15 @@ The `.gitignore` excludes:
 
 ### Utility Scripts
 
-Hyprland utility scripts live in `hypr/scripts/` (battery and Keychron battery watchers, brightness and volume OSD, DDC brightness, screenshot, colour picker, game mode, system update count, portal reset, kill active tree):
+Hyprland utility scripts live in `hypr/scripts/`:
 
-- Battery management, brightness/volume control
-- Screenshot utility and colour picker
-- Game mode, system updates, portal resets
+- `battery-watcher.sh` (laptop battery: notices at 25 and 10 percent, suspend at 5 while discharging) and
+  `kbd-battery-watcher.sh` (the Keychron K4, found by model name), started by `startup.lua`
+- `brightnesscontrol.sh` (backlight or DDC/CI, serialized with flock) and `volumecontrol.sh`, both with an OSD
+- `idle-suspend` (suspends only on battery; called by `machines/laptop/hypridle.conf`)
+- `screensht`, `screenrecord` and `colorpicker`; `clipboard` (the cliphist picker on SUPER+V)
+- `gamemode.sh` (animations, blur, gaps and rounding off and back, run by hand)
+- `systemupdate.sh` (waybar JSON from the dots-update status file; `up` opens dots-update in a terminal)
 
-When creating new scripts, place them in this directory and make them executable.
+When creating new scripts, place them in this directory and make them executable. Commands meant for a shell go in
+`bin/` instead, which stage 3 links into `~/.local/bin`.

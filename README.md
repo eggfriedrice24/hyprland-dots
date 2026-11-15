@@ -12,15 +12,21 @@ Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [M
 - **[Neovim](https://neovim.io/)** - editor with LSP, formatting and linting via Mason
 - **[Zsh](https://www.zsh.org/)** - shell with the Zinit plugin manager and a [Starship](https://starship.rs/) prompt
 - **[OpenCode](https://opencode.ai/)** - AI coding assistant configuration
-- rofi, dunst, bat, btop, eza, tmux, lazygit, pipewire and wireplumber drop-ins
+- **[rofi](https://github.com/davatorium/rofi)** - launcher, emoji picker, calculator and clipboard history
+- **GTK** - adw-gtk3-dark and libadwaita recolored from the palette, Thunar styling, Papirus folders in the palette
+- dunst, bat, btop, eza, frameit, pipewire and wireplumber drop-ins
+- `dots-update`, `dots-snapshot` and the installer described below
 
 ## Theme
 
-All configurations share the eggfriedrice palette. Every colour-bearing config points at a generated file under
-`~/p/eggfriedrice.nvim/extras` (ghostty, waybar, rofi, dunst, hyprland, hyprlock, zsh, fzf, starship, bat, eza, btop,
-opencode, tmux, lazygit), so the palette lives in one place and `make extras` in that repo updates everything. The links
-are relative (`../../p/eggfriedrice.nvim/...`), so the dotfiles and the theme repo have to be siblings under `$HOME`.
-The installer clones the theme repo before it links anything.
+All configurations share the eggfriedrice design system from `~/p/eggfriedrice.nvim`: colours and typography (Nunito
+Medium for every UI surface, Cartograph CF only for terminal text, a small size scale). Every config that carries
+either points at a generated file under its `extras/`: ghostty, waybar, rofi, dunst, hyprland, hyprlock, GTK 3 and 4,
+Thunar, zsh, fzf, fast-syntax-highlighting, bat, eza, btop, opencode and frameit, with the Papirus folders and the
+Starship palette derived from it. The palette lives in one place: `make extras` in that repo, then
+`install/theme-apply.sh` here for the derived caches. The links are relative (`../../p/eggfriedrice.nvim/...`), so
+the dotfiles and the theme repo have to be siblings under `$HOME`. The installer clones the theme repo before it links
+anything, and `install/lint-colors.sh` reports colour literals that bypass the palette.
 
 ## Machines
 
@@ -352,16 +358,32 @@ and go back with Ctrl+Alt+F1. `misc.allow_session_lock_restore` is set in `hypr/
 
 ```
 dotfiles/
-├── install.sh     # entry point, see install/stages and install/packages
-├── install/etc/   # /etc drop-ins the system stage installs
-├── hypr/          # Hyprland (Lua), hyprlock, hypridle, scripts
-├── waybar/        # status bar
-├── ghostty/       # terminal
-├── nvim/          # Neovim
-├── zsh/           # shell modules, .zshenv sets ZDOTDIR
-├── starship/      # prompt
-├── rofi/ dunst/ bat/ btop/ eza/ tmux/ lazygit/ opencode/ pipewire/ wireplumber/
-└── fonts/         # Cartograph CF, linked into ~/.local/share/fonts
+├── install.sh           # installer entry point
+├── bootstrap.sh         # fresh install from the Arch ISO
+├── bin/                 # dots-update, dots-snapshot (linked into ~/.local/bin)
+├── install/
+│   ├── stages/          # 01-packages ... 09-finalize
+│   ├── packages/        # package lists for every machine
+│   ├── migrations/      # one-off changes, run once per machine as stage 8
+│   ├── etc/             # /etc files every machine gets (zram, the keep-old-kernel hook, mkinitcpio drop-in)
+│   ├── hooks/           # keep-old-kernel, run by that pacman hook
+│   ├── utils.sh         # helpers for the stages, migrations and commands
+│   ├── machine.sh       # machine profile resolver
+│   ├── migrate.sh       # migration runner and CLI
+│   ├── theme-apply.sh   # bat cache, fast-syntax-highlighting theme, Papirus folders, Starship check
+│   ├── papirus-folders.sh
+│   └── lint-colors.sh   # colour literals outside the palette
+├── machines/            # index (DMI -> profile) and one directory per profile
+├── hypr/                # Hyprland (Lua), machine.lua, hyprlock, hypridle, scripts/
+├── waybar/              # status bar
+├── ghostty/             # terminal
+├── nvim/                # Neovim
+├── zsh/                 # shell modules, .zshenv sets ZDOTDIR, .zprofile starts Hyprland on TTY1
+├── starship/            # prompt
+├── gtk-3.0/ gtk-4.0/    # GTK colours and Thunar
+├── rofi/ dunst/ bat/ btop/ eza/ frameit/ opencode/ pipewire/ wireplumber/
+├── .wallpapers/         # linked to ~/.wallpapers
+└── fonts/               # Cartograph CF, linked into ~/.local/share/fonts
 ```
 
 ## License
