@@ -15,6 +15,8 @@ set -Eeuo pipefail
 
 # override to test unpushed commits, e.g. DOTFILES_REPO=http://10.0.2.2:8000/.git from a VM
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/eggfriedrice24/hyprland-dots.git}"
+# extra install.sh arguments, e.g. INSTALL_ARGS="--profile framework" in a VM (DMI says generic there)
+INSTALL_ARGS="${INSTALL_ARGS:-}"
 DOTFILES_PUSH="git@github.com:eggfriedrice24/hyprland-dots.git"
 BTRFS_OPTS="noatime,compress=zstd:1"
 
@@ -422,7 +424,7 @@ if (( repo_ok )) && [[ "$RUN_DOTFILES" =~ ^[Yy] ]]; then
     SUDOERS_TMP=/mnt/etc/sudoers.d/99-bootstrap
     echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >"$SUDOERS_TMP"
     chmod 440 "$SUDOERS_TMP"
-    if arch-chroot /mnt sudo -u "$USERNAME" -H bash -c "cd '$DOTS' && ./install.sh --yes"; then
+    if arch-chroot /mnt sudo -u "$USERNAME" -H bash -c "cd '$DOTS' && ./install.sh --yes ${INSTALL_ARGS:-}"; then
         dotfiles_ok=1
     else
         warn "The dotfiles installer failed in the chroot; rerun it after the first boot (it is idempotent)"
