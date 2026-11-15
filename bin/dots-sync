@@ -11,18 +11,24 @@
 #   dots-sync --pair HOST     let this machine log in to HOST with its SSH key (once per pair)
 #
 # What it carries is listed in sync.conf (dotfiles root). Nothing is ever deleted on the receiving
-# side and a file that is newer there is never overwritten (rsync --update), so runs in both
-# directions converge instead of clobbering each other.
+# side; a differing file is replaced whole by the newer copy (rsync --update) and the replaced one
+# is kept under ~/.local/state/dotfiles/dots-sync/<time>/. Only sync between machines you trust:
+# a machine you sync from can run code on this one (Claude hooks, MCP servers, git config).
 #
 #   Claude (claude and claudew's dirs): CLAUDE.md, settings.json, skills, agents, commands,
-#     plugins, every project's memory; the user MCP servers are merged into the receiver's
-#     .claude.json (servers it already has win). Never the login tokens: log in once per machine.
+#     plugins, every project's memory; the user MCP servers (with their env and headers, often API
+#     keys) are merged into the receiver's .claude.json, servers it already has winning. Never the
+#     login tokens (.credentials.json): log in once per machine.
 #   Projects (the roots in sync.conf): a repo the receiver lacks is copied with its history,
 #     uncommitted work and the ignored files sync.conf keeps (.env and friends), without anything
-#     else git ignores (node_modules, target, ...). A repo both sides have is git's business: only
-#     the kept ignored files move, and differences (other HEAD, uncommitted or unpushed work) are
-#     reported so you push or pull. A worktree is copied once its main repo exists there. Folders
-#     that are not repos and loose files are copied as they are, minus sync.conf's excludes.
+#     else git ignores (node_modules, target, ...), staged under a temporary name and moved into
+#     place only when complete. A repo both sides have is git's business: only the kept ignored
+#     files move, and differences (other HEAD, uncommitted or unpushed work) are reported so you
+#     push or pull. A worktree is copied once its main repo exists there. Folders that are not
+#     repos and loose files are copied as they are, minus sync.conf's excludes and any repo inside
+#     them (planned as a repo of its own). An entry of a different type on the two sides (repo,
+#     folder, file, symlink) is left alone and reported.
+# Both machines need the same user and home path (Claude memory and worktrees name absolute paths).
 set -Eeuo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
@@ -33,34 +39,45 @@ usage() {
     awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
     exit "${1:-0}"
 }
+argerr() {
+    echo "dots-sync: $*" >&2
+    exit 2
+}
+need() { [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || argerr "$1 needs a value"; }
 
 DIRECTION="" HOST="" DRY=0 YES=0 ONLY="" SESSIONS=0 PAIR=""
 while (($#)); do
     case "$1" in
         --from | --to)
+            need "$@"
+            [[ -z "$DIRECTION" ]] || argerr "give --from or --to once"
             DIRECTION="${1#--}"
-            HOST="${2:-}"
+            HOST="$2"
             shift
             ;;
         --pair)
-            PAIR="${2:-}"
+            need "$@"
+            PAIR="$2"
             shift
             ;;
         -n | --dry-run) DRY=1 ;;
         -y | --yes) YES=1 ;;
         --only)
-            ONLY="${2:-}"
+            need "$@"
+            ONLY="$2"
             shift
             ;;
         --sessions) SESSIONS=1 ;;
         -h | --help) usage 0 ;;
-        *)
-            echo "dots-sync: unknown option: $1" >&2
-            usage 2
-            ;;
+        *) argerr "unknown option: $1 (dots-sync --help)" ;;
     esac
     shift
 done
+[[ -z "$PAIR" || -z "$DIRECTION" ]] || argerr "--pair is a command of its own"
+for h in "$HOST" "$PAIR"; do
+    [[ -z "$h" || "$h" =~ ^[A-Za-z0-9_][A-Za-z0-9._@-]*$ ]] || argerr "not a host name: $h"
+done
+[[ -z "$ONLY" || "$ONLY" == claude || "$ONLY" == projects ]] || argerr "--only takes claude or projects"
 
 # shellcheck source=install/utils.sh
 source "$DOTFILES_DIR/install/utils.sh"
@@ -69,65 +86,148 @@ die() {
     error "$*"
     exit 1
 }
+# control characters out of anything a peer or a repo controls, before it reaches the terminal
+scrub() {
+    local s="$1"
+    printf '%s' "${s//[[:cntrl:]]/?}"
+}
 
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
 
 # ---------------------------------------------------------------- --pair
 if [[ -n "$PAIR" ]]; then
-    if ssh "${SSH_OPTS[@]}" "$PAIR" true 2>/dev/null; then
+    if ssh "${SSH_OPTS[@]}" -- "$PAIR" true </dev/null 2>/dev/null; then
         success "This machine can already log in to $PAIR"
         exit 0
     fi
-    if ! ssh-add -L &>/dev/null && ! compgen -G "$HOME/.ssh/id_*.pub" >/dev/null; then
+    # one key, this machine's own: never every key an agent happens to hold (work keys, forwarded ones)
+    key=""
+    for k in id_ed25519 id_ecdsa id_rsa; do
+        if [[ -f "$HOME/.ssh/$k.pub" ]]; then
+            key="$HOME/.ssh/$k.pub"
+            break
+        fi
+    done
+    if [[ -z "$key" ]]; then
         info "No SSH key here yet, creating ~/.ssh/id_ed25519"
         ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519" -C "$(id -un)@$(uname -n)"
+        key="$HOME/.ssh/id_ed25519.pub"
     fi
-    info "Copying this machine's public key to $PAIR (asks for $PAIR's password once)"
-    if ssh-copy-id "$PAIR"; then
+    info "Copying ${key/#$HOME/\~} to $PAIR (asks for $PAIR's password once)"
+    if ssh-copy-id -i "$key" -- "$PAIR"; then
         success "Paired: dots-sync --to $PAIR works from here"
-    else
-        warn "$PAIR takes keys only (the laptops do). On $PAIR, run one of:"
-        echo "  curl -fsSL https://github.com/eggfriedrice24.keys >> ~/.ssh/authorized_keys   # the keys on your GitHub account"
-        echo "  echo '$(ssh-add -L 2>/dev/null | head -n 1 || cat "$HOME"/.ssh/id_*.pub | head -n 1)' >> ~/.ssh/authorized_keys"
-        exit 1
+        exit 0
     fi
-    exit 0
+    warn "$PAIR takes keys only (the laptops do). On $PAIR, run:"
+    echo "  echo '$(cat "$key")' >> ~/.ssh/authorized_keys"
+    exit 1
 fi
 
-[[ -n "$DIRECTION" && -n "$HOST" ]] || usage 2
-[[ -z "$ONLY" || "$ONLY" == claude || "$ONLY" == projects ]] || die "--only takes claude or projects"
+[[ -n "$DIRECTION" ]] || usage 2
 [[ -f "$CONF" ]] || die "missing $CONF"
 ((EUID != 0)) || die "run dots-sync as your user, not root"
-for cmd in rsync git jq ssh; do
+for cmd in rsync git jq ssh flock realpath; do
     command -v "$cmd" &>/dev/null || die "$cmd not found"
 done
 [[ "$HOST" != "$(uname -n)" && "$HOST" != localhost ]] || die "$HOST is this machine"
 
 # ---------------------------------------------------------------- config
+# safe_rel PATH: relative to $HOME, no "..", ".", empty or doubled parts, no control characters
+safe_rel() {
+    local p="$1"
+    [[ -n "$p" && "$p" != /* && "$p" != -* && "$p" != *[[:cntrl:]]* && "$p" != *//* && "$p" != */ ]] &&
+        [[ "/$p/" != */../* && "/$p/" != */./* ]]
+}
 CLAUDE_DIRS=() ROOTS=() KEEP=() EXCLUDE=() SKIP=()
-while read -r key value; do
+while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    key="" value=""
+    read -r key value <<<"$line" || true
     [[ -z "$key" || "$key" == \#* ]] && continue
+    [[ "$value" != *[[:space:]]\#* ]] || die "sync.conf: put comments on their own line: $line"
+    value="${value%/}"
+    value="${value#\~/}"
+    value="${value#"$HOME"/}"
+    case "$key" in
+        claude | root | skip) safe_rel "$value" || die "sync.conf: not a path under your home: $line" ;;
+        keep | exclude) [[ -n "$value" && "$value" != */* && "$value" != *[[:cntrl:]]* ]] || die "sync.conf: a $key value is a bare name or glob: $line" ;;
+        *) die "sync.conf: unknown key: $key" ;;
+    esac
     case "$key" in
         claude) CLAUDE_DIRS+=("$value") ;;
         root) ROOTS+=("$value") ;;
         keep) KEEP+=("$value") ;;
         exclude) EXCLUDE+=("$value") ;;
         skip) SKIP+=("$value") ;;
-        *) die "sync.conf: unknown key: $key" ;;
     esac
 done <"$CONF"
+for a in "${ROOTS[@]}" "${CLAUDE_DIRS[@]}"; do
+    for b in "${ROOTS[@]}"; do
+        [[ "$a" != "$b"/* ]] || die "sync.conf: $a lies inside the root $b"
+    done
+done
 [[ "$ONLY" == projects ]] && CLAUDE_DIRS=()
 [[ "$ONLY" == claude ]] && ROOTS=()
 
+is_root() {
+    local r
+    for r in "${ROOTS[@]}"; do [[ "$1" == "$r" ]] && return 0; done
+    return 1
+}
+# an entry of a root: its top level (depth 1) or, for repos found inside folders, up to MAX levels
+root_entry() {
+    local p="$1" max="${2:-1}" r parts=()
+    safe_rel "$p" || return 1
+    for r in "${ROOTS[@]}"; do
+        [[ "$p" == "$r"/* ]] || continue
+        IFS=/ read -r -a parts <<<"${p#"$r"/}"
+        ((${#parts[@]} >= 1 && ${#parts[@]} <= max)) && return 0
+    done
+    return 1
+}
+claude_dir() {
+    local d
+    for d in "${CLAUDE_DIRS[@]}"; do [[ "$1" == "$d" ]] && return 0; done
+    return 1
+}
+claude_item() {
+    local p="$1" d rest
+    safe_rel "$p" || return 1
+    for d in "${CLAUDE_DIRS[@]}"; do
+        [[ "$p" == "$d"/* ]] || continue
+        rest="${p#"$d"/}"
+        case "$rest" in
+            CLAUDE.md | settings.json | skills | agents | commands | plugins) return 0 ;;
+            projects/*/memory) [[ "${rest#projects/}" != */*/* ]] && return 0 ;;
+            projects | history.jsonl) ((SESSIONS)) && return 0 ;;
+        esac
+    done
+    return 1
+}
+
 # ---------------------------------------------------------------- the two sides
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/dots-sync.XXXXXX")"
+[[ "$TMP" =~ ^[[:alnum:]/._-]+$ ]] || {
+    rm -rf "$TMP"
+    die "unsafe temp dir: $TMP"
+}
 CM="$TMP/cm-%C"
 SSH_MUX=(ssh "${SSH_OPTS[@]}" -o ControlMaster=auto -o "ControlPath=$CM" -o ControlPersist=300)
+: >"$TMP/failed"
+# shellcheck disable=SC2329 # the EXIT trap calls it
 cleanup() {
-    ssh -o "ControlPath=$CM" -O exit "$HOST" &>/dev/null || true
+    local rc=$?
+    if ((rc != 0)) && [[ -s "$TMP/failed" ]]; then
+        warn "Stopped early; not copied completely: $(sort -u "$TMP/failed" | paste -sd' ')"
+    fi
+    ssh -o "ControlPath=$CM" -O exit -- "$HOST" &>/dev/null || true
     rm -rf "$TMP"
 }
 trap cleanup EXIT
+
+mkdir -p "$HOME/.local/state/dotfiles"
+exec 8>"$HOME/.local/state/dotfiles/dots-sync.lock"
+flock -n 8 || die "another dots-sync is running on this machine"
 
 if [[ "$DIRECTION" == from ]]; then
     SRC_SIDE=remote DST_SIDE=local SRC_NAME="$HOST" DST_NAME="$(uname -n)"
@@ -137,10 +237,34 @@ else
     SRC_P="$HOME/" DST_P="$HOST:"
 fi
 
-"${SSH_MUX[@]}" "$HOST" true 2>/dev/null ||
+# one probe: the peer's machine id (no syncing with yourself under another name), its home (paths
+# must line up), its clock (newer-wins depends on it) and its tools
+# shellcheck disable=SC2016 # expanded on the peer
+probe="$("${SSH_MUX[@]}" -- "$HOST" 'cat /etc/machine-id; printf "%s\n" "$HOME"; date +%s; command -v rsync git jq flock realpath >/dev/null && echo tools' </dev/null 2>/dev/null)" ||
     die "cannot log in to $HOST over SSH without a password; pair first: dots-sync --pair $HOST (from the machine that logs in)"
-"${SSH_MUX[@]}" "$HOST" 'command -v rsync git jq >/dev/null' ||
-    die "$HOST lacks rsync, git or jq (run the installer there)"
+peer_id="" peer_home="" peer_time="" peer_tools=""
+{
+    read -r peer_id
+    read -r peer_home
+    read -r peer_time
+    read -r peer_tools
+} <<<"$probe" || true
+[[ "$peer_tools" == tools ]] || die "$HOST lacks rsync, git, jq, flock or realpath (run the installer there)"
+[[ "$peer_id" != "$(cat /etc/machine-id)" ]] || die "$HOST is this machine"
+[[ "$peer_home" == "$HOME" ]] || die "$HOST's home is $(scrub "$peer_home"), not $HOME: Claude memory and worktrees would not line up"
+[[ "$peer_time" =~ ^[0-9]+$ ]] || peer_time="$(date +%s)"
+skew=$((peer_time - $(date +%s)))
+((skew >= 0)) || skew=$((-skew))
+((skew <= 5)) || warn "the clocks of $HOST and this machine differ by ${skew}s; newer-wins decides by modification time"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP="$HOME/.local/state/dotfiles/dots-sync/$STAMP" # same home on both sides (checked above)
+
+# the same lock on the peer, held until this run ends (its stdin closes with us)
+# shellcheck disable=SC2016 # expanded on the peer
+coproc PEERLOCK { "${SSH_MUX[@]}" -- "$HOST" 'mkdir -p ~/.local/state/dotfiles; exec 8>~/.local/state/dotfiles/dots-sync.lock; flock -n 8 || { echo BUSY; exit 75; }; echo LOCKED; cat >/dev/null'; }
+peer_lock=""
+read -r -t 20 peer_lock <&"${PEERLOCK[0]}" || true
+[[ "$peer_lock" == LOCKED ]] || die "dots-sync is running on $HOST (or its lock could not be taken)"
 
 # run_side src|dst: run the bash script on stdin on that side, in its home directory
 run_side() {
@@ -149,65 +273,112 @@ run_side() {
     if [[ "$where" == local ]]; then
         (cd "$HOME" && bash -s)
     else
-        "${SSH_MUX[@]}" "$HOST" bash -s
+        "${SSH_MUX[@]}" -- "$HOST" bash -s
     fi
 }
 
+# git without what a repo's config could run: fsmonitor, hooks and clean/smudge filters off,
+# no index refresh written back. Shared by the scripts that run on either side.
+# shellcheck disable=SC2016 # runs on either side
+GIT_SAFE='
+gopts() {
+    local k
+    GO=(--no-optional-locks -c core.fsmonitor=false -c core.untrackedCache=false -c core.hooksPath=/dev/null)
+    while IFS= read -r k; do
+        GO+=(-c "$k=" -c "${k%.*}.required=false")
+    done < <(git -C "$1" config --name-only --get-regexp "^filter\..*\.(clean|smudge|process)$" </dev/null 2>/dev/null)
+}
+'
+
 # ---------------------------------------------------------------- inventory
-# One pass per side: the Claude paths that exist, and every entry of every root with its git state.
-#   C path | R path kind head branch dirty unpushed gitdir | D path | F path
+# NUL-separated records, a fixed number of fields per tag:
+#   CD dir login|nologin   C path F|D|L   R path kind head branch dirty unpushed gitdir
+#   D path   F path   L path target   P path (a staged partial copy)   X name (%q)   S skip
 inventory() {
     {
         declare -p CLAUDE_DIRS ROOTS SKIP SESSIONS
+        printf '%s\n' "$GIT_SAFE"
         cat <<'EOF'
 set -uo pipefail
-cd "$HOME"
+cd "$HOME" || exit 3
+shopt -s nullglob dotglob
+rec() { printf '%s\0' "$@"; }
+bad() { [[ "$1" == *[[:cntrl:]]* ]]; }
+typ() {
+    if [[ -L "$1" ]]; then rec C "$1" L
+    elif [[ -d "$1" ]]; then rec C "$1" D
+    elif [[ -f "$1" ]]; then rec C "$1" F
+    fi
+}
 for d in "${CLAUDE_DIRS[@]}"; do
-    [[ -d "$d" ]] || continue
-    printf 'CD\t%s\t%s\n' "$d" "$([[ -f "$d/.credentials.json" ]] && echo login || echo nologin)"
-    for f in CLAUDE.md settings.json skills agents commands plugins; do
-        [[ -e "$d/$f" ]] && printf 'C\t%s\n' "$d/$f"
-    done
+    [[ -d "$d" && ! -L "$d" ]] || continue
+    rec CD "$d" "$([[ -f "$d/.credentials.json" ]] && echo login || echo nologin)"
+    for f in CLAUDE.md settings.json skills agents commands plugins; do typ "$d/$f"; done
     if ((SESSIONS)); then
-        [[ -d "$d/projects" ]] && printf 'C\t%s\n' "$d/projects"
-        [[ -f "$d/history.jsonl" ]] && printf 'C\t%s\n' "$d/history.jsonl"
+        typ "$d/projects"
+        typ "$d/history.jsonl"
     else
-        for m in "$d"/projects/*/memory; do
-            [[ -d "$m" ]] && printf 'C\t%s\n' "$m"
-        done
+        for m in "$d"/projects/*/memory; do bad "$m" || typ "$m"; done
     fi
 done
 skipped() { local s; for s in "${SKIP[@]}"; do [[ "$1" == "$s" ]] && return 0; done; return 1; }
-repo_line() {
-    local p="$1" kind="$2" head branch dirty unpushed gitdir="" out
-    head="$(git -C "$p" rev-parse --short HEAD 2>/dev/null || echo -)"
-    branch="$(git -C "$p" symbolic-ref --short -q HEAD 2>/dev/null || echo detached)"
-    if out="$(timeout 30 git -C "$p" status --porcelain 2>/dev/null)"; then
+repo_rec() {
+    local p="$1" kind="$2" head branch dirty unpushed gitdir="" out line
+    gopts "$p"
+    head="$(git "${GO[@]}" -C "$p" rev-parse -q --verify HEAD 2>/dev/null </dev/null)" || head=-
+    [[ -n "$head" ]] || head=-
+    branch="$(git "${GO[@]}" -C "$p" symbolic-ref --short -q HEAD 2>/dev/null </dev/null)" || branch=detached
+    bad "$branch" && branch="?"
+    if out="$(timeout 60 git "${GO[@]}" -C "$p" status --porcelain 2>/dev/null </dev/null)"; then
         dirty="$(grep -c . <<<"$out")"
     else
         dirty="?"
     fi
-    unpushed="$(git -C "$p" rev-list --count '@{u}..HEAD' 2>/dev/null || echo -)"
-    [[ "$kind" == worktree ]] && gitdir="$(sed -n 's/^gitdir: //p' "$p/.git")"
-    printf 'R\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$kind" "$head" "$branch" "$dirty" "$unpushed" "$gitdir"
+    unpushed="$(git "${GO[@]}" -C "$p" rev-list --count '@{u}..HEAD' 2>/dev/null </dev/null)" || unpushed=-
+    if [[ "$kind" == worktree ]]; then
+        IFS= read -r line <"$p/.git" || line=""
+        gitdir="${line#gitdir: }"
+        bad "$gitdir" && gitdir=""
+    fi
+    rec R "$p" "$kind" "$head" "$branch" "$dirty" "$unpushed" "$gitdir"
 }
-shopt -s nullglob dotglob
+# repos inside a plain folder, outermost only (a repo in a repo is the outer repo's business)
+nested() {
+    local d="$1" h k kept=() inner
+    while IFS= read -r -d '' h; do
+        inner=0
+        for k in "${kept[@]}"; do [[ "$h" == "$k"/* ]] && inner=1; done
+        ((inner)) || kept+=("$h")
+    done < <(find "$d" -mindepth 2 -maxdepth 5 \( -name node_modules -o -name target -o -name .venv -o -name venv -o -name '*.dots-sync-partial' \) -prune -o -name .git -printf '%h\0' -prune 2>/dev/null | sort -z)
+    for h in "${kept[@]}"; do
+        if bad "$h"; then rec X "$(printf '%q' "$h")"; continue; fi
+        if skipped "$h"; then rec S "$h"; continue; fi
+        if [[ -d "$h/.git" ]]; then repo_rec "$h" repo; else repo_rec "$h" worktree; fi
+    done
+}
 for r in "${ROOTS[@]}"; do
-    [[ -d "$r" ]] || continue
-    [[ -d "$r/.git" ]] && repo_line "$r" root
+    [[ -d "$r" && ! -L "$r" ]] || continue
+    [[ -d "$r/.git" ]] && repo_rec "$r" root
     for e in "$r"/*; do
-        [[ "${e##*/}" == .git ]] && continue
-        skipped "$e" && continue
-        if [[ -d "$e" && ! -L "$e" ]]; then
-            if [[ -d "$e/.git" ]]; then
-                repo_line "$e" repo
-            elif [[ -f "$e/.git" ]]; then
-                repo_line "$e" worktree
+        n="${e##*/}"
+        [[ "$n" == .git ]] && continue
+        if bad "$e"; then rec X "$(printf '%q' "$e")"; continue; fi
+        if [[ "$n" == .git.dots-sync-partial ]]; then rec P "$r/.git"; continue; fi
+        if [[ "$n" == .*.dots-sync-partial ]]; then n="${n#.}"; rec P "$r/${n%.dots-sync-partial}"; continue; fi
+        if skipped "$e"; then rec S "$e"; continue; fi
+        if [[ -L "$e" ]]; then
+            t="$(readlink -- "$e")"
+            bad "$t" && t=""
+            rec L "$e" "$t"
+        elif [[ -d "$e" ]]; then
+            if [[ -d "$e/.git" ]]; then repo_rec "$e" repo
+            elif [[ -f "$e/.git" ]]; then repo_rec "$e" worktree
             else
-                printf 'D\t%s\n' "$e"
+                rec D "$e"
+                nested "$e"
             fi
-        else
-            printf 'F\t%s\n' "$e"
+        elif [[ -f "$e" ]]; then
+            rec F "$e"
         fi
     done
 done
@@ -216,147 +387,462 @@ EOF
     } | run_side "$1"
 }
 
-info "Reading $SRC_NAME and $DST_NAME..."
-inventory src >"$TMP/src.inv"
-inventory dst >"$TMP/dst.inv"
-
-declare -A DST_REPO=() DST_KIND=() DST_HAS=() SRC_REPO=()
-while IFS=$'\t' read -r tag path rest; do
+# read_records FILE WHO: calls on_record TAG FIELD... for each record, dying on anything malformed
+declare -A NFIELDS=([CD]=2 [C]=2 [R]=7 [D]=1 [F]=1 [L]=2 [P]=1 [X]=1 [S]=1)
+read_records() {
+    local file="$1" who="$2" tag n i
+    local -a f
+    while IFS= read -r -d '' tag; do
+        n="${NFIELDS[$tag]:-}"
+        [[ -n "$n" ]] || die "$who sent a malformed inventory (tag $(scrub "$tag"))"
+        f=()
+        for ((i = 0; i < n; i++)); do
+            IFS= read -r -d '' "f[i]" || die "$who sent a truncated inventory"
+        done
+        check_record "$who" "$tag" "${f[@]}"
+        on_record "$tag" "${f[@]}"
+    done <"$file"
+}
+bad_record() { die "$1 sent an entry outside sync.conf's scope: $(printf '%q' "$2"); refusing to copy anything"; }
+# every record must lie where sync.conf says things live: a peer (or a crafted name) cannot point
+# a copy at ~/.ssh, a .credentials.json or anything outside the home
+check_record() {
+    local who="$1" tag="$2" p="${3:-}"
     case "$tag" in
+        CD) { claude_dir "$p" && [[ "$4" == login || "$4" == nologin ]]; } || bad_record "$who" "$p" ;;
+        C) { claude_item "$p" && [[ "$4" == [FDL] ]]; } || bad_record "$who" "$p" ;;
         R)
-            DST_REPO["$path"]="$rest"
-            DST_HAS["$path"]=1
-            ;;
-        D | F) DST_HAS["$path"]=1 ;;
-        CD) DST_KIND["$path"]="$rest" ;;
-    esac
-done <"$TMP/dst.inv"
-
-# ---------------------------------------------------------------- plan
-# One item per line: kind<TAB>path<TAB>list file (or -)
-PLAN="$TMP/plan"
-: >"$PLAN"
-: >"$TMP/claude.list"
-CLAUDE_SRC=()
-NEW_REPOS=() SPECS=() REPORT=()
-
-while IFS=$'\t' read -r tag path kind head branch dirty unpushed gitdir; do
-    case "$tag" in
-        CD) CLAUDE_SRC+=("$path") ;;
-        C) printf '%s\n' "$path" >>"$TMP/claude.list" ;;
-        R)
-            SRC_REPO["$path"]="$kind"$'\t'"$head"$'\t'"$branch"$'\t'"$dirty"$'\t'"$unpushed"
-            if [[ "$kind" == root ]]; then
-                if [[ -z "${DST_REPO[$path]:-}" ]]; then
-                    printf 'gitdir\t%s\t-\n' "$path" >>"$PLAN"
-                else
-                    SPECS+=("keep:$path")
-                fi
-            elif [[ -z "${DST_HAS[$path]:-}" ]]; then
-                SPECS+=("full:$path")
-                NEW_REPOS+=("$path")
-                [[ "$kind" == worktree ]] && printf '%s\t%s\n' "$path" "$gitdir" >>"$TMP/worktrees"
-            elif [[ -n "${DST_REPO[$path]:-}" ]]; then
-                SPECS+=("keep:$path")
+            if [[ "$4" == root ]]; then
+                is_root "$p" || bad_record "$who" "$p"
             else
-                REPORT+=("$path: a repo on $SRC_NAME but a plain folder on $DST_NAME, left alone")
+                { [[ "$4" == repo || "$4" == worktree ]] && root_entry "$p" 5; } || bad_record "$who" "$p"
+            fi
+            [[ "$5" =~ ^([0-9a-f]{4,64}|-)$ && "$7" =~ ^([0-9]+|[?-])$ && "$8" =~ ^([0-9]+|[?-])$ ]] || bad_record "$who" "$p"
+            [[ "$6" != *[[:cntrl:]]* && "$9" != *[[:cntrl:]]* ]] || bad_record "$who" "$p"
+            ;;
+        D | F | L) root_entry "$p" || bad_record "$who" "$p" ;;
+        P)
+            if root_entry "$p" 5; then
+                :
+            elif [[ "$p" == */.git ]] && is_root "${p%/.git}"; then
+                :
+            else
+                bad_record "$who" "$p"
             fi
             ;;
-        D) printf 'dir\t%s\t-\n' "$path" >>"$PLAN" ;;
-        F) printf 'file\t%s\t-\n' "$path" >>"$PLAN" ;;
+        S) safe_rel "$p" || bad_record "$who" "$p" ;;
+        X) [[ "$p" != *[[:cntrl:]]* ]] || bad_record "$who" "$p" ;;
     esac
-done <"$TMP/src.inv"
-[[ -s "$TMP/claude.list" ]] && printf 'claude\t.\t%s\n' "$TMP/claude.list" >>"$PLAN"
+}
 
-# file lists for the repos, made on the source side by git: everything git does not ignore plus
-# the kept ignored files for a new repo, only the kept ignored files for one both sides have
+info "Reading $SRC_NAME and $DST_NAME..."
+inventory src >"$TMP/src.inv" || die "cannot read $SRC_NAME"
+inventory dst >"$TMP/dst.inv" || die "cannot read $DST_NAME"
+
+# the receiver: what type each path has there
+declare -A DST_TYPE=() DST_CTYPE=() DST_REPO=() DST_LOGIN=() DST_PARTIAL=()
+on_record() {
+    case "$1" in
+        CD) DST_LOGIN["$2"]="$3" ;;
+        C) DST_CTYPE["$2"]="$3" ;;
+        R)
+            DST_TYPE["$2"]=R
+            DST_REPO["$2"]="$3"$'\t'"$4"$'\t'"$5"$'\t'"$6"$'\t'"$7"
+            ;;
+        D | F | L) DST_TYPE["$2"]="$1" ;;
+        P) DST_PARTIAL["$2"]=1 ;;
+    esac
+    return 0
+}
+read_records "$TMP/dst.inv" "$DST_NAME"
+
+# ---------------------------------------------------------------- plan
+# items, one per line: kind<TAB>path<TAB>list file (or -); paths carry no control characters
+PLAN="$TMP/plan"
+: >"$PLAN"
+CLAUDE_LIST="$TMP/claude.list"
+: >"$CLAUDE_LIST"
+declare -A SRC_REPO=() WT_GITDIR=() SKIP_HIT=() NESTED=()
+CLAUDE_SRC=() NEW_REPOS=() SPECS=() REPORT=() WARNS=() RESUMED=()
+on_record() {
+    local tag="$1" p="$2" dt parent
+    case "$tag" in
+        CD) CLAUDE_SRC+=("$p") ;;
+        C)
+            dt="${DST_CTYPE[$p]:-}"
+            if [[ "$3" == L ]]; then
+                REPORT+=("$p: a symlink on $SRC_NAME, left alone")
+            elif [[ -n "$dt" && "$dt" != "$3" ]]; then
+                REPORT+=("$p: a different type on the two sides, left alone")
+            elif [[ "${p##*/}" == history.jsonl ]]; then
+                printf 'history\t%s\t-\n' "$p" >>"$PLAN"
+            else
+                printf './%s\0' "$p" >>"$CLAUDE_LIST"
+            fi
+            ;;
+        R)
+            SRC_REPO["$p"]="$3"$'\t'"$4"$'\t'"$5"$'\t'"$6"$'\t'"$7"
+            dt="${DST_TYPE[$p]:-}"
+            if [[ "$3" == root ]]; then
+                if [[ -n "${DST_REPO[$p]:-}" ]]; then
+                    SPECS+=("keep:$p")
+                else
+                    printf 'gitdir\t%s\t-\n' "$p" >>"$PLAN"
+                    [[ -n "${DST_PARTIAL[$p/.git]:-}" ]] && RESUMED+=("$p/.git")
+                fi
+                return 0
+            fi
+            # a repo found inside a plain folder: that folder's copy leaves it out
+            parent="${p%/*}"
+            while [[ "$parent" == */* ]]; do
+                NESTED["$parent"]+="$p"$'\n'
+                parent="${parent%/*}"
+            done
+            case "$dt" in
+                "")
+                    SPECS+=("full:$p")
+                    NEW_REPOS+=("$p")
+                    [[ -n "${DST_PARTIAL[$p]:-}" ]] && RESUMED+=("$p")
+                    [[ "$3" == worktree ]] && WT_GITDIR["$p"]="$8"
+                    ;;
+                R) SPECS+=("keep:$p") ;;
+                L) REPORT+=("$p: a repo on $SRC_NAME but a symlink on $DST_NAME, left alone") ;;
+                *) REPORT+=("$p: a repo on $SRC_NAME but a plain folder or file on $DST_NAME, left alone") ;;
+            esac
+            ;;
+        D)
+            dt="${DST_TYPE[$p]:-}"
+            case "$dt" in
+                "" | D) printf 'dir\t%s\t-\n' "$p" >>"$PLAN" ;;
+                R) REPORT+=("$p: a plain folder on $SRC_NAME but a repo on $DST_NAME, left alone") ;;
+                *) REPORT+=("$p: a folder on $SRC_NAME but a file or symlink on $DST_NAME, left alone") ;;
+            esac
+            ;;
+        F)
+            dt="${DST_TYPE[$p]:-}"
+            if [[ -z "$dt" || "$dt" == F ]]; then
+                printf 'file\t%s\t-\n' "$p" >>"$PLAN"
+            else
+                REPORT+=("$p: a file on $SRC_NAME but a folder or symlink on $DST_NAME, left alone")
+            fi
+            ;;
+        L)
+            dt="${DST_TYPE[$p]:-}"
+            if [[ -z "$dt" && -n "$3" && "$3" != /* && "/$3/" != */../* ]]; then
+                printf 'file\t%s\t-\n' "$p" >>"$PLAN"
+            elif [[ "$dt" != L ]]; then
+                REPORT+=("$p: a symlink on $SRC_NAME (to $(scrub "${3:-?}")), left alone")
+            fi
+            ;;
+        X) REPORT+=("skipped, its name has control characters: $p") ;;
+        S) SKIP_HIT["$p"]=1 ;;
+    esac
+    return 0
+}
+read_records "$TMP/src.inv" "$SRC_NAME"
+[[ -s "$CLAUDE_LIST" ]] && printf 'claude\t.\t%s\n' "$CLAUDE_LIST" >>"$PLAN"
+for s in "${SKIP[@]}"; do
+    [[ -n "${SKIP_HIT[$s]:-}" ]] && continue
+    # a skip deeper than a root's top level is an exclude on the folder holding it
+    hit=0
+    while IFS=$'\t' read -r kind p _; do
+        [[ "$kind" == dir && "$s" == "$p"/* ]] && hit=1
+    done <"$PLAN"
+    ((hit)) || warn "sync.conf: skip $s matched nothing on $SRC_NAME"
+done
+
+# file lists for the repos, made on the source side by git (NUL-separated, ./-prefixed so rsync
+# takes every name literally): everything git does not ignore plus the kept ignored files for a
+# new repo, only the kept ignored files for one both sides have
 if ((${#SPECS[@]})); then
     {
         declare -p SPECS KEEP
+        printf '%s\n' "$GIT_SAFE"
         cat <<'EOF'
 set -uo pipefail
-cd "$HOME"
+cd "$HOME" || exit 3
 for spec in "${SPECS[@]}"; do
     mode="${spec%%:*}" p="${spec#*:}"
-    printf 'L\t%s\t%s\n' "$mode" "$p"
+    printf 'L\0%s\0%s\0' "$mode" "$p"
     (
-        cd "$p" || exit 0
+        cd -- "$p" || exit 0
+        gopts .
+        G() { git "${GO[@]}" "$@" </dev/null; }
         if [[ "$mode" == full ]]; then
-            printf 'f\t.git\n'
-            # untracked nested repos show up as "dir/": not carried from inside another repo
-            git -c core.quotePath=false ls-files -co --exclude-standard | grep -v '/$' | sed 's/^/f\t/'
+            printf 'f\0./.git\0'
+            declare -A LINK=()
+            while IFS= read -r -d '' s; do
+                [[ "${s%% *}" == 160000 ]] && LINK["${s#*$'\t'}"]=1
+            done < <(G ls-files -z -s)
+            while IFS= read -r -d '' f; do
+                if [[ "$f" == */ ]]; then
+                    printf 'n\0%s\0' "${f%/}"
+                    continue
+                fi
+                if [[ -n "${LINK[$f]:-}" ]]; then
+                    # a submodule: its own files, not its build output
+                    printf 'f\0./%s/.git\0' "$f"
+                    (cd -- "$f" 2>/dev/null && gopts . && git "${GO[@]}" ls-files -z -co --exclude-standard </dev/null) |
+                        while IFS= read -r -d '' sf; do
+                            [[ "$sf" == */ ]] || printf 'f\0./%s/%s\0' "$f" "$sf"
+                        done
+                    continue
+                fi
+                [[ -e "$f" || -L "$f" ]] || continue # deleted in the worktree
+                printf 'f\0./%s\0' "$f"
+            done < <(G ls-files -z -co --exclude-standard)
+            w="$(G config --local --name-only --get-regexp '^(core\.(fsmonitor|hookspath|sshcommand|pager|editor|askpass)|filter\..*|diff\..*\.textconv|include\.path|includeif\..*|alias\..*)$' 2>/dev/null | sort -u | tr '\n' ' ')"
+            hooks="$(find .git/hooks -type f ! -name '*.sample' -printf '%f ' 2>/dev/null)"
+            cred=""
+            G config --get-regexp '^remote\..*\.url$' 2>/dev/null | grep -qE '://[^/@]+@' && cred="a remote URL with credentials"
+            summary="${w:+config: $w}${hooks:+hooks: $hooks}$cred"
+            [[ -n "$summary" ]] && printf 'w\0%s\0' "$summary"
         fi
-        git -c core.quotePath=false ls-files -oi --exclude-standard --directory | grep -v '/$' |
-            while IFS= read -r f; do
-                for k in "${KEEP[@]}"; do
-                    # shellcheck disable=SC2053
-                    if [[ "${f##*/}" == $k ]]; then printf 'f\t%s\n' "$f"; break; fi
-                done
+        while IFS= read -r -d '' f; do
+            [[ "$f" == */ ]] && continue
+            [[ -f "$f" && ! -L "$f" ]] || continue
+            for k in "${KEEP[@]}"; do
+                # shellcheck disable=SC2053
+                if [[ "${f##*/}" == $k ]]; then
+                    printf 'f\0./%s\0' "$f"
+                    break
+                fi
             done
+        done < <(G ls-files -z -oi --exclude-standard --directory)
     )
 done
 exit 0
 EOF
-    } | run_side src >"$TMP/lists"
-    n=0 current=""
-    while IFS=$'\t' read -r tag a b; do
-        if [[ "$tag" == L ]]; then
-            n=$((n + 1))
-            current="$TMP/list.$n"
-            : >"$current"
-            kind=repo
-            if [[ "$a" == keep ]]; then
-                kind=keep
-            elif [[ -f "$TMP/worktrees" ]] && awk -F'\t' -v p="$b" '$1 == p { f = 1 } END { exit !f }' "$TMP/worktrees"; then
-                kind=worktree
-            fi
-            printf '%s\t%s\t%s\n' "$kind" "$b" "$current" >>"$PLAN"
-        elif [[ "$tag" == f ]]; then
-            printf '%s\n' "$a" >>"$current"
-        fi
+    } | run_side src >"$TMP/lists" || die "cannot list the repos on $SRC_NAME"
+    n=0 idx=0 current="" mode="" b=""
+    while IFS= read -r -d '' tag; do
+        case "$tag" in
+            L)
+                IFS= read -r -d '' mode || die "truncated repo lists from $SRC_NAME"
+                IFS= read -r -d '' b || die "truncated repo lists from $SRC_NAME"
+                [[ "${SPECS[idx]:-}" == "$mode:$b" ]] || die "$SRC_NAME's repo lists do not match the plan"
+                idx=$((idx + 1))
+                n=$((n + 1))
+                current="$TMP/list.$n"
+                : >"$current"
+                kind=repo
+                if [[ "$mode" == keep ]]; then
+                    kind=keep
+                elif [[ -n "${WT_GITDIR[$b]+x}" ]]; then
+                    kind=worktree
+                fi
+                printf '%s\t%s\t%s\n' "$kind" "$b" "$current" >>"$PLAN"
+                ;;
+            f)
+                IFS= read -r -d '' a || die "truncated repo lists from $SRC_NAME"
+                [[ -n "$current" && "$a" == ./* && "$a" != ./ && "/${a#./}/" != */../* ]] ||
+                    die "$SRC_NAME listed an unsafe path in $b: $(printf '%q' "$a")"
+                if [[ "$mode" == keep ]]; then
+                    ok=0
+                    for k in "${KEEP[@]}"; do
+                        # shellcheck disable=SC2053
+                        [[ "${a##*/}" == $k ]] && ok=1
+                    done
+                    ((ok)) || die "$SRC_NAME listed a file sync.conf does not keep in $b: $(printf '%q' "$a")"
+                fi
+                printf '%s\0' "$a" >>"$current"
+                ;;
+            n)
+                IFS= read -r -d '' a || die "truncated repo lists from $SRC_NAME"
+                REPORT+=("$b/$(scrub "$a"): a repo inside $b, not carried (clone it there)")
+                ;;
+            w)
+                IFS= read -r -d '' a || die "truncated repo lists from $SRC_NAME"
+                WARNS+=("$b brings git config that runs commands: $(scrub "$a")")
+                ;;
+            *) die "$SRC_NAME sent malformed repo lists" ;;
+        esac
     done <"$TMP/lists"
+    ((idx == ${#SPECS[@]})) || die "$SRC_NAME's repo lists are incomplete"
 fi
 
-# ---------------------------------------------------------------- transfer
-RSYNC=(rsync -a --update --mkpath -s -e "ssh ${SSH_OPTS[*]} -o ControlMaster=auto -o ControlPath=$CM -o ControlPersist=300")
-EXCLUDE_ARGS=()
-for x in "${EXCLUDE[@]}"; do
-    EXCLUDE_ARGS+=("--exclude=$x")
+# worktrees: copied only when their main repo's .git/worktrees entry is there or arrives now
+WT_WAIT=()
+if ((${#WT_GITDIR[@]})); then
+    declare -A WT_REL=() WT_READY=()
+    for p in "${!WT_GITDIR[@]}"; do
+        g="${WT_GITDIR[$p]}"
+        [[ -n "$g" && "$g" != /* ]] && g="$(realpath -m -s --relative-to=. "$p/$g")"
+        WT_REL["$p"]="$g"
+    done
+    {
+        # shellcheck disable=SC2016 # runs on the receiver
+        printf 'cd "$HOME" || exit 3\n'
+        for p in "${!WT_REL[@]}"; do
+            printf 'if [[ -n %q && -d %q ]]; then printf "%%s\\0" %q; fi\n' "${WT_REL[$p]}" "${WT_REL[$p]}" "$p"
+        done
+    } | run_side dst >"$TMP/wt.ready" || die "cannot check worktrees on $DST_NAME"
+    while IFS= read -r -d '' p; do WT_READY["$p"]=1; done <"$TMP/wt.ready"
+    for p in "${!WT_REL[@]}"; do
+        [[ -n "${WT_READY[$p]:-}" ]] && continue
+        g="${WT_REL[$p]}"
+        [[ -n "$g" && "$g" != /* ]] && g="$HOME/$g"
+        ready=0
+        for r in "${NEW_REPOS[@]}"; do
+            [[ -n "$g" && "$g" == "$HOME/$r/.git/"* ]] && ready=1
+        done
+        ((ready)) || WT_WAIT+=("$p")
+    done
+    if ((${#WT_WAIT[@]})); then
+        declare -A WAITING=()
+        for p in "${WT_WAIT[@]}"; do WAITING["$p"]=1; done
+        while IFS=$'\t' read -r kind p list; do
+            [[ "$kind" == worktree && -n "${WAITING[$p]:-}" ]] && continue
+            printf '%s\t%s\t%s\n' "$kind" "$p" "$list"
+        done <"$PLAN" >"$PLAN.new"
+        mv "$PLAN.new" "$PLAN"
+    fi
+fi
+
+# MCP servers to merge: read now so the plan can name them (and say which carry secrets)
+declare -A MCP_ADD=()
+for d in "${CLAUDE_SRC[@]}"; do
+    json="$d/.claude.json"
+    [[ "$d" == .claude ]] && json=.claude.json
+    # shellcheck disable=SC2016 # expanded on the side that runs it
+    servers="$({
+        printf 'JSON=%q\n' "$json"
+        printf '%s\n' 'cd "$HOME" || exit 3; [[ -f "$JSON" ]] || { echo "{}"; exit 0; }; jq -ce ".mcpServers // {} | objects" "$JSON" </dev/null || exit 3'
+    } | run_side src)" || {
+        warn "$json: cannot read the MCP servers on $SRC_NAME"
+        echo "$json" >>"$TMP/failed"
+        continue
+    }
+    [[ "$servers" != "{}" ]] || continue
+    # shellcheck disable=SC2016 # expanded on the side that runs it
+    have="$({
+        printf 'JSON=%q\n' "$json"
+        printf '%s\n' 'cd "$HOME" || exit 3; [[ -f "$JSON" ]] || { echo "[]"; exit 0; }; jq -c ".mcpServers // {} | keys" "$JSON" </dev/null 2>/dev/null || echo INVALID'
+    } | run_side dst)" || have=INVALID
+    if [[ "$have" == INVALID ]]; then
+        REPORT+=("$json on $DST_NAME is not valid JSON: its MCP servers are left alone")
+        continue
+    fi
+    add="$(jq -r --argjson have "$have" 'keys - $have | join(" ")' <<<"$servers")"
+    [[ -n "$add" ]] || continue
+    secret="$(jq -r --argjson have "$have" 'to_entries[] | select((.key | IN($have[]) | not) and ((((.value.env // {}) | length) > 0) or (((.value.headers // {}) | length) > 0))) | .key' <<<"$servers" | paste -sd' ')"
+    MCP_ADD["$json"]="$servers"
+    line="MCP servers for ~/$json on $DST_NAME: $(scrub "$add")"
+    [[ -n "$secret" ]] && line+=" (with env or headers, usually keys: $(scrub "$secret"))"
+    WARNS+=("$line")
 done
 
-# xfer KIND PATH LIST [--dry-run]: one plan item; prints "files bytes" from rsync's stats
+# ---------------------------------------------------------------- transfer
+RSH="ssh ${SSH_OPTS[*]} -o ControlMaster=auto -o ControlPath=$CM -o ControlPersist=300"
+RSYNC=(rsync -a --update --mkpath -s -e "$RSH")
+
+stage_of() { # where a new repo is assembled before it is moved into place
+    local p="$1"
+    if [[ "$p" == */* ]]; then printf '%s/.%s.dots-sync-partial' "${p%/*}" "${p##*/}"; else printf '.%s.dots-sync-partial' "$p"; fi
+}
+
+# xfer KIND PATH LIST measure|run: one plan item; prints "files bytes". Runs in a subshell
+# (callers read its output), so failures go to a file.
 xfer() {
-    local kind="$1" p="$2" list="$3" extra=("${@:4}") args=()
+    local kind="$1" p="$2" list="$3" how="$4" args=() extra=() ok=(0 24) failfile="$TMP/failed" x n s why
+    local bak=(--backup "--backup-dir=$BACKUP/$p")
+    [[ "$p" == . ]] && bak=(--backup "--backup-dir=$BACKUP") # rsync fails on a backup dir ending in /.
+    if [[ "$how" == measure ]]; then
+        extra=(--dry-run --info=skip1)
+        failfile="$TMP/measure-failed"
+    fi
     case "$kind" in
-        claude) args=(-r "--files-from=$list" "$SRC_P" "$DST_P") ;;
-        repo | keep | worktree)
-            [[ -s "$list" ]] || { echo "0 0"; return 0; }
-            args=(-r "--files-from=$list" "$SRC_P$p/" "$DST_P$p/")
+        claude) args=("${bak[@]}" --chmod=Fgo-rwx --exclude=.credentials.json -r --from0 "--files-from=$list" "$SRC_P" "$DST_P") ;;
+        keep)
+            if [[ ! -s "$list" ]]; then
+                echo "0 0"
+                return 0
+            fi
+            args=("${bak[@]}" --chmod=Fgo-rwx -r --from0 "--files-from=$list" "$SRC_P$p/" "$DST_P$p/")
             ;;
-        gitdir) args=("$SRC_P$p/.git/" "$DST_P$p/.git/") ;;
-        dir) args=("${EXCLUDE_ARGS[@]}" "$SRC_P$p/" "$DST_P$p/") ;;
-        file) args=("$SRC_P$p" "$DST_P$p") ;;
+        repo | worktree)
+            ok=(0)
+            args=('--exclude=/.git/**.lock' -r --from0 "--files-from=$list" "$SRC_P$p/" "$DST_P$(stage_of "$p")/")
+            ;;
+        gitdir)
+            ok=(0)
+            args=('--exclude=*.lock' "$SRC_P$p/.git/" "$DST_P$p/.git.dots-sync-partial/")
+            ;;
+        dir)
+            args=("${bak[@]}" --exclude=.git '--exclude=*.dots-sync-partial')
+            for x in "${EXCLUDE[@]}"; do args+=("--exclude=$x"); done
+            while IFS= read -r n; do
+                [[ -n "$n" ]] && args+=("--exclude=/${n#"$p"/}/")
+            done <<<"${NESTED[$p]:-}"
+            for s in "${SKIP[@]}"; do
+                [[ "$s" == "$p"/* ]] && args+=("--exclude=/${s#"$p"/}")
+            done
+            args+=("$SRC_P$p/" "$DST_P$p/")
+            ;;
+        file) args=("${bak[@]}" "$SRC_P$p" "$DST_P${p%/*}/") ;;
+        history)
+            ok=(0)
+            args=("$SRC_P$p" "$DST_P$p.dots-sync-incoming")
+            ;;
     esac
     local out status=0
-    out="$(LC_ALL=C "${RSYNC[@]}" "${extra[@]}" --stats "${args[@]}" 2>"$TMP/rsync.err")" || status=$?
-    # 24: files vanished while copying, harmless. xfer runs in a subshell, so failures go to a file
-    if ((status != 0 && status != 24)); then
-        warn "$p: rsync failed ($status): $(tail -n 1 "$TMP/rsync.err")" >&2
-        printf '%s\n' "$p" >>"$TMP/failed"
+    out="$(LC_ALL=C "${RSYNC[@]}" "${extra[@]}" --stats "${args[@]}" 2>"$TMP/rsync.err.$BASHPID")" || status=$?
+    if [[ " ${ok[*]} " != *" $status "* ]]; then
+        if [[ "$how" == run ]]; then
+            # the lines naming files, else rsync's own summary line
+            why="$(grep -v '^rsync error' "$TMP/rsync.err.$BASHPID" | head -n 3 | paste -sd' ')"
+            [[ -n "$why" ]] || why="$(tail -n 1 "$TMP/rsync.err.$BASHPID")"
+            warn "$p: rsync failed ($status): $(scrub "$why")" >&2
+        fi
+        printf '%s\n' "$p" >>"$failfile"
+    fi
+    if [[ "$how" == measure ]]; then
+        grep ' is newer$' <<<"$out" | while IFS= read -r x; do printf '%s/%s\n' "$p" "${x% is newer}"; done >>"$TMP/newer" || true
     fi
     awk -F': ' '/^Number of regular files transferred/ { gsub(/,/, "", $2); f = $2 }
         /^Total transferred file size/ { gsub(/,/, "", $2); sub(/ .*/, "", $2); b = $2 }
         END { print (f ? f : 0), (b ? b : 0) }' <<<"$out"
+    return 0
 }
 
-# a worktree only works where its main repo's .git/worktrees entry exists
-worktree_ready() {
-    local gitdir
-    gitdir="$(awk -F'\t' -v p="$1" '$1 == p { print $2 }' "$TMP/worktrees")"
-    [[ -n "$gitdir" ]] || return 0
-    # git writes the link relative to the worktree with worktree.useRelativePaths
-    [[ "$gitdir" == /* ]] || gitdir="$(realpath -m -s --relative-to=. "$1/$gitdir")"
-    printf 'test -d %q\n' "$gitdir" | run_side dst
+# finalize KIND PATH: move a complete staged copy into place on the receiver, never over anything
+finalize() {
+    local kind="$1" p="$2" st dest fsck=1
+    case "$kind" in
+        gitdir) st="$p/.git.dots-sync-partial" dest="$p/.git" ;;
+        worktree) st="$(stage_of "$p")" dest="$p" fsck=0 ;;
+        *) st="$(stage_of "$p")" dest="$p" ;;
+    esac
+    {
+        printf 'st=%q dest=%q fsck=%q\n' "$st" "$dest" "$fsck"
+        cat <<'EOF'
+cd "$HOME" || exit 3
+if [[ -e "$dest" || -L "$dest" ]]; then echo "something is already at $dest"; exit 3; fi
+if ((fsck)); then
+    gd="$st"
+    [[ -d "$st/.git" ]] && gd="$st/.git"
+    git --git-dir="$gd" --no-optional-locks -c core.fsmonitor=false fsck --connectivity-only --no-progress </dev/null >/dev/null 2>&1 ||
+        { echo "the copy fails git fsck"; exit 3; }
+fi
+mv -T -- "$st" "$dest"
+EOF
+    } | run_side dst >"$TMP/finalize.out" 2>&1 || {
+        warn "$p: $(scrub "$(head -n 1 "$TMP/finalize.out")"); the partial copy stays on $DST_NAME, rerun to finish"
+        printf '%s\n' "$p" >>"$TMP/failed"
+        return 1
+    }
+}
+
+# history.jsonl only ever grows on each machine: the receiver gets the union, not one side's file
+merge_history() {
+    {
+        printf 'h=%q\n' "$1"
+        # shellcheck disable=SC2016 # runs on the receiver
+        printf '%s\n' 'cd "$HOME" || exit 3; touch "$h" && awk '\''NR == FNR { s[$0]; next } !($0 in s)'\'' "$h" "$h.dots-sync-incoming" >>"$h" && rm -f "$h.dots-sync-incoming"'
+    } | run_side dst || {
+        warn "$1: could not merge the prompt history"
+        printf '%s\n' "$1" >>"$TMP/failed"
+    }
 }
 
 hsize() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "${1}B"; }
@@ -364,14 +850,17 @@ hsize() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "${1}B"; }
 info "Measuring what would move from $SRC_NAME to $DST_NAME..."
 declare -A SUM_FILES=() SUM_BYTES=()
 : >"$TMP/sizes"
+: >"$TMP/newer"
+: >"$TMP/measure-failed"
 while IFS=$'\t' read -r kind p list; do
-    read -r files bytes < <(xfer "$kind" "$p" "$list" --dry-run)
-    group="$kind"
+    read -r files bytes < <(xfer "$kind" "$p" "$list" measure)
     case "$kind" in
         repo | worktree) group="new repos" ;;
         keep) group="kept files in existing repos" ;;
         gitdir) group="root repo history" ;;
         dir | file) group="folders and loose files" ;;
+        history) group="prompt history (merged)" ;;
+        *) group="$kind" ;;
     esac
     SUM_FILES["$group"]=$((${SUM_FILES[$group]:-0} + files))
     SUM_BYTES["$group"]=$((${SUM_BYTES[$group]:-0} + bytes))
@@ -380,7 +869,7 @@ done <"$PLAN"
 
 echo
 printf 'dots-sync: %s -> %s\n' "$SRC_NAME" "$DST_NAME"
-for group in claude "new repos" "kept files in existing repos" "root repo history" "folders and loose files"; do
+for group in claude "prompt history (merged)" "new repos" "kept files in existing repos" "root repo history" "folders and loose files"; do
     [[ -n "${SUM_FILES[$group]:-}" ]] || continue
     printf '  %-30s %6s files  %8s\n' "$group" "${SUM_FILES[$group]}" "$(hsize "${SUM_BYTES[$group]}")"
 done
@@ -391,21 +880,29 @@ if [[ -s "$TMP/sizes" ]]; then
     done
 fi
 ((${#NEW_REPOS[@]})) && echo "  new repos on $DST_NAME: ${NEW_REPOS[*]}"
+((${#RESUMED[@]})) && echo "  resuming partial copies: ${RESUMED[*]}"
+((${#WT_WAIT[@]})) && echo "  worktrees waiting for their main repo (git worktree add there): ${WT_WAIT[*]}"
+if [[ -s "$TMP/newer" ]]; then
+    newer_n="$(grep -c . "$TMP/newer")"
+    more=""
+    ((newer_n > 5)) && more=" ..."
+    echo "  kept the newer copy on $DST_NAME ($newer_n files): $(scrub "$(head -n 5 "$TMP/newer" | paste -sd' ')")$more"
+fi
 
 # what git has to settle: repos both sides have whose state differs, work not carried
 for p in "${!SRC_REPO[@]}"; do
     IFS=$'\t' read -r _ shead sbranch sdirty sunpushed <<<"${SRC_REPO[$p]}"
     notes=()
-    [[ "$sdirty" != 0 ]] && notes+=("$sdirty uncommitted on $SRC_NAME")
-    [[ "$sunpushed" != 0 && "$sunpushed" != - ]] && notes+=("$sunpushed unpushed on $SRC_NAME")
     if [[ -n "${DST_REPO[$p]:-}" ]]; then
         IFS=$'\t' read -r _ dhead dbranch ddirty _ <<<"${DST_REPO[$p]}"
-        [[ "$shead" != "$dhead" || "$sbranch" != "$dbranch" ]] &&
-            notes+=("$SRC_NAME $sbranch@$shead, $DST_NAME $dbranch@$dhead")
+        [[ "$sdirty" != 0 ]] && notes+=("$sdirty uncommitted on $SRC_NAME")
+        [[ "$sunpushed" != 0 && "$sunpushed" != - ]] && notes+=("$sunpushed unpushed on $SRC_NAME")
+        if [[ "$shead" != "$dhead" || "$sbranch" != "$dbranch" ]]; then
+            notes+=("$SRC_NAME $sbranch@${shead:0:9}, $DST_NAME $dbranch@${dhead:0:9}")
+        fi
         [[ "$ddirty" != 0 ]] && notes+=("$ddirty uncommitted on $DST_NAME")
     else
         # a new repo carries its uncommitted work along; only unpushed commits are worth a word
-        notes=()
         [[ "$sunpushed" != 0 && "$sunpushed" != - ]] && notes+=("$sunpushed unpushed on $SRC_NAME")
     fi
     if ((${#notes[@]})); then
@@ -414,74 +911,125 @@ for p in "${!SRC_REPO[@]}"; do
     fi
 done
 if ((${#REPORT[@]})); then
-    echo "  for git to settle (not copied over each other):"
+    echo "  left for you or git to settle:"
     printf '%s\n' "${REPORT[@]}" | sort | sed 's/^/    /'
+fi
+if ((${#WARNS[@]})); then
+    echo "  look before you say yes:"
+    printf '%s\n' "${WARNS[@]}" | sed 's/^/    /'
+fi
+if [[ -s "$TMP/measure-failed" ]]; then
+    echo "  would fail: $(sort -u "$TMP/measure-failed" | paste -sd' ')"
 fi
 echo
 
 if ((DRY)); then
     info "Dry run: nothing copied"
+    [[ -s "$TMP/measure-failed" ]] && exit 1
     exit 0
 fi
 if ((!YES)); then
-    read -r -p "Copy from $SRC_NAME to $DST_NAME? [y/N] " answer </dev/tty
-    [[ "$answer" =~ ^[Yy] ]] || { info "Nothing copied"; exit 0; }
+    { : </dev/tty; } 2>/dev/null || die "no terminal to ask on: rerun with --yes or --dry-run"
+    answer=""
+    read -r -p "Copy from $SRC_NAME to $DST_NAME? [y/N] " answer </dev/tty || true
+    if [[ ! "$answer" =~ ^[Yy] ]]; then
+        info "Nothing copied"
+        exit 0
+    fi
 fi
 
-# main repos and plain items first, worktrees last (they need their main repo's .git there)
+# root repo histories and new repos first, worktrees last (they need their main repo's .git)
 copied=0
-while IFS=$'\t' read -r kind p list; do
-    [[ "$kind" == worktree ]] && continue
-    read -r files _ < <(xfer "$kind" "$p" "$list")
+run_item() {
+    local kind="$1" p="$2" list="$3" files=0
+    read -r files _ < <(xfer "$kind" "$p" "$list" run)
     copied=$((copied + files))
-done <"$PLAN"
-while IFS=$'\t' read -r kind p list; do
-    [[ "$kind" == worktree ]] || continue
-    if worktree_ready "$p"; then
-        read -r files _ < <(xfer "$kind" "$p" "$list")
-        copied=$((copied + files))
-    else
-        warn "$p: worktree of a repo $DST_NAME does not have; create it there with git worktree add"
-    fi
-done <"$PLAN"
+    case "$kind" in
+        repo | worktree | gitdir)
+            # staged: only a complete copy (rsync exit 0) is moved into place
+            grep -qxF -- "$p" "$TMP/failed" || finalize "$kind" "$p" || true
+            ;;
+        history)
+            grep -qxF -- "$p" "$TMP/failed" || merge_history "$p"
+            ;;
+    esac
+}
+for pass in gitdir repo other worktree; do
+    while IFS=$'\t' read -r kind p list; do
+        case "$kind" in
+            gitdir | repo | worktree) [[ "$pass" == "$kind" ]] || continue ;;
+            *) [[ "$pass" == other ]] || continue ;;
+        esac
+        run_item "$kind" "$p" "$list"
+    done <"$PLAN"
+done
 
 # MCP servers: the receiver's .claude.json is its own (account, trusted folders, project state),
-# so only the mcpServers object is merged, servers it already has winning
-for d in "${CLAUDE_SRC[@]}"; do
-    json="$d/.claude.json"
-    [[ "$d" == .claude ]] && json=.claude.json
-    servers="$(printf 'jq -c ".mcpServers // {}" %q 2>/dev/null || echo "{}"\n' "$json" | run_side src)"
-    [[ -n "$servers" && "$servers" != "{}" ]] || continue
+# so only the mcpServers object is merged, servers it already has winning. The servers travel in
+# the script on stdin, never in an argument list (they hold keys).
+for json in "${!MCP_ADD[@]}"; do
     {
-        printf 'ADD=%q JSON=%q\n' "$servers" "$json"
+        printf 'ADD=%q JSON=%q\n' "${MCP_ADD[$json]}" "$json"
         cat <<'EOF'
 set -uo pipefail
-cd "$HOME"
-[[ -f "$JSON" ]] || echo '{}' >"$JSON"
-before="$(jq -c '.mcpServers // {} | keys' "$JSON")"
-jq --argjson add "$ADD" '.mcpServers = ($add + (.mcpServers // {}))' "$JSON" >"$JSON.dots-sync" && mv "$JSON.dots-sync" "$JSON"
-jq -r --argjson before "$before" '.mcpServers | keys - $before | join(", ")' "$JSON"
-pgrep -x claude >/dev/null && echo "RUNNING"
+umask 077
+cd "$HOME" || exit 3
+mkdir -p .local/state/dotfiles
+exec 9>>.local/state/dotfiles/dots-sync.mcp.lock
+flock -w 10 9 || { echo BUSY; exit 3; }
+target="$(readlink -f -- "$JSON")" || { echo NOPATH; exit 3; }
+if [[ ! -e "$target" ]]; then
+    [[ -d "${target%/*}" ]] || { echo NODIR; exit 3; }
+    install -m 600 /dev/null "$target" && echo '{}' >"$target"
+fi
+jq -e 'type == "object"' "$target" >/dev/null 2>&1 </dev/null || { echo INVALID; exit 3; }
+before="$(jq -c '.mcpServers // {} | keys' "$target" </dev/null)" || exit 3
+tmp="$(mktemp "$target.XXXXXX")" || exit 3
+chmod --reference="$target" "$tmp" 2>/dev/null || true
+if printf '%s' "$ADD" | jq -e --slurpfile add /dev/stdin '.mcpServers = (($add[0] | objects) + (.mcpServers // {}))' "$target" >"$tmp" 2>/dev/null; then
+    mv -f -- "$tmp" "$target"
+else
+    rm -f -- "$tmp"
+    echo MERGEFAIL
+    exit 3
+fi
+printf 'ADDED\t%s\n' "$(jq -r --argjson before "$before" '.mcpServers | keys - $before | join(", ")' "$target" </dev/null)"
+pgrep -x claude >/dev/null && echo RUNNING
 exit 0
 EOF
-    } | run_side dst >"$TMP/mcp.out" || warn "$json: MCP merge failed"
-    added="$(head -n 1 "$TMP/mcp.out")"
-    [[ -n "$added" ]] && success "MCP servers added to $DST_NAME:~/$json: $added"
-    [[ -n "$added" ]] && grep -qx RUNNING "$TMP/mcp.out" &&
-        warn "Claude is running on $DST_NAME and may write its old .claude.json back; quit it and rerun dots-sync --only claude if the servers are missing"
+    } | run_side dst >"$TMP/mcp.out" 2>&1 || {
+        warn "$json: MCP merge failed on $DST_NAME: $(scrub "$(head -n 1 "$TMP/mcp.out")")"
+        echo "$json" >>"$TMP/failed"
+        continue
+    }
+    added="$(sed -n 's/^ADDED\t//p' "$TMP/mcp.out")"
+    if [[ -n "$added" ]]; then
+        success "MCP servers added to $DST_NAME:~/$json: $(scrub "$added")"
+        if grep -qx RUNNING "$TMP/mcp.out"; then
+            warn "Claude is running on $DST_NAME and may write its old .claude.json back; quit it and rerun dots-sync --only claude if the servers are missing"
+        fi
+    fi
 done
 
 success "Copied $copied files from $SRC_NAME to $DST_NAME"
+replaced="$(printf 'find %q -type f 2>/dev/null | wc -l\n' "$BACKUP" | run_side dst 2>/dev/null)" || replaced=0
+if [[ "$replaced" =~ ^[0-9]+$ ]] && ((replaced > 0)); then
+    info "$replaced files on $DST_NAME were replaced by newer ones; the old copies are in ~/.local/state/dotfiles/dots-sync/$STAMP"
+fi
 for d in "${CLAUDE_SRC[@]}"; do
-    [[ "${DST_KIND[$d]:-nologin}" == login ]] && continue
+    [[ "${DST_LOGIN[$d]:-nologin}" == login ]] && continue
     case "$d" in
         .claude) info "Log in to Claude on $DST_NAME: claude" ;;
         .claude-work) info "Log in to the work account on $DST_NAME: claudew" ;;
         *) info "Log in on $DST_NAME with CLAUDE_CONFIG_DIR=~/$d claude" ;;
     esac
 done
-((${#NEW_REPOS[@]})) && info "New repos come without build output: install their dependencies when you open them (pnpm i, cargo build, ...)"
+if ((${#NEW_REPOS[@]})); then
+    info "New repos come without build output: install their dependencies when you open them (pnpm i, cargo build, ...)"
+fi
 if [[ -s "$TMP/failed" ]]; then
-    warn "Not copied completely: $(sort -u "$TMP/failed" | paste -sd' ')"
+    warn "Not copied completely: $(sort -u "$TMP/failed" | paste -sd' ') (rerun to finish)"
+    : >"$TMP/failed" # reported; the exit trap need not repeat it
     exit 1
 fi
+exit 0
