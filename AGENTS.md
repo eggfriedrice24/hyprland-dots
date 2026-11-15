@@ -16,14 +16,15 @@ means a migration is still pending. Rerunning is idempotent. Helpers every stage
 
 **Machine profiles:** `machines/<profile>/` (desktop, laptop, thinkpad, framework, generic) holds everything
 machine-specific: `hypr.lua` (monitors, config, setup, hypridle), `extends`, `packages.txt`, `aur.txt`, `services`,
-`etc/`, `grub`, `system.sh`, `notes`. `machines/index` maps DMI strings to a profile; `install/machine.sh` and
-`hypr/machine.lua` resolve it identically (flag, pin in `~/.config/dotfiles/profile`, DMI, battery -> laptop, else
-generic). Hostnames are `t` (desktop), `tt` (ThinkPad), `tf` (Framework), but nothing may key on the hostname.
+`etc/`, `grub`, `system.sh`, `notes`, and the optional `keep.txt` that `dots-prune` reads and writes.
+`machines/index` maps DMI strings to a profile; `install/machine.sh` and `hypr/machine.lua` resolve it identically
+(flag, pin in `~/.config/dotfiles/profile`, DMI, battery -> laptop, else generic). Hostnames are `t` (desktop), `tt` (ThinkPad), `tf` (Framework), but nothing may key on the hostname.
 
 **Commands:** `bin/` is linked into `~/.local/bin` by stage 3. `bin/dots-update` (alias `up`) syncs both repos,
 snapshots, upgrades packages and runs `install.sh --no-upgrade`. `bin/dots-snapshot` owns every snapper call (status,
-pre, post, list, rollback, undo, cleanup); it is a no-op on this ext4 desktop. `install/migrate.sh` runs and lists the
-one-off migrations in `install/migrations/`. README.md documents all three.
+pre, post, discard, create, list, rollback, undo, cleanup); it is a no-op on this ext4 desktop. `bin/dots-prune` (also
+`up --prune`) offers the packages the lists do not account for, and records kept ones in `machines/<profile>/keep.txt`.
+`install/migrate.sh` runs and lists the one-off migrations in `install/migrations/`. README.md documents all four.
 
 **Zsh XDG Setup:** `~/.zshenv` is a symlink to `zsh/.zshenv`, which sets `ZDOTDIR="$HOME/.config/zsh"`.
 

@@ -15,7 +15,7 @@ Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [M
 - **[rofi](https://github.com/davatorium/rofi)** - launcher, emoji picker, calculator and clipboard history
 - **GTK** - adw-gtk3-dark and libadwaita recolored from the palette, Thunar styling, Papirus folders in the palette
 - dunst, bat, btop, eza, frameit, pipewire and wireplumber drop-ins
-- `dots-update`, `dots-snapshot` and the installer described below
+- `dots-update`, `dots-snapshot`, `dots-prune` and the installer described below
 
 ## Theme
 
@@ -138,6 +138,7 @@ Everything that belongs to one machine lives in `machines/<profile>/`; the rest 
 | `grub` | stage 6 | kernel parameters, `VARIABLE PARAMETER [KEY]` per line |
 | `system.sh` | stage 6 | a hook for edits that are not whole files |
 | `notes` | stage 9 | lines that are not comments are printed as manual steps |
+| `keep.txt` (optional) | dots-prune | packages this machine keeps on purpose, one per line; dots-prune also writes it |
 | `hypridle.conf` | Hyprland | the laptop layer's idle config |
 
 The installer (`install/machine.sh`) and Hyprland (`hypr/machine.lua`) pick the profile the same way: `--profile`
@@ -435,7 +436,7 @@ layouts.
 dotfiles/
 ├── install.sh           # installer entry point
 ├── bootstrap.sh         # fresh install from the Arch ISO
-├── bin/                 # dots-update, dots-snapshot (linked into ~/.local/bin)
+├── bin/                 # dots-update, dots-snapshot, dots-prune (linked into ~/.local/bin)
 ├── install/
 │   ├── stages/          # 01-packages ... 09-finalize
 │   ├── packages/        # package lists for every machine
