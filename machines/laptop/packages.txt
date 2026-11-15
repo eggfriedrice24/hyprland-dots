@@ -1,2 +1,3 @@
 # Shared laptop layer (thinkpad, framework and any unmatched laptop)
 sof-firmware # Intel SOF audio DSP firmware: without it most laptop sound cards do not show up
+fwupd # firmware updates from LVFS (BIOS, USB-C PD, SSD): fwupdmgr refresh / get-updates / update; starts only when used
