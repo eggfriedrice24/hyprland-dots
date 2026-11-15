@@ -1,0 +1,34 @@
+# Packages the desktop keeps on purpose although no package list names them: dots-prune never
+# offers these. One per line; dots-prune appends the ones you keep when it asks.
+
+# gaming (Steam itself is in install/packages)
+gamemode
+lib32-gamemode
+lutris
+wine-staging
+umu-launcher
+lib32-libcap
+vulkan-tools
+
+# apps and everyday tools
+rex
+yt-dlp
+d2
+usbmuxd
+
+# VMs (the dotfiles QA harness runs on QEMU)
+qemu-desktop
+
+# development
+cmake
+lld
+antlr4
+luacheck
+poppler
+
+# system and disks
+acpi
+dmidecode
+gptfdisk
+parted
+os-prober
