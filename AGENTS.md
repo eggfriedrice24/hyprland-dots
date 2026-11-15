@@ -266,7 +266,10 @@ The `.gitignore` excludes:
 - **Shell:** Zsh
 - **Editor:** Neovim
 - **Fonts:** Nunito (UI, the variable font, tracked in `fonts/` because Arch's ttf-nunito has no Medium), Cartograph CF
-  (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji
+  (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji. The font picker's other UI
+  candidates: Inter (inter-font) and, from Google Fonts into `~/.local/share/fonts/eggfriedrice` by
+  `hypr/scripts/font-picker --fetch` in stage 9, M PLUS Rounded 1c, Google Sans Flex, Figtree, Rubik, Lexend and
+  Atkinson Hyperlegible Next
 - **Additional tools:** waybar, dunst, rofi, awww, cliphist, hypridle, hyprlock, polkit-kde-agent, pipewire, Thunar
 
 ## Code Modification Guidelines
