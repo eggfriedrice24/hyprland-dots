@@ -103,11 +103,11 @@ The stages in `install/stages/` run in order:
 2. **theme** - clones or fast-forwards `~/p/eggfriedrice.nvim`, checks every extra the configs reference and that every
    tracked symlink resolves
 3. **symlinks** - links each config directory into `~/.config`, plus `~/.zshenv`, `~/.wallpapers`, the Cartograph
-   fonts and every command in `bin/` into `~/.local/bin`; existing real files are backed up as `*.bak.<timestamp>`, and
-   links into the repo whose target is gone are removed
+   and Nunito fonts and every command in `bin/` into `~/.local/bin`; existing real files are backed up as
+   `*.bak.<timestamp>`, and links into the repo whose target is gone are removed
 4. **shell** - `chsh` to zsh, first zinit run, then the fast-syntax-highlighting theme and the bat cache, each rebuilt
    only when the theme is newer; a warning when the Starship palette drifted from the theme
-5. **services** - NetworkManager, sshd, timesyncd, fstrim, bluetooth, tailscaled, docker group, the profile's
+5. **services** - NetworkManager, sshd, timesyncd, fstrim, bluetooth, tailscaled, cronie, docker group, the profile's
    `services`, pipewire user sockets. postgresql (cluster initialised) and valkey are installed but not started at
    boot: `dbup` / `dbdown` start and stop both
 6. **system** - the profile's `/etc` files (`machines/<profile>/etc/`), zram, wireless regdom FR, GRUB command line
@@ -117,11 +117,13 @@ The stages in `install/stages/` run in order:
 7. **snapshots** - on the btrfs layout bootstrap.sh builds only: snapper retention, the pacman hook that keeps the
    outgoing kernel, vfat in the initramfs; one line and no change anywhere else
 8. **migrations** - the one-off changes in `install/migrations/` this machine has not run yet (see [Migrations](#migrations))
-9. **finalize** - font cache, XDG user dirs, state dirs, Rust nightly, Node 22 via fnm, Neovim plugins and Mason tools
-   (headless, on a machine that has none yet), Claude Code, Stremio flatpak, then a summary: failed optional steps, what
-   needs a restart, relogin or reboot, the manual steps and the profile's `notes`
+9. **finalize** - the font picker's UI fonts from Google Fonts (`font-picker --fetch`, optional, needs the network),
+   font cache, XDG user dirs, state dirs, Rust nightly, Node 22 via fnm, Neovim plugins and Mason tools (headless, on a
+   machine that has none yet), Claude Code, seeds `opencode/google-workspace.env` from its example, Stremio flatpak,
+   then a summary: failed optional steps, what needs a restart, relogin or reboot, the manual steps and the profile's
+   `notes`
 
-Optional steps (AUR builds, rustup, fnm, Neovim, Claude Code, flatpak, gsettings) do not stop the run; they are
+Optional steps (AUR builds, the font fetch, rustup, fnm, Neovim, Claude Code, flatpak, gsettings) do not stop the run; they are
 listed at the end. The script is idempotent: rerun it after pulling to converge a machine, or let `dots-update` do both.
 
 ## Machine profiles
@@ -441,7 +443,7 @@ dotfiles/
 │   ├── stages/          # 01-packages ... 09-finalize
 │   ├── packages/        # package lists for every machine
 │   ├── migrations/      # one-off changes, run once per machine as stage 8
-│   ├── etc/             # /etc files every machine gets (zram, the keep-old-kernel hook, mkinitcpio drop-in)
+│   ├── etc/             # /etc files every machine gets (zram, the keep-old-kernel hook, mkinitcpio drop-in, makepkg no-debug)
 │   ├── hooks/           # keep-old-kernel, run by that pacman hook
 │   ├── utils.sh         # helpers for the stages, migrations and commands
 │   ├── machine.sh       # machine profile resolver
@@ -459,7 +461,7 @@ dotfiles/
 ├── gtk-3.0/ gtk-4.0/    # GTK colours and Thunar
 ├── rofi/ dunst/ bat/ btop/ eza/ frameit/ opencode/ pipewire/ wireplumber/
 ├── .wallpapers/         # linked to ~/.wallpapers
-└── fonts/               # Cartograph CF, linked into ~/.local/share/fonts
+└── fonts/               # Cartograph CF and Nunito, linked into ~/.local/share/fonts
 ```
 
 ## License
