@@ -7,4 +7,5 @@
 #                                    stalls (costs power, so desktop only)
 #   etc/modprobe.d/btusb-...conf     no USB autosuspend for the Bluetooth adapter
 #   grub                             video=DP-1 for the ASUS, coupled to the DP-1 rule in hypr.lua
+#   system.sh                        Bluetooth FastConnectable in /etc/bluetooth/main.conf
 WiFi: pin the connection to the AP's BSSID and 5 GHz band

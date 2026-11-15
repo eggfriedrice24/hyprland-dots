@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Stage 6: System configuration outside $HOME: the profile's /etc files, zram, bluetooth,
-# wireless regulatory domain, GRUB command line, GTK settings
+# Stage 6: System configuration outside $HOME: the profile's /etc files, zram, wireless
+# regulatory domain, GRUB command line, GTK settings, then the profile's hooks
 
 info "=== Stage 6: System configuration ==="
 
@@ -16,29 +16,6 @@ done
 # zram swap
 if has_pkg zram-generator; then
     install_etc_file "$etc_src/systemd/zram-generator.conf" /etc/systemd/zram-generator.conf
-fi
-
-# Bluetooth: advertise as fast-connectable (quicker headphone and keyboard reconnects).
-# The key lives in [General]; a main.conf without even the commented default gets it appended there.
-bt_conf=/etc/bluetooth/main.conf
-fc_active='^[[:space:]]*FastConnectable[[:space:]]*='
-fc_commented='^#[[:space:]]*FastConnectable[[:space:]]*='
-if [[ -f "$bt_conf" ]]; then
-    if grep -Eq "${fc_active}[[:space:]]*true[[:space:]]*$" "$bt_conf"; then
-        success "bluetooth FastConnectable already on"
-    else
-        info "Enabling bluetooth FastConnectable..."
-        if grep -Eq "$fc_active" "$bt_conf"; then
-            run sudo sed -i -E "s/${fc_active}.*/FastConnectable = true/" "$bt_conf"
-        elif grep -Eq "$fc_commented" "$bt_conf"; then
-            # uncomment only the first commented default
-            run sudo sed -i -E "0,/${fc_commented}/ s/${fc_commented}.*/FastConnectable = true/" "$bt_conf"
-        elif grep -q '^\[General\]' "$bt_conf"; then
-            run sudo sed -i '0,/^\[General\]/ s/^\[General\].*/&\nFastConnectable = true/' "$bt_conf"
-        else
-            run sudo sed -i '$a [General]\nFastConnectable = true' "$bt_conf"
-        fi
-    fi
 fi
 
 # Wireless regulatory domain: FR active and no other domain active (the file is sourced, so a
@@ -208,5 +185,14 @@ if has_cmd gsettings gsettings-desktop-schemas; then # gsettings is glib2's, pul
 else
     warn "gsettings not found, GTK theme not applied"
 fi
+
+# Machine profile hooks (machines/<layer>/system.sh) for edits that are not whole files,
+# sourced with these helpers, base layer first
+mapfile -t system_hooks < <(profile_files system.sh)
+for hook in "${system_hooks[@]}"; do
+    info "Running the $(layer_of "$hook") profile hook"
+    # shellcheck source=/dev/null
+    source "$hook"
+done
 
 success "=== Stage 6: Complete ==="
