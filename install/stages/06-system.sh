@@ -240,9 +240,19 @@ if has_cmd gsettings gsettings-desktop-schemas; then # gsettings is glib2's, pul
     fi
     gset color-scheme "'prefer-dark'"
     gset cursor-size "24"
-    # the theme's ui font (font.ui at weight.ui and size.sm in typography.lua); GTK3 has no CSS
-    # variables, so this setting is how GTK apps get it. monospace-font-name is left as it is
-    gset font-name "'Nunito Medium 10'"
+    # the theme's ui font (font.ui at weight.ui, Medium, and size.sm in typography.lua), the value
+    # the font picker sets too; GTK3 has no CSS variables, so this setting is how GTK apps get it.
+    # monospace-font-name is left as it is
+    ui_font="Nunito Medium 10"
+    palette_json="$THEME_DIR/extras/palette/eggfriedrice.json"
+    if [[ -f "$palette_json" ]]; then
+        ui_family="$(jq -r '.typography.font.ui // empty' "$palette_json" 2>/dev/null)" || ui_family=""
+        ui_size="$(jq -r '.typography.size.sm // empty' "$palette_json" 2>/dev/null)" || ui_size=""
+        if [[ -n "$ui_family" && "$ui_size" =~ ^[0-9]+$ ]]; then
+            ui_font="$ui_family Medium $ui_size"
+        fi
+    fi
+    gset font-name "'$ui_font'"
 else
     warn "gsettings not found, GTK theme not applied"
 fi
