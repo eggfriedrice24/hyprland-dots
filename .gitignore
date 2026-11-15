@@ -1,6 +1,8 @@
 # Zsh
 zsh/.zcompdump*
 zsh/.zsh_history
+# machine-only PATH and environment, sourced by zsh/session.zsh
+zsh/local.zsh
 
 # Neovim
 nvim/.netrwhist

@@ -30,7 +30,7 @@ typeset -U path PATH
 # $PNPM_HOME/bin, where global commands live now
 path=(~/.local/bin $path)
 # toolchain bins that only exist once the tool has been used
-path=(~/uni/t-mesh/bin(N/) ~/go/bin(N/) ~/.cargo/bin(N/) $path)
+path=(~/go/bin(N/) ~/.cargo/bin(N/) $path)
 
 # fnm: the binary when it came from its curl installer (pacman's lives in /usr/bin), then
 # the default Node, so anything started outside a shell (launchers, user units) finds node
@@ -49,5 +49,12 @@ session_env=(
   XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CONFIG_DIRS XDG_DATA_DIRS
   EDITOR VISUAL TERMINAL BROWSER
 )
+
+# Machine-only additions (project bin dirs and the like) go in zsh/local.zsh, which git
+# ignores. It is sourced here, so the graphical session gets them too; keep it safe to
+# run twice, for example `path=(~/uni/t-mesh/bin(N/) $path)`.
+if [[ -r ${ZDOTDIR:-$HOME/.config/zsh}/local.zsh ]]; then
+  source "${ZDOTDIR:-$HOME/.config/zsh}/local.zsh"
+fi
 
 # vim:ft=zsh:nowrap
