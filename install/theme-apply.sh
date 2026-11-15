@@ -128,6 +128,11 @@ theme_apply_papirus() {
         warn "Papirus is not installed, folder icons not recoloured"
         return 1
     fi
+    # stage 2 only planned the clone, so --check would report the missing input as a failure
+    if [[ "${DRY_RUN:-0}" == "1" && ! -f "$THEME_DIR/extras/papirus/eggfriedrice.sh" ]]; then
+        dry "$script (once the theme repo is cloned)"
+        return 0
+    fi
     if [[ "$THEME_APPLY_FORCE" == "1" ]]; then
         info "Rebuilding Papirus folder icons (forced)..."
         run "$script" --force
