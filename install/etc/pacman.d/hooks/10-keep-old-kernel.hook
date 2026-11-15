@@ -1,0 +1,12 @@
+# dotfiles (install/stages/07-snapshots.sh): before 60-mkinitcpio-remove deletes the outgoing
+# kernel and initramfs, keep them on the ESP as .old so a pre-upgrade snapshot can still boot
+[Trigger]
+Type = Path
+Operation = Remove
+Target = usr/lib/modules/*/vmlinuz
+
+[Action]
+Description = Keeping the outgoing kernel as .old for snapshot boots...
+When = PreTransaction
+Exec = /usr/local/share/libalpm/scripts/keep-old-kernel
+NeedsTargets

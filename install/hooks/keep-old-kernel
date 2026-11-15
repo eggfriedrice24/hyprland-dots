@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# pacman hook (10-keep-old-kernel.hook, PreTransaction): before mkinitcpio's remove hook (60-)
+# deletes the kernel and initramfs of a kernel package that is upgraded or removed, keep them on
+# the ESP as vmlinuz-<pkgbase>.old and initramfs-<pkgbase>.img.old.
+#
+# A snapshot taken before the upgrade holds the old modules; the old kernel and the initramfs built
+# for it are what boots it (GRUB's 10_linux pairs the two .old files, grub-btrfs lists them for each
+# snapshot). One generation back only: the next upgrade replaces them.
+#
+# stdin: the hook's targets, usr/lib/modules/<version>/vmlinuz of the outgoing versions.
+# Never fails the transaction: every problem is a message and exit 0.
+# Test overrides: BOOT_DIR (the ESP, /boot), MODULES_ROOT (where usr/lib/modules/... resolve, /).
+
+BOOT_DIR="${BOOT_DIR:-/boot}"
+MODULES_ROOT="${MODULES_ROOT:-/}"
+MARGIN=$(( 32 * 1024 * 1024 )) # left free for the incoming kernel beyond what the old one occupied
+
+say() { printf '==> keep-old-kernel: %s\n' "$*"; }
+
+# kernel_version FILE: the version string in an x86 bzImage header (as mkinitcpio reads it)
+kernel_version() {
+    local offset kver
+    offset="$(od -An -j0x20E -dN2 "$1" 2>/dev/null)" || return 0
+    offset="${offset//[[:space:]]/}"
+    [[ "$offset" =~ ^[0-9]+$ ]] || return 0
+    read -r kver _ < <(dd if="$1" bs=1 count=127 skip=$(( offset + 0x200 )) 2>/dev/null | tr -d '\0') || true
+    printf '%s' "$kver"
+}
+
+declare -A done_pkgbase=()
+while IFS= read -r target; do
+    [[ "$target" == usr/lib/modules/*/vmlinuz ]] || continue
+    moddir="${MODULES_ROOT%/}/${target%/vmlinuz}"
+    version="${moddir##*/}"
+    pkgbase=""
+    read -r pkgbase 2>/dev/null <"$moddir/pkgbase" || true
+    # like mkinitcpio: a kernel without a pkgbase has no files of its own on the ESP
+    [[ -n "$pkgbase" && -z "${done_pkgbase[$pkgbase]:-}" ]] || continue
+    done_pkgbase["$pkgbase"]=1
+
+    kernel="$BOOT_DIR/vmlinuz-$pkgbase"
+    image="$BOOT_DIR/initramfs-$pkgbase.img"
+    if [[ ! -f "$kernel" || ! -f "$image" ]]; then
+        say "no $kernel and $image (is the ESP mounted at $BOOT_DIR?), nothing kept for $pkgbase"
+        continue
+    fi
+    # only the pair that belongs to the outgoing modules; anything else would pair a snapshot
+    # with the wrong kernel, so the previous .old (if any) stays
+    found="$(kernel_version "$kernel")"
+    if [[ -n "$found" && "$found" != "$version" ]]; then
+        say "$kernel is $found, not the outgoing $version; keeping the previous .old files"
+        continue
+    fi
+
+    # room for the copies plus the incoming kernel; the copies replace the previous .old files
+    need=$(( $(stat -c %s "$kernel") + $(stat -c %s "$image") + MARGIN ))
+    freed=0
+    for old in "$kernel.old" "$image.old"; do
+        if [[ -f "$old" ]]; then
+            freed=$(( freed + $(stat -c %s "$old") ))
+        fi
+    done
+    avail="$(df --output=avail -B1 "$BOOT_DIR" 2>/dev/null | tail -n1)"
+    avail="${avail//[[:space:]]/}"
+    if [[ "$avail" =~ ^[0-9]+$ ]] && (( avail + freed < need )); then
+        say "not enough room on the ESP ($(( (avail + freed) / 1048576 )) MiB) for a copy of $pkgbase $version, not kept"
+        continue
+    fi
+
+    # copy to a temporary name first, so a full ESP never leaves a half-written .old behind
+    if cp -- "$kernel" "$kernel.old.tmp" && cp -- "$image" "$image.old.tmp" &&
+        mv -f -- "$kernel.old.tmp" "$kernel.old" && mv -f -- "$image.old.tmp" "$image.old"; then
+        say "kept $pkgbase $version as ${kernel##*/}.old and ${image##*/}.old"
+    else
+        rm -f -- "$kernel.old.tmp" "$image.old.tmp"
+        say "could not copy $pkgbase $version to the ESP, not kept"
+    fi
+done
+
+exit 0
