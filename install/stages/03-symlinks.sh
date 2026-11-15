@@ -24,6 +24,7 @@ declare -A symlinks=(
     ["wireplumber"]="$HOME/.config/wireplumber"
     [".wallpapers"]="$HOME/.wallpapers"
     ["fonts/Cartograph"]="$HOME/.local/share/fonts/Cartograph"
+    ["fonts/Nunito"]="$HOME/.local/share/fonts/Nunito"
 )
 
 run mkdir -p "$HOME/.config"

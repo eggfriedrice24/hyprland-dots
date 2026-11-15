@@ -265,7 +265,8 @@ The `.gitignore` excludes:
 - **Terminal:** Ghostty
 - **Shell:** Zsh
 - **Editor:** Neovim
-- **Fonts:** Nunito (UI), Cartograph CF (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji
+- **Fonts:** Nunito (UI, the variable font, tracked in `fonts/` because Arch's ttf-nunito has no Medium), Cartograph CF
+  (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji
 - **Additional tools:** waybar, dunst, rofi, awww, cliphist, hypridle, hyprlock, polkit-kde-agent, pipewire, Thunar
 
 ## Code Modification Guidelines

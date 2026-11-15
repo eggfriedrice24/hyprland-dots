@@ -1,6 +1,6 @@
-# Fonts (Cartograph CF ships in fonts/ and is linked by the installer; it is the terminal font only)
-# the ui font of the theme's typography tokens, for every surface but the terminal
-ttf-nunito
+# Fonts. Two ship in fonts/ and are linked by the installer: Cartograph CF (terminal only) and Nunito,
+# the ui font of the theme's typography tokens. Nunito is the variable font from Google Fonts because
+# Arch's ttf-nunito is the old static set without a Medium weight, and the tokens ask for Medium.
 ttf-jetbrains-mono-nerd
 ttf-nerd-fonts-symbols-mono
 noto-fonts
