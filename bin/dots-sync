@@ -617,8 +617,30 @@ for spec in "${SPECS[@]}"; do
             summary="${w:+config: $w}${hooks:+hooks: $hooks}$cred"
             [[ -n "$summary" ]] && printf 'w\0%s\0' "$summary"
         fi
+        # kept files inside a folder git ignores as a whole (dev/apps/, .vercel/): git lists only the
+        # folder, so look inside it, past build output and never into a repo of its own
+        kexpr=()
+        for k in "${KEEP[@]}"; do kexpr+=(-o -name "$k"); done
+        kexpr=("${kexpr[@]:1}")
+        inside_ignored() {
+            local top="${1%/}" x d own
+            while IFS= read -r -d '' x; do
+                x="${x#./}"
+                own=0
+                d="${x%/*}"
+                while :; do
+                    [[ -e "$d/.git" ]] && own=1
+                    [[ "$d" == "$top" || "$d" != */* ]] && break
+                    d="${d%/*}"
+                done
+                ((own)) || printf 'f\0./%s\0' "$x"
+            done < <(find "./$top" \( -name node_modules -o -name target -o -name .git -o -name .venv -o -name venv -o -name '*.dots-sync-partial' \) -prune -o -type f \( "${kexpr[@]}" \) -print0 2>/dev/null)
+        }
         while IFS= read -r -d '' f; do
-            [[ "$f" == */ ]] && continue
+            if [[ "$f" == */ ]]; then
+                ((${#kexpr[@]})) && [[ -d "$f" && ! -L "${f%/}" ]] && inside_ignored "$f"
+                continue
+            fi
             [[ -f "$f" && ! -L "$f" ]] || continue
             for k in "${KEEP[@]}"; do
                 # shellcheck disable=SC2053
