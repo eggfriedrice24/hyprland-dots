@@ -1,0 +1,3 @@
+# Global gitignore for every repo on every machine (~/.config/git/ignore, linked by stage 3).
+# Claude Code per-project local settings: personal permissions, never committed.
+**/.claude/settings.local.json
