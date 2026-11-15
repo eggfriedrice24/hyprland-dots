@@ -15,6 +15,9 @@ fi
 if has_pkg tailscale; then
     enable_system_service tailscaled
 fi
+if has_pkg cronie; then
+    enable_system_service cronie
+fi
 # valkey and postgresql are installed but not started at boot: two database servers running all day
 # cost battery for nothing. Start them when a project needs them: `dbup` / `dbdown` (zsh/aliases.zsh).
 # postgresql still gets its cluster initialised here, so `dbup` works on the first try.

@@ -11,3 +11,4 @@ rsync
 zip
 unrar
 tree
+cronie # cron daemon for scheduled jobs; runs in the background, enabled in stage 5
