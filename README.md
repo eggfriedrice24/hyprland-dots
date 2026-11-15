@@ -108,7 +108,7 @@ The stages in `install/stages/` run in order:
 4. **shell** - `chsh` to zsh, first zinit run, then the fast-syntax-highlighting theme and the bat cache, each rebuilt
    only when the theme is newer; a warning when the Starship palette drifted from the theme
 5. **services** - NetworkManager, sshd, timesyncd, fstrim, bluetooth, tailscaled, valkey, postgresql (with `initdb`),
-   docker group, the profile's `services`, pipewire user sockets, the `ssh-agent.socket` user unit
+   docker group, the profile's `services`, pipewire user sockets
 6. **system** - the profile's `/etc` files (`machines/<profile>/etc/`), zram, wireless regdom FR, GRUB command line
    (`zswap.enabled=0` plus the profile's `grub` file), GTK theme (adw-gtk3-dark, recolored from the palette by
    `gtk-3.0/` and `gtk-4.0/`), Papirus-Dark with the palette's folders (`install/papirus-folders.sh`, rebuilt only when
@@ -316,8 +316,8 @@ repository packages; `install/migrate.sh --status` lists them. Without `dots-upd
 Things that hold secrets or hardware state and are set up by hand:
 
 - **WiFi**: the ISO's connection is not carried over; `nmcli device wifi connect <ssid> --ask`
-- **SSH and git**: restore `~/.ssh` (keys and `config`; `AddKeysToAgent yes` there hands keys to the ssh-agent user
-  unit) and `~/.gitconfig`, then `gh auth login`
+- **SSH and git**: restore `~/.ssh` (keys and `config`; keychain in `zsh/env.zsh` starts one agent shared by all
+  terminals) and `~/.gitconfig`, then `gh auth login`
 - **Tailscale**: `sudo tailscale up`
 - **Bluetooth**: pair and trust devices with `bluetoothctl`
 - **WiFi on the desktop**: pin the connection to the AP's BSSID and the 5 GHz band to avoid rtw89 stalls:
