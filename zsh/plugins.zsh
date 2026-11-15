@@ -13,6 +13,22 @@ if [[ ! -f ${ZINIT_HOME}/zinit.git/zinit.zsh ]]; then
     print -P "%F{9}▓▒░ Zinit clone failed.%f"
 fi
 
+# The completion dump lives in the cache, not in ZDOTDIR (that is this repo)
+_zcompdump="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-$ZSH_VERSION"
+[[ -d ${_zcompdump:h} ]] || mkdir -p "${_zcompdump:h}"
+autoload -Uz compinit
+
+# Without zinit (offline first start, failed clone) keep a working shell: completion
+# only, no plugins. The next shell retries the clone.
+if [[ ! -r ${ZINIT_HOME}/zinit.git/zinit.zsh ]]; then
+  compinit -d "$_zcompdump"
+  unset _zcompdump
+  return 0
+fi
+
+# zinit's own compinit calls (creinstall on plugin updates) use the same dump
+typeset -gA ZINIT
+ZINIT[ZCOMPDUMP_PATH]=$_zcompdump
 source "${ZINIT_HOME}/zinit.git/zinit.zsh"
 
 # # Theme: Powerlevel10k
@@ -23,7 +39,8 @@ source "${ZINIT_HOME}/zinit.git/zinit.zsh"
 zinit ice blockf atpull'zinit creinstall -q .'
 zinit light zsh-users/zsh-completions
 
-autoload -Uz compinit && compinit
+compinit -d "$_zcompdump"
+unset _zcompdump
 
 # Plugins
 zinit light-mode for \
