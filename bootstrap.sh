@@ -102,6 +102,8 @@ lsblk -dpno NAME,SIZE,TRAN,MODEL -e 7,11 | awk -v b="$ISO_DISK" '$1 != b && $1 !
 [[ -n "$ISO_DISK" ]] && echo "  ($ISO_DISK is the live ISO and not listed)"
 echo
 ask_required ROOT_DISK "Disk for the system (WILL BE WIPED)"
+# the guards compare /dev/<kname> paths and part() appends to the answer: resolve by-id and by-path links
+ROOT_DISK="$(readlink -f "$ROOT_DISK" || echo "$ROOT_DISK")"
 [[ -b "$ROOT_DISK" && "$(lsblk -dno TYPE "$ROOT_DISK")" == disk ]] || die "$ROOT_DISK is not a disk"
 [[ "$ROOT_DISK" != "$ISO_DISK" ]] || die "$ROOT_DISK is the live ISO this runs from"
 # zram only by default; hibernation can come later from a btrfs swapfile without repartitioning
@@ -134,12 +136,14 @@ HOME_DEV=""
 case "$HOME_MODE" in
     k)
         ask_required HOME_DEV "Existing home partition" "$(blkid -L home 2>/dev/null || true)"
+        HOME_DEV="$(readlink -f "$HOME_DEV" || echo "$HOME_DEV")"
         [[ -b "$HOME_DEV" ]] || die "$HOME_DEV is not a block device"
         [[ "$(blkid -o value -s TYPE "$HOME_DEV")" == ext4 ]] || die "$HOME_DEV is not ext4"
         [[ "$(disk_of "$HOME_DEV")" != "$ROOT_DISK" ]] || die "$HOME_DEV is on the disk that gets wiped"
         ;;
     f)
         ask_required HOME_DISK "Disk for /home (WILL BE WIPED)"
+        HOME_DISK="$(readlink -f "$HOME_DISK" || echo "$HOME_DISK")"
         [[ -b "$HOME_DISK" && "$(lsblk -dno TYPE "$HOME_DISK")" == disk ]] || die "$HOME_DISK is not a disk"
         [[ "$HOME_DISK" != "$ROOT_DISK" ]] || die "Pick a different disk than the system disk, or use [s]"
         [[ "$HOME_DISK" != "$ISO_DISK" ]] || die "$HOME_DISK is the live ISO this runs from"
