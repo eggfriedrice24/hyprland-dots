@@ -74,6 +74,17 @@ for tool in sudo git; do
     fi
 done
 
+# bootstrap.sh grants passwordless sudo for its chroot run and deletes the file afterwards; a run that
+# was killed leaves it behind. /etc/sudoers.d is root-only, and `sudo -n` succeeds only without a
+# prompt (a cached ticket, or that very NOPASSWD rule), so this never asks for a password.
+# Skipped inside the chroot, where the file is expected, and in a dry run.
+bootstrap_sudoers=/etc/sudoers.d/99-bootstrap
+if [[ "$DRY_RUN" -eq 0 ]] && ! systemd-detect-virt --chroot &>/dev/null &&
+    sudo -n test -e "$bootstrap_sudoers" 2>/dev/null; then
+    warn "$bootstrap_sudoers is left over from an interrupted bootstrap.sh and gives $USER passwordless root."
+    warn "Remove it: sudo rm $bootstrap_sudoers"
+fi
+
 DISPLAY_DIR="${DOTFILES_DIR/#$HOME/\~}"
 
 echo
