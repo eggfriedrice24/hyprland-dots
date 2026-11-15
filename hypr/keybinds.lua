@@ -1,16 +1,16 @@
 -- Keybinds
 
 local scriptsDir = "$HOME/.config/hypr/scripts"
-local notifycmd  = "notify-send -h string:x-canonical-private-synchronous:hypr-cfg -u low"
+local notifycmd = "notify-send -h string:x-canonical-private-synchronous:hypr-cfg -u low"
 
-local term        = "ghostty"
-local volume      = scriptsDir .. "/volumecontrol.sh"
-local screenshot  = scriptsDir .. "/screensht"
+local term = "ghostty"
+local volume = scriptsDir .. "/volumecontrol.sh"
+local screenshot = scriptsDir .. "/screensht"
 local screenrecord = scriptsDir .. "/screenrecord"
 local colorpicker = scriptsDir .. "/colorpicker"
-local files       = "thunar"
-local browser     = "zen-browser"
-local browserP    = "helium-browser"
+local files = "thunar"
+local browser = "zen-browser"
+local browserP = "helium-browser"
 
 -- Volume and brightness: locked so they also work on the lock screen. Volume steps repeat while
 -- held; brightness does not yet, because held presses would race on the DDC path
@@ -23,8 +23,10 @@ hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontr
 -- Media and mic mute: playerctl drives whichever MPRIS player is active; mic mute toggles the
 -- default source and says which way it went, since most keyboards have no mic LED
 local micmute = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q MUTED; then "
-  .. notifycmd .. " -i microphone-sensitivity-muted-symbolic 'Microphone muted'; else "
-  .. notifycmd .. " -i microphone-sensitivity-high-symbolic 'Microphone on'; fi"
+	.. notifycmd
+	.. " -i microphone-sensitivity-muted-symbolic 'Microphone muted'; else "
+	.. notifycmd
+	.. " -i microphone-sensitivity-high-symbolic 'Microphone on'; fi"
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"), { locked = true })
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
@@ -48,12 +50,22 @@ hl.bind("SUPER + B", hl.dsp.exec_cmd(browserP))
 hl.bind("SUPER + E", hl.dsp.exec_cmd(files))
 hl.bind("SUPER + D", hl.dsp.exec_cmd("killall rofi || rofi -show drun -theme ~/.config/rofi/config.rasi"))
 -- copy mode: the default insert mode needs wtype, which is not installed, so Enter only copies
-hl.bind("SUPER + period", hl.dsp.exec_cmd([[killall rofi || rofi -show emoji -emoji-mode copy -emoji-format "{emoji}" -modi emoji -theme ~/.config/rofi/global/emoji]]))
+hl.bind(
+	"SUPER + period",
+	hl.dsp.exec_cmd(
+		[[killall rofi || rofi -show emoji -emoji-mode copy -emoji-format "{emoji}" -modi emoji -theme ~/.config/rofi/global/emoji]]
+	)
+)
 -- rofi-calc: live qalc result under the input, Enter copies it and closes. With history on, Enter only
 -- saves to history and copying needs a second Enter on the history row, so history is off. rofi-calc
 -- does not guard an empty result on this path, hence the test -n (else Enter on nothing clears the clipboard);
 -- not `[ ]`, rofi strips square-bracket blocks from commands as optional sections
-hl.bind("SUPER + equal", hl.dsp.exec_cmd([[killall rofi || rofi -show calc -modi calc -no-show-match -no-sort -terse -no-history -no-persist-history -hint-result "= " -hint-welcome "Enter copies the result" -calc-command "test -n '{result}' && printf %s '{result}' | wl-copy" -theme ~/.config/rofi/global/calc]]))
+hl.bind(
+	"SUPER + equal",
+	hl.dsp.exec_cmd(
+		[[killall rofi || rofi -show calc -modi calc -no-show-match -no-sort -terse -no-history -no-persist-history -hint-result "= " -hint-welcome "Enter copies the result" -calc-command "test -n '{result}' && printf %s '{result}' | wl-copy" -theme ~/.config/rofi/global/calc]]
+	)
+)
 -- UI font picker: each candidate drawn in itself; choosing one sets the theme's font.ui and applies it live
 hl.bind("SUPER + SHIFT + F", hl.dsp.exec_cmd("killall rofi || ~/.config/hypr/scripts/font-picker"))
 -- clipboard history (text only): Enter copies, Shift+Delete removes an entry, Ctrl+Shift+Delete wipes it all
@@ -67,13 +79,15 @@ hl.bind("SUPER + Q", hl.dsp.window.close())
 -- force-kill the focused window. Only the Steam client itself (class exactly "steam", games are
 -- steam_app_*) gets a clean `steam -shutdown`, since killing it leaves Steam half running
 hl.bind("SUPER + SHIFT + Q", function()
-  local w = hl.get_active_window()
-  if w == nil then return end
-  if w.class == "steam" then
-    hl.exec_cmd("steam -shutdown")
-  else
-    hl.dispatch(hl.dsp.window.kill())
-  end
+	local w = hl.get_active_window()
+	if w == nil then
+		return
+	end
+	if w.class == "steam" then
+		hl.exec_cmd("steam -shutdown")
+	else
+		hl.dispatch(hl.dsp.window.kill())
+	end
 end)
 hl.bind("SUPER + SHIFT + Escape", hl.dsp.exit())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen())
@@ -85,29 +99,37 @@ hl.bind("SUPER + S", hl.dsp.layout("togglesplit")) -- dwindle
 -- workspaceopt is gone in the Lua config manager - toggle every window on the
 -- active workspace instead
 hl.bind("SUPER + SHIFT + Space", function()
-  local ws = hl.get_active_workspace()
-  if ws == nil then return end
-  for _, w in ipairs(hl.get_workspace_windows(ws)) do
-    -- pcall in case a window expires mid-loop
-    pcall(function() hl.dispatch(hl.dsp.window.float({ window = w })) end)
-  end
-  hl.exec_cmd(notifycmd .. " 'Toggled All Float Mode'")
+	local ws = hl.get_active_workspace()
+	if ws == nil then
+		return
+	end
+	for _, w in ipairs(hl.get_workspace_windows(ws)) do
+		-- pcall in case a window expires mid-loop
+		pcall(function()
+			hl.dispatch(hl.dsp.window.float({ window = w }))
+		end)
+	end
+	hl.exec_cmd(notifycmd .. " 'Toggled All Float Mode'")
 end)
 hl.bind("SUPER + SHIFT + P", function()
-  local ws = hl.get_active_workspace()
-  if ws == nil then return end
-  for _, w in ipairs(hl.get_workspace_windows(ws)) do
-    pcall(function() hl.dispatch(hl.dsp.window.pseudo({ window = w })) end)
-  end
-  hl.exec_cmd(notifycmd .. " 'Toggled All Pseudo Mode'")
+	local ws = hl.get_active_workspace()
+	if ws == nil then
+		return
+	end
+	for _, w in ipairs(hl.get_workspace_windows(ws)) do
+		pcall(function()
+			hl.dispatch(hl.dsp.window.pseudo({ window = w }))
+		end)
+	end
+	hl.exec_cmd(notifycmd .. " 'Toggled All Pseudo Mode'")
 end)
 
 -- SUPER+Tab did three things in the old config: cycle focus, raise the window,
 -- and (for grouped windows) switch the active group member
 hl.bind("SUPER + Tab", function()
-  hl.dispatch(hl.dsp.window.cycle_next())
-  hl.dispatch(hl.dsp.window.bring_to_top())
-  hl.dispatch(hl.dsp.group.next())
+	hl.dispatch(hl.dsp.window.cycle_next())
+	hl.dispatch(hl.dsp.window.bring_to_top())
+	hl.dispatch(hl.dsp.group.next())
 end)
 
 -- Focus
@@ -144,8 +166,8 @@ hl.bind("SUPER + CTRL + down", hl.dsp.window.resize({ x = 0, y = 20, relative = 
 -- Groups (tabbed)
 -- old config bound "g" (togglegroup) and "G" (notify) separately - same key
 hl.bind("SUPER + G", function()
-  hl.dispatch(hl.dsp.group.toggle())
-  hl.exec_cmd(notifycmd .. " 'Toggled Group Mode'")
+	hl.dispatch(hl.dsp.group.toggle())
+	hl.exec_cmd(notifycmd .. " 'Toggled Group Mode'")
 end)
 
 -- Special workspace
@@ -157,16 +179,16 @@ hl.bind("SUPER + C", hl.dsp.window.center())
 -- Switching always happens on the focused monitor: if the workspace lives on
 -- the other monitor it is pulled over first (focusworkspaceoncurrentmonitor)
 for i = 1, 10 do
-  local key = i % 10 -- 10 maps to key 0
-  hl.bind("SUPER + " .. key, function()
-    local mon = hl.get_active_monitor()
-    local ws = hl.get_workspace(i)
-    if mon ~= nil and ws ~= nil and ws.monitor ~= nil and ws.monitor.name ~= mon.name then
-      hl.dispatch(hl.dsp.workspace.move({ workspace = i, monitor = mon.name }))
-    end
-    hl.dispatch(hl.dsp.focus({ workspace = i }))
-  end)
-  hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+	local key = i % 10 -- 10 maps to key 0
+	hl.bind("SUPER + " .. key, function()
+		local mon = hl.get_active_monitor()
+		local ws = hl.get_workspace(i)
+		if mon ~= nil and ws ~= nil and ws.monitor ~= nil and ws.monitor.name ~= mon.name then
+			hl.dispatch(hl.dsp.workspace.move({ workspace = i, monitor = mon.name }))
+		end
+		hl.dispatch(hl.dsp.focus({ workspace = i }))
+	end)
+	hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
 hl.bind("SUPER + ALT + up", hl.dsp.focus({ workspace = "e+1" }))
 hl.bind("SUPER + ALT + down", hl.dsp.focus({ workspace = "e-1" }))
