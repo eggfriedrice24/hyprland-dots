@@ -438,6 +438,8 @@ arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 # ---------------------------------------------------------------- done
 echo
 success "Install finished."
+# the ISO's iwd connection is not carried over; the new system runs NetworkManager
+echo "  Wi-Fi after the first boot: nmcli device wifi connect <ssid> --ask"
 if (( ! repo_ok )); then
     echo "  After the first boot: git clone $DOTFILES_REPO ~/dotfiles && cd ~/dotfiles && ./install.sh"
 elif (( ! dotfiles_ok )); then
