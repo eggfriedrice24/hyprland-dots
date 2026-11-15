@@ -6,7 +6,7 @@
 #   dots-sync --to HOST       push from this machine to HOST
 #     -n, --dry-run           show the plan and the sizes, copy nothing
 #     -y, --yes               do not ask before copying
-#     --only claude|projects  one of the two parts
+#     --only claude|projects|home  one of the three parts
 #     --sessions              Claude transcripts and prompt history too (off: they are large)
 #     --root DIR              carry these project roots instead of sync.conf's (repeatable)
 #     --claude DIR            carry these Claude config dirs instead of sync.conf's (repeatable)
@@ -95,7 +95,7 @@ done
 for h in "$HOST" "$PAIR"; do
     [[ -z "$h" || "$h" =~ ^[A-Za-z0-9_][A-Za-z0-9._@-]*$ ]] || argerr "not a host name: $h"
 done
-[[ -z "$ONLY" || "$ONLY" == claude || "$ONLY" == projects ]] || argerr "--only takes claude or projects"
+[[ -z "$ONLY" || "$ONLY" == claude || "$ONLY" == projects || "$ONLY" == home ]] || argerr "--only takes claude, projects or home"
 
 # shellcheck source=install/utils.sh
 source "$DOTFILES_DIR/install/utils.sh"
@@ -156,7 +156,7 @@ safe_rel() {
     [[ -n "$p" && "$p" != /* && "$p" != -* && "$p" != *[[:cntrl:]]* && "$p" != *//* && "$p" != */ ]] &&
         [[ "/$p/" != */../* && "/$p/" != */./* ]]
 }
-CLAUDE_DIRS=() ROOTS=() KEEP=() EXCLUDE=() SKIP=()
+CLAUDE_DIRS=() ROOTS=() KEEP=() EXCLUDE=() SKIP=() HOME_ITEMS=()
 while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
     key="" value=""
@@ -167,7 +167,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     value="${value#\~/}"
     value="${value#"$HOME"/}"
     case "$key" in
-        claude | root | skip) safe_rel "$value" || die "sync.conf: not a path under your home: $line" ;;
+        claude | root | skip | home) safe_rel "$value" || die "sync.conf: not a path under your home: $line" ;;
         keep | exclude) [[ -n "$value" && "$value" != */* && "$value" != *[[:cntrl:]]* ]] || die "sync.conf: a $key value is a bare name or glob: $line" ;;
         *) die "sync.conf: unknown key: $key" ;;
     esac
@@ -177,6 +177,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         keep) KEEP+=("$value") ;;
         exclude) EXCLUDE+=("$value") ;;
         skip) SKIP+=("$value") ;;
+        home) HOME_ITEMS+=("$value") ;;
     esac
 done <"$CONF"
 # a path given on the command line, in the forms sync.conf takes (p/x, ~/p/x, $HOME/p/x, trailing /)
@@ -203,8 +204,11 @@ for a in "${ROOTS[@]}" "${CLAUDE_DIRS[@]}"; do
         [[ "$a" != "$b"/* ]] || die "$a lies inside the root $b"
     done
 done
-[[ "$ONLY" == projects ]] && CLAUDE_DIRS=()
-[[ "$ONLY" == claude ]] && ROOTS=()
+case "$ONLY" in
+    claude) ROOTS=() HOME_ITEMS=() ;;
+    projects) CLAUDE_DIRS=() HOME_ITEMS=() ;;
+    home) CLAUDE_DIRS=() ROOTS=() ;;
+esac
 
 is_root() {
     local r
@@ -239,6 +243,17 @@ claude_item() {
             projects | history.jsonl) ((SESSIONS)) && return 0 ;;
         esac
     done
+    return 1
+}
+
+# a loose home file from sync.conf's home lines, or a ~/.gitconfig* profile that a carried
+# ~/.gitconfig includes (includeIf per directory, include.path); nothing else, whatever a peer says
+home_item() {
+    local p="$1" h
+    safe_rel "$p" || return 1
+    for h in "${HOME_ITEMS[@]}"; do [[ "$p" == "$h" ]] && return 0; done
+    [[ "$p" =~ ^\.gitconfig[-._A-Za-z0-9]+$ ]] || return 1
+    for h in "${HOME_ITEMS[@]}"; do [[ "$h" == .gitconfig ]] && return 0; done
     return 1
 }
 
@@ -333,7 +348,7 @@ gopts() {
 #   D path   F path   L path target   P path (a staged partial copy)   X name (%q)   S skip
 inventory() {
     {
-        declare -p CLAUDE_DIRS ROOTS SKIP SESSIONS
+        declare -p CLAUDE_DIRS ROOTS SKIP SESSIONS HOME_ITEMS
         printf '%s\n' "$GIT_SAFE"
         cat <<'EOF'
 set -uo pipefail
@@ -356,6 +371,21 @@ for d in "${CLAUDE_DIRS[@]}"; do
         typ "$d/history.jsonl"
     else
         for m in "$d"/projects/*/memory; do bad "$m" || typ "$m"; done
+    fi
+done
+for h in "${HOME_ITEMS[@]}"; do
+    if [[ -L "$h" ]]; then rec H "$h" L
+    elif [[ -d "$h" ]]; then rec H "$h" D
+    elif [[ -f "$h" ]]; then rec H "$h" F
+    fi
+    # a git config brings the profiles it includes; reading config runs nothing
+    if [[ "$h" == .gitconfig && -f "$h" && ! -L "$h" ]]; then
+        git config --file "$h" --get-regexp '^include(if\..*)?\.path$' 2>/dev/null </dev/null |
+            while read -r _ v; do
+                v="${v#\~/}"
+                v="${v#"$HOME"/}"
+                [[ "$v" =~ ^\.gitconfig[-._A-Za-z0-9]+$ && -f "$v" && ! -L "$v" ]] && rec H "$v" F
+            done
     fi
 done
 skipped() { local s; for s in "${SKIP[@]}"; do [[ "$1" == "$s" ]] && return 0; done; return 1; }
@@ -425,7 +455,7 @@ EOF
 }
 
 # read_records FILE WHO: calls on_record TAG FIELD... for each record, dying on anything malformed
-declare -A NFIELDS=([CD]=2 [C]=2 [R]=7 [D]=1 [F]=1 [L]=2 [P]=1 [X]=1 [S]=1)
+declare -A NFIELDS=([CD]=2 [C]=2 [H]=2 [R]=7 [D]=1 [F]=1 [L]=2 [P]=1 [X]=1 [S]=1)
 read_records() {
     local file="$1" who="$2" tag n i
     local -a f
@@ -448,6 +478,7 @@ check_record() {
     case "$tag" in
         CD) { claude_dir "$p" && [[ "$4" == login || "$4" == nologin ]]; } || bad_record "$who" "$p" ;;
         C) { claude_item "$p" && [[ "$4" == [FDL] ]]; } || bad_record "$who" "$p" ;;
+        H) { home_item "$p" && [[ "$4" == [FDL] ]]; } || bad_record "$who" "$p" ;;
         R)
             if [[ "$4" == root ]]; then
                 is_root "$p" || bad_record "$who" "$p"
@@ -477,11 +508,12 @@ inventory src >"$TMP/src.inv" || die "cannot read $SRC_NAME"
 inventory dst >"$TMP/dst.inv" || die "cannot read $DST_NAME"
 
 # the receiver: what type each path has there
-declare -A DST_TYPE=() DST_CTYPE=() DST_REPO=() DST_LOGIN=() DST_PARTIAL=()
+declare -A DST_TYPE=() DST_CTYPE=() DST_HTYPE=() DST_REPO=() DST_LOGIN=() DST_PARTIAL=()
 on_record() {
     case "$1" in
         CD) DST_LOGIN["$2"]="$3" ;;
         C) DST_CTYPE["$2"]="$3" ;;
+        H) DST_HTYPE["$2"]="$3" ;;
         R)
             DST_TYPE["$2"]=R
             DST_REPO["$2"]="$3"$'\t'"$4"$'\t'"$5"$'\t'"$6"$'\t'"$7"
@@ -497,9 +529,10 @@ read_records "$TMP/dst.inv" "$DST_NAME"
 # items, one per line: kind<TAB>path<TAB>list file (or -); paths carry no control characters
 PLAN="$TMP/plan"
 : >"$PLAN"
-CLAUDE_LIST="$TMP/claude.list"
+CLAUDE_LIST="$TMP/claude.list" HOME_LIST="$TMP/home.list"
+: >"$HOME_LIST"
 : >"$CLAUDE_LIST"
-declare -A SRC_REPO=() WT_GITDIR=() SKIP_HIT=() NESTED=()
+declare -A SRC_REPO=() WT_GITDIR=() SKIP_HIT=() NESTED=() HOME_SEEN=()
 CLAUDE_SRC=() NEW_REPOS=() SPECS=() REPORT=() WARNS=() RESUMED=()
 on_record() {
     local tag="$1" p="$2" dt parent
@@ -571,6 +604,17 @@ on_record() {
                 REPORT+=("$p: a symlink on $SRC_NAME (to $(scrub "${3:-?}")), left alone")
             fi
             ;;
+        H)
+            dt="${DST_HTYPE[$p]:-}"
+            if [[ "$3" == L ]]; then
+                REPORT+=("$p (home): a symlink on $SRC_NAME, left alone")
+            elif [[ -n "$dt" && "$dt" != "$3" ]]; then
+                REPORT+=("$p (home): a different type on the two sides, left alone")
+            elif [[ -z "${HOME_SEEN[$p]:-}" ]]; then
+                HOME_SEEN["$p"]=1
+                printf './%s\0' "$p" >>"$HOME_LIST"
+            fi
+            ;;
         X) REPORT+=("skipped, its name has control characters: $p") ;;
         S) SKIP_HIT["$p"]=1 ;;
     esac
@@ -578,6 +622,7 @@ on_record() {
 }
 read_records "$TMP/src.inv" "$SRC_NAME"
 [[ -s "$CLAUDE_LIST" ]] && printf 'claude\t.\t%s\n' "$CLAUDE_LIST" >>"$PLAN"
+[[ -s "$HOME_LIST" ]] && printf 'home\t.\t%s\n' "$HOME_LIST" >>"$PLAN"
 for s in "${SKIP[@]}"; do
     [[ -n "${SKIP_HIT[$s]:-}" ]] && continue
     # a skip deeper than a root's top level is an exclude on the folder holding it
@@ -817,6 +862,7 @@ xfer() {
     fi
     case "$kind" in
         claude) args=("${bak[@]}" --chmod=Fgo-rwx --exclude=.credentials.json -r --from0 "--files-from=$list" "$SRC_P" "$DST_P") ;;
+        home) args=("${bak[@]}" --chmod=Fgo-rwx -r --from0 "--files-from=$list" "$SRC_P" "$DST_P") ;;
         keep)
             if [[ ! -s "$list" ]]; then
                 echo "0 0"
@@ -919,6 +965,7 @@ declare -A SUM_FILES=() SUM_BYTES=()
 while IFS=$'\t' read -r kind p list; do
     read -r files bytes < <(xfer "$kind" "$p" "$list" measure)
     case "$kind" in
+        home) group="home files" ;;
         repo | worktree) group="new repos" ;;
         keep) group="kept files in existing repos" ;;
         gitdir) group="root repo history" ;;
@@ -933,7 +980,7 @@ done <"$PLAN"
 
 echo
 printf 'dots-sync: %s -> %s\n' "$SRC_NAME" "$DST_NAME"
-for group in claude "prompt history (merged)" "new repos" "kept files in existing repos" "root repo history" "folders and loose files"; do
+for group in claude "home files" "prompt history (merged)" "new repos" "kept files in existing repos" "root repo history" "folders and loose files"; do
     [[ -n "${SUM_FILES[$group]:-}" ]] || continue
     printf '  %-30s %6s files  %8s\n' "$group" "${SUM_FILES[$group]}" "$(hsize "${SUM_BYTES[$group]}")"
 done

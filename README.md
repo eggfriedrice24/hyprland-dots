@@ -224,6 +224,7 @@ dots-sync --from t --dry-run   # on the laptop: what would come from the desktop
 dots-sync --from t             # pull it (asks first)
 dots-sync --to tt              # on the desktop: push to the ThinkPad
 dots-sync --to tf --only claude --sessions   # Claude only, with the chat transcripts
+dots-sync --to tt --only home                # just the home files (git config)
 dots-sync --to tt --root uni                 # just ~/uni this time, instead of the roots in sync.conf
 ```
 
@@ -237,6 +238,8 @@ moves is listed in `sync.conf`:
 - **Claude**, for `claude` (`~/.claude`) and `claudew` (`~/.claude-work`): `CLAUDE.md`, settings, skills, agents,
   commands, plugins, every project's memory, and the user MCP servers (merged into the receiver's `.claude.json`). Not
   the login tokens: run `claude` and `claudew` once on a new machine and log in. Transcripts only with `--sessions`.
+- **Home files** from `home` lines: `~/.gitconfig` plus every `~/.gitconfig*` profile it includes (`includeIf` per
+  directory), so per-directory git identities follow without a line each. Newer wins, like the rest.
 - **Projects** in `~/p`, `~/tth` and `~/nox`: a repo the receiver lacks arrives with its history, uncommitted work and
   `.env` files, without what git ignores (`node_modules`, `target`, ...). A repo both sides have is left to git: only
   the `.env`-style files move, and the run lists the repos whose commits or uncommitted work differ so you push or
