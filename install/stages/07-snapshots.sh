@@ -72,6 +72,30 @@ fi
 install_etc_file "${DOTFILES_DIR}/install/hooks/keep-old-kernel" /usr/local/share/libalpm/scripts/keep-old-kernel 755
 install_etc_file "${DOTFILES_DIR}/install/etc/pacman.d/hooks/10-keep-old-kernel.hook" /etc/pacman.d/hooks/10-keep-old-kernel.hook
 
+# vfat preloaded in the initramfs, so /boot still mounts when a snapshot boots with a kernel whose
+# modules it does not have. Images built before the drop-in lack it until they are rebuilt.
+install_etc_file "${DOTFILES_DIR}/install/etc/mkinitcpio.conf.d/snapshots.conf" /etc/mkinitcpio.conf.d/snapshots.conf
+initramfs_rebuild=$ETC_FILE_CHANGED
+if grep -E '(^|/)vfat\.ko' "/usr/lib/modules/$(uname -r)/modules.builtin" >/dev/null 2>&1; then
+    initramfs_rebuild=0 # built into the kernel, nothing to load
+elif command -v lsinitcpio &>/dev/null; then
+    initramfs_rebuild=0
+    for image in /boot/initramfs-*.img; do
+        [[ -f "$image" ]] || continue
+        # grep reads all of lsinitcpio's output (-q would end the pipe early and fail it under pipefail)
+        if ! lsinitcpio "$image" 2>/dev/null | grep -E '/vfat\.ko' >/dev/null; then
+            info "$image has no vfat module"
+            initramfs_rebuild=1
+        fi
+    done
+fi
+if (( initramfs_rebuild )); then
+    info "Rebuilding the initramfs images with vfat..."
+    run sudo mkinitcpio -P
+else
+    success "Every initramfs has vfat"
+fi
+
 # snapper-cleanup applies the limits above; grub-btrfsd adds new snapshots to the GRUB menu
 enable_system_service snapper-cleanup.timer
 if has_pkg grub-btrfs; then
