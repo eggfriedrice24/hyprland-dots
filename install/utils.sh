@@ -35,6 +35,24 @@ run() {
     fi
 }
 
+# note reboot|relogin|restart|todo "reason": something the user has to do once this run is over.
+# The final stage lists them; dots-update reads them from $DOTS_NOTES_FILE for its own summary.
+NOTES=()
+note() {
+    local kind="$1"
+    shift
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        dry "would need $kind: $*"
+        return 0
+    fi
+    warn "$kind needed: $*"
+    NOTES+=("$kind: $*")
+    if [[ -n "${DOTS_NOTES_FILE:-}" ]]; then
+        printf '%s\t%s\n' "$kind" "$*" >>"$DOTS_NOTES_FILE"
+    fi
+    return 0
+}
+
 # Optional steps that failed; stage 7 lists them at the end instead of the install stopping
 FAILED=()
 
@@ -191,23 +209,35 @@ link_path() {
     run ln -sfn "$src" "$dest"
 }
 
-# Copy a tracked file into /etc (root, 0644) when it differs from what is there
+# Copy a tracked file into /etc (root, 0644) when it differs from what is there.
+# ETC_FILE_CHANGED is 1 afterwards when the file was (or in a dry run would be) replaced, so the
+# caller can add the note the change needs.
+ETC_FILE_CHANGED=0
 install_etc_file() {
     local src="$1" dest="$2"
+    ETC_FILE_CHANGED=0
     if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
         success "Already in place: $dest"
         return 0
     fi
     info "Installing: $dest"
     run sudo install -Dm644 "$src" "$dest"
+    ETC_FILE_CHANGED=1
 }
 
-# install_etc_tree DIR: every file under DIR (a tree laid out like /etc) to the same path under /etc
+# install_etc_tree DIR: every file under DIR (a tree laid out like /etc) to the same path under /etc.
+# ETC_TREE_CHANGED lists the destinations that changed.
+ETC_TREE_CHANGED=()
 install_etc_tree() {
-    local src="${1%/}" file
+    local src="${1%/}" file dest
+    ETC_TREE_CHANGED=()
     [[ -d "$src" ]] || return 0
     while IFS= read -r -d '' file; do
-        install_etc_file "$file" "/etc/${file#"$src"/}"
+        dest="/etc/${file#"$src"/}"
+        install_etc_file "$file" "$dest"
+        if (( ETC_FILE_CHANGED )); then
+            ETC_TREE_CHANGED+=("$dest")
+        fi
     done < <(find "$src" -type f -print0 | sort -z)
 }
 

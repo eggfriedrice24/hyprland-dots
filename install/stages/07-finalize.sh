@@ -105,6 +105,12 @@ if (( ${#FAILED[@]} )); then
     printf '  - %s\n' "${FAILED[@]}"
     echo
 fi
+# shellcheck disable=SC2153 # NOTES is filled by note() in install/utils.sh
+if (( ${#NOTES[@]} )); then
+    warn "Before this run's changes are all in effect:"
+    printf '  - %s\n' "${NOTES[@]}"
+    echo
+fi
 info "Manual steps the installer does not cover (details in README.md):"
 echo "  - restore ~/.ssh (keys and config) and ~/.gitconfig, then: gh auth login"
 echo "  - tailscale up"

@@ -37,6 +37,7 @@ if has_pkg docker; then
     else
         info "Adding $USER to the docker group (takes effect at next login)"
         run sudo usermod -aG docker "$USER"
+        note relogin "$USER was added to the docker group"
     fi
 fi
 

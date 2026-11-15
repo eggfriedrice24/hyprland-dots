@@ -11,6 +11,7 @@ if [[ -n "$current_shell" && "$(readlink -f "$current_shell")" == "$(readlink -f
 else
     info "Changing default shell to zsh (asks for your password)..."
     run chsh -s "$zsh_path"
+    note relogin "the login shell is now zsh"
 fi
 
 # ~/.zshenv is linked to zsh/.zshenv in stage 3 and sets ZDOTDIR

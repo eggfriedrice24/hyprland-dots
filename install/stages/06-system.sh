@@ -11,11 +11,20 @@ etc_src="${DOTFILES_DIR}/install/etc"
 mapfile -t etc_trees < <(profile_files etc)
 for tree in "${etc_trees[@]}"; do
     install_etc_tree "$tree"
+    for changed in ${ETC_TREE_CHANGED[@]+"${ETC_TREE_CHANGED[@]}"}; do
+        case "$changed" in
+            /etc/modprobe.d/*) note reboot "kernel module options changed ($changed)" ;;
+            /etc/ssh/sshd_config.d/*) note restart "sshd, for $changed: sudo systemctl restart sshd" ;;
+        esac
+    done
 done
 
 # zram swap
 if has_pkg zram-generator; then
     install_etc_file "$etc_src/systemd/zram-generator.conf" /etc/systemd/zram-generator.conf
+    if (( ETC_FILE_CHANGED )); then
+        note reboot "the zram swap device is sized at boot (/etc/systemd/zram-generator.conf changed)"
+    fi
 fi
 
 # Wireless regulatory domain: FR active and no other domain active (the file is sourced, so a
@@ -148,6 +157,7 @@ if [[ -f "$grub_file" ]]; then
         if command -v grub-mkconfig &>/dev/null; then
             info "Regenerating grub.cfg..."
             run sudo grub-mkconfig -o /boot/grub/grub.cfg
+            note reboot "the kernel command line changed"
         else
             warn "grub-mkconfig not found, regenerate the bootloader config by hand"
         fi
