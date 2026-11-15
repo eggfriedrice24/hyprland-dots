@@ -477,6 +477,8 @@ THEME_REQUIRED_EXTRAS=(
     fzf/eggfriedrice.sh
     ghostty/eggfriedrice
     gtk/eggfriedrice.css
+    gtk/font.css
+    gtk/typography.css
     hyprland/eggfriedrice.conf
     lua/eggfriedrice.lua
     opencode/eggfriedrice.json
