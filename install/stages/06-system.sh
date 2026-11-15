@@ -206,7 +206,7 @@ fi
 # sourced with these helpers, base layer first
 mapfile -t system_hooks < <(profile_files system.sh)
 for hook in "${system_hooks[@]}"; do
-    info "Running the $(layer_of "$hook") profile hook"
+    [[ "${QUIET:-0}" == "1" ]] || info "Running the $(layer_of "$hook") profile hook"
     # shellcheck source=/dev/null
     source "$hook"
 done

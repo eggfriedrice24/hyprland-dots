@@ -81,7 +81,7 @@ detect_hardware_packages() {
 
 mapfile -t hardware_pkgs < <(detect_hardware_packages)
 if (( ${#hardware_pkgs[@]} )); then
-    info "Detected hardware packages: ${hardware_pkgs[*]}"
+    [[ "${QUIET:-0}" == "1" ]] || info "Detected hardware packages: ${hardware_pkgs[*]}"
     install_package_names hardware "${hardware_pkgs[@]}"
 else
     warn "Could not detect CPU or GPU vendor, no microcode or Vulkan driver selected"
