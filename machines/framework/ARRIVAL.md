@@ -2,8 +2,9 @@
 
 Work through this on the machine after the first boot. Each verified item becomes one small commit
 that uncomments a line, fixes a value or adds a drop-in in `machines/framework/` (for example
-`set the framework panel scale`, `match the real framework product name`). Values marked VERIFY in
-`hypr.lua`, `packages.txt`, `services` and `grub` are the starting points.
+`set the framework panel scale`, `match the real framework product name`). The values marked VERIFY
+in `hypr.lua` and the commented candidates in `packages.txt`, `services` and `grub` are the starting
+points.
 
 Battery life is the first priority on this machine; the power items here are the baseline for the
 separate power-management investigation, not its result.
@@ -11,8 +12,10 @@ separate power-management investigation, not its result.
 ## 1. Identity
 
 - [ ] `cat /sys/class/dmi/id/{sys_vendor,product_name,product_version,product_family}`
-- [ ] `./install.sh --print-profile` says `framework dmi`; if it says `laptop battery`, put the real
-      product_name into `machines/index` and delete the pin (`./install.sh --profile auto`)
+- [ ] `./install.sh --print-profile` says `framework dmi`; `laptop battery` or `framework pinned`
+      means the index missed: put the real product_name into `machines/index`, rerun
+      `./install.sh --profile auto` (it removes the pin and converges), then check that
+      `--print-profile` now says `framework dmi`
 - [ ] `hostnamectl` shows `tf`
 
 ## 2. Kernel and firmware
@@ -47,13 +50,14 @@ separate power-management investigation, not its result.
 
 ## 6. Devices
 
-- [ ] audio: `aplay -l` shows the SOF card, speakers and the headphone jack work, mic records
+- [ ] audio: `wpctl status` lists the SOF card's sinks and sources, speakers and the headphone jack work, mic records
 - [ ] Wi-Fi: `iw dev`, roaming between 2.4 and 5 GHz, no stalls over an hour
 - [ ] Bluetooth: the XM5 pairs and plays LDAC; the Keychron reconnects after suspend
 - [ ] VA-API: `vainfo` lists the iHD driver; Zen `about:support` shows hardware decode
 - [ ] fingerprint: `fprintd-enroll`; adding it to hyprlock and sudo is its own change
 - [ ] touchpad: tap to click, disable while typing, three-finger workspace swipe
-- [ ] `wev`: which key the display key (F8 area) sends; rebind SUPER+P in this profile only if it
+- [ ] `sudo pacman -S --needed wev` (only for this check; dots-prune offers it for removal later),
+      then `wev`: which key the display key (F8 area) sends; rebind SUPER+P in this profile only if it
       collides
 
 ## 7. Lid, idle and docks
