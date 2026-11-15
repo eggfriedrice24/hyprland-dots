@@ -1,0 +1,658 @@
+#!/usr/bin/env bash
+# dots-update: bring this machine up to date with the dotfiles, in one run.
+#
+#   sync      fetch and fast-forward the dotfiles and the theme repo (never stash, rebase or merge)
+#   verify    theme extras present, every tracked link resolves
+#   snapshot  a pre-update snapshot through dots-snapshot (btrfs machines only, a no-op elsewhere)
+#   packages  pacman (keyring first), AUR, flatpak
+#   converge  install.sh --no-upgrade: new packages, links, services, /etc, derived caches, and
+#             stage 8, the one-off migrations that came with the pull
+#   snapshot  the matching post snapshot, or the pre one discarded when nothing changed
+#   report    what changed, what failed, what needs a restart, relogin or reboot
+#
+# Everything runs from main, so the whole file is parsed before anything happens, and it
+# re-executes itself when the pull changed it or the helpers it sourced.
+set -Eeuo pipefail
+
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+DOTFILES_DIR="$(dirname "$(dirname "$SELF")")"
+STATE_DIR="${DOTS_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles}/update"
+PACMAN_LOG="${PACMAN_LOG:-/var/log/pacman.log}"
+SNAPSHOT_CMD="${DOTS_SNAPSHOT_CMD:-$DOTFILES_DIR/bin/dots-snapshot}"
+LAUNCHER="$DOTFILES_DIR/hypr/scripts/systemupdate.sh up"
+PS_DIR="${PS_DIR:-/sys/class/power_supply}"
+KEEP_LOGS=30
+
+# package upgrades that only take effect after a reboot, a new Hyprland session, or an app restart
+REBOOT_PKGS=(linux linux-lts linux-zen linux-hardened linux-firmware amd-ucode intel-ucode systemd glibc dbus-broker cryptsetup)
+RELOGIN_PKGS=(hyprland aquamarine hyprutils hyprgraphics hyprlang hyprcursor xdg-desktop-portal-hyprland mesa pipewire wireplumber)
+RESTART_PKGS=(waybar dunst ghostty hypridle hyprlock)
+
+DRY_RUN=0 ASSUME_YES=0 VERBOSE=0 CHECK=0
+DO_PULL=1 DO_PACKAGES=1 DO_CONVERGE=1 DO_SNAPSHOT=1
+INSTALL_ARGS=()
+PHASE="preflight"
+WARNINGS=() # shown again in the summary; any entry makes the exit status 2
+SNAP_AVAILABLE=0 SNAP_PRE="" SNAP_POST="" SNAP_RESULT=""
+PACLOG_OFFSET=0 LOG_CONVERGE_LINE=-1 DRY_CHANGES=""
+PKG_RESULT="" AUR_RESULT="" FLATPAK_RESULT="" CONVERGE_RESULT=""
+MIGRATIONS_BEFORE="" MIGRATIONS_APPLIED=() MIGRATIONS_LEFT=()
+
+usage() {
+    cat <<EOF
+Usage: dots-update [options] [-- install.sh options]
+  -n, --dry-run       show what would happen; fetches the remotes, changes nothing else
+  -y, --yes           no questions (pacman and the AUR helper run with --noconfirm)
+      --no-pull       leave both repositories as they are
+      --no-packages   no pacman, AUR or flatpak upgrade, and no package stage in install.sh
+      --no-converge   no install.sh run (so no migrations either)
+      --no-snapshot   no pre/post snapshot around the run
+      --check         refresh and print what is pending (packages, repos, migrations, reboot),
+                      change nothing but the status file; needs no sudo
+  -v, --verbose       show install.sh's "already done" lines
+  -h, --help
+Anything after -- goes to install.sh, for example: dots-update -- --profile framework
+Exit status: 0 done, 1 stopped on an error, 2 done with warnings (see the summary), 130 interrupted.
+Logs: ${STATE_DIR/#$HOME/\~}/log/, newest linked as last.log; state for bars and menus in status.
+From a bar, menu or keybind (no terminal): $LAUNCHER
+EOF
+    exit "${1:-0}"
+}
+
+parse_args() {
+    while (($#)); do
+        case "$1" in
+            -n | --dry-run) DRY_RUN=1 ;;
+            -y | --yes) ASSUME_YES=1 ;;
+            --no-pull) DO_PULL=0 ;;
+            --no-packages) DO_PACKAGES=0 ;;
+            --no-converge) DO_CONVERGE=0 ;;
+            --no-snapshot) DO_SNAPSHOT=0 ;;
+            --check) CHECK=1 ;;
+            -v | --verbose) VERBOSE=1 ;;
+            -h | --help) usage 0 ;;
+            --)
+                shift
+                INSTALL_ARGS=("$@")
+                break
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                usage 1
+                ;;
+        esac
+        shift
+    done
+}
+
+die() {
+    error "$*"
+    snapshot_hint
+    exit 1
+}
+snapshot_hint() {
+    if [[ -n "${SNAP_PRE:-}" ]]; then
+        error "The system as it was before the run: snapshot #$SNAP_PRE (dots-snapshot rollback $SNAP_PRE)"
+    fi
+    return 0
+}
+problem() {
+    warn "$*"
+    WARNINGS+=("$*")
+}
+confirm() { # confirm "question": yes under --yes
+    ((ASSUME_YES)) && return 0
+    local answer
+    read -rp "$1 [y/N] " answer
+    [[ "$answer" =~ ^[Yy]$ ]]
+}
+aur_helper() { command -v yay || command -v paru; }
+indent() { # indent TEXT: each non-empty line of TEXT, four spaces in
+    local line
+    while IFS= read -r line; do
+        if [[ -n "$line" ]]; then printf '    %s\n' "$line"; fi
+    done <<<"$1"
+}
+in_list() { # in_list name list...; linux-firmware also matches its split packages
+    local name="$1" item
+    shift
+    for item in "$@"; do
+        [[ "$name" == "$item" || ("$item" == linux-firmware && "$name" == linux-firmware-*) ]] && return 0
+    done
+    return 1
+}
+
+# ---------------------------------------------------------------- migrations (read-only)
+
+# ids whose last recorded state is applied, in run order
+applied_migrations() {
+    local id
+    while IFS= read -r id; do
+        [[ "$(migration_state "$id" 2>/dev/null)" == applied ]] && echo "$id"
+    done < <(migration_ids 2>/dev/null)
+    return 0
+}
+
+# ids still to run here. A machine install.sh has not judged yet (no state file) counts as new
+# unless its ~/.config links into the dotfiles: a new one records them all as baseline.
+pending_migrations() {
+    if [[ -f "$MIGRATIONS_STATE" ]] || dotfiles_in_use; then
+        migrations_pending 2>/dev/null || true
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------- state checks (read-only)
+
+kernel_stale() { [[ ! -d "/usr/lib/modules/$(uname -r)" ]]; }
+hyprland_stale() {
+    [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 1
+    local running installed
+    running="$(hyprctl version 2>/dev/null | sed -n 's/^Tag: v\([^,]*\),.*/\1/p')"
+    installed="$(pacman -Q hyprland 2>/dev/null | awk '{ print $2 }')"
+    installed="${installed#*:}"
+    installed="${installed%-*}"
+    [[ -n "$running" && -n "$installed" && "$running" != "$installed" ]]
+}
+boot_id() { cat /proc/sys/kernel/random/boot_id; }
+status_get() { sed -n "s/^$1=//p" "$STATE_DIR/status" 2>/dev/null | head -n1; }
+status_set() { # status_set key=value...: rewrite the given keys, keep the rest
+    local tmp kv
+    mkdir -p "$STATE_DIR"
+    tmp="$(mktemp "$STATE_DIR/status.XXXXXX")"
+    if [[ -f "$STATE_DIR/status" ]]; then cat "$STATE_DIR/status" >"$tmp"; fi
+    for kv in "$@"; do
+        sed -i "/^${kv%%=*}=/d" "$tmp"
+        printf '%s\n' "$kv" >>"$tmp"
+    done
+    mv "$tmp" "$STATE_DIR/status"
+}
+# A reboot or relogin flagged by an earlier run stays pending until the boot or the Hyprland
+# session changes. The flag carries the id it was raised in, so a reader of the status file (a bar)
+# can tell a stale flag without running anything.
+reboot_pending() { kernel_stale || [[ "$(status_get reboot)" == 1 && "$(status_get reboot_boot_id)" == "$(boot_id)" ]]; }
+relogin_pending() {
+    hyprland_stale && return 0
+    local flagged
+    flagged="$(status_get relogin_session)"
+    [[ "$(status_get relogin)" == 1 && -n "$flagged" && "$flagged" == "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]
+}
+
+# ---------------------------------------------------------------- --check
+
+behind_count() { # commits the checkout is behind its upstream, "?" when unknown
+    local dir="$1"
+    DRY_RUN=1 DRY_FETCH=1 repo_sync "$dir" "$2" &>/dev/null || true
+    case "$REPO_SYNC_STATUS" in
+        current | ahead | would-update | diverged) git -C "$dir" rev-list --count 'HEAD..@{u}' ;;
+        *) echo "?" ;;
+    esac
+}
+do_check() {
+    local official=0 aur=0 helper dots theme pending reboot=0 relogin=0 last
+    local -a keys=()
+    # bars and menus may run without the session's agent; the fetch must not hang on a passphrase
+    if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+        if [[ -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/ssh-agent.socket" ]]; then
+            export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-/run/user/$UID}/ssh-agent.socket"
+        elif [[ -r "$HOME/.keychain/$(uname -n)-sh" ]]; then # machines still on keychain
+            # shellcheck source=/dev/null
+            source "$HOME/.keychain/$(uname -n)-sh" >/dev/null
+        fi
+    fi
+    # checkupdates syncs a private copy of the databases, so the counts are fresh without root
+    if command -v checkupdates &>/dev/null; then
+        official="$(checkupdates 2>/dev/null | wc -l || true)"
+    else
+        official="$(pacman -Qu 2>/dev/null | wc -l || true)"
+    fi
+    if helper="$(aur_helper)"; then aur="$("$helper" -Qua 2>/dev/null | wc -l || true)"; fi
+    dots="$(behind_count "$DOTFILES_DIR" dotfiles)"
+    theme="$(behind_count "$THEME_DIR" theme)"
+    pending="$(pending_migrations | wc -l || true)"
+    if reboot_pending; then
+        reboot=1
+        keys+=("reboot_boot_id=$(boot_id)")
+    fi
+    if relogin_pending; then
+        relogin=1
+        keys+=("relogin_session=$HYPRLAND_INSTANCE_SIGNATURE")
+    fi
+    status_set "checked=$(date +%s)" "official=$official" "aur=$aur" "dotfiles_behind=$dots" \
+        "theme_behind=$theme" "migrations=$pending" "reboot=$reboot" "relogin=$relogin" ${keys[@]+"${keys[@]}"}
+    printf 'packages   %s official, %s AUR\n' "$official" "$aur"
+    printf 'dotfiles   %s commit(s) behind\n' "$dots"
+    printf 'theme      %s commit(s) behind\n' "$theme"
+    printf 'migrations %s pending\n' "$pending"
+    printf 'reboot     %s\n' "$( ((reboot)) && echo needed || echo no)"
+    printf 'relogin    %s\n' "$( ((relogin)) && echo needed || echo no)"
+    last="$(status_get last_run)"
+    if [[ -n "$last" ]]; then
+        printf 'last run   %s (%s)\n' "$(date -d "@$last" '+%Y-%m-%d %H:%M')" "$(status_get last_result)"
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------- phases
+
+preflight() {
+    [[ $EUID -ne 0 ]] || die "Run as your normal user, not root; sudo is used where needed."
+    [[ -f /etc/arch-release ]] || die "This is not Arch Linux."
+    # a system booted into a snapshot loses every change at the next boot
+    if ((DO_SNAPSHOT)) && [[ -x "$SNAPSHOT_CMD" ]]; then
+        local text rc=0
+        text="$("$SNAPSHOT_CMD" status 2>/dev/null)" || rc=$?
+        case "$rc" in
+            0) SNAP_AVAILABLE=1 ;;
+            2) die "Not updating: $text" ;;
+            *) info "No snapshot around this run: ${text:-dots-snapshot status exited $rc}" ;;
+        esac
+    fi
+    ((DRY_RUN)) && return 0
+    ((ASSUME_YES)) || [[ -t 0 ]] || die "dots-update needs a terminal (sudo and pacman ask questions); from a bar or menu: $LAUNCHER"
+    mkdir -p "$STATE_DIR/log"
+    if [[ -z "${DOTS_RESUME:-}" ]]; then # after a self re-exec the lock is already held on fd 9
+        exec 9>"$STATE_DIR/lock"
+        flock -n 9 || die "Another dots-update is running."
+    fi
+    [[ ! -e /var/lib/pacman/db.lck ]] || die "pacman is running (or left /var/lib/pacman/db.lck behind)."
+    local bat capacity
+    for bat in "$PS_DIR"/BAT*; do
+        [[ -r "$bat/status" && "$(<"$bat/status")" == Discharging ]] || continue
+        capacity="$(<"$bat/capacity")"
+        if ((capacity < 30)); then
+            confirm "On battery at ${capacity}%; a kernel upgrade cut off by a dead battery does not boot. Continue?" || exit 0
+        fi
+    done
+    return 0
+}
+
+start_log() {
+    ((DRY_RUN)) && return 0
+    if [[ -z "${LOG_FILE:-}" ]]; then
+        LOG_FILE="$STATE_DIR/log/$(date +%Y-%m-%dT%H-%M-%S).log"
+        _log INFO "dots-update $* on $(uname -n), kernel $(uname -r), dotfiles $(git -C "$DOTFILES_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+        ln -sfn "$LOG_FILE" "$STATE_DIR/last.log"
+        # the names are timestamps, so a reverse sort is newest first (this run's log among them)
+        find "$STATE_DIR/log" -name '*.log' | sort -r | tail -n "+$((KEEP_LOGS + 1))" | xargs -r rm -f --
+    fi
+    # install.sh and the migrations add their note lines here (note in install/utils.sh)
+    if [[ -z "${DOTS_NOTES_FILE:-}" ]]; then
+        DOTS_NOTES_FILE="$(mktemp "$STATE_DIR/notes.XXXXXX")"
+    fi
+    export LOG_FILE DOTS_NOTES_FILE
+}
+
+sync_repos() {
+    if ((!DO_PULL)); then
+        info "Skipping the repository sync (--no-pull)"
+        return 0
+    fi
+    repo_sync "$DOTFILES_DIR" dotfiles
+    DOTS_STATUS="$REPO_SYNC_STATUS" DOTS_OLD="$REPO_SYNC_OLD" DOTS_NEW="$REPO_SYNC_NEW"
+    case "$DOTS_STATUS" in diverged | blocked | busy | detached | no-upstream | offline) WARNINGS+=("dotfiles not pulled: ${REPO_SYNC_DETAIL:-$DOTS_STATUS}") ;; esac
+    theme_ensure
+    THEME_STATUS="$REPO_SYNC_STATUS" THEME_OLD="$REPO_SYNC_OLD" THEME_NEW="$REPO_SYNC_NEW"
+    case "$THEME_STATUS" in diverged | blocked | busy | detached | no-upstream | offline) WARNINGS+=("theme not pulled: ${REPO_SYNC_DETAIL:-$THEME_STATUS}") ;; esac
+    return 0
+}
+
+# The pull may have replaced this very script and the helpers it sourced: start over with the new
+# code, carrying what the sync found. The lock on fd 9 and the log travel along.
+reexec_if_changed() {
+    ((DRY_RUN)) && return 0
+    [[ "${DOTS_STATUS:-}" == updated ]] || return 0
+    git -C "$DOTFILES_DIR" diff --quiet "$DOTS_OLD" "$DOTS_NEW" -- bin/dots-update install/utils.sh install/migrate.sh && return 0
+    info "dots-update itself changed in this pull, restarting with the new version"
+    local IFS=$'\n'
+    export DOTS_RESUME=1 DOTS_STATUS DOTS_OLD DOTS_NEW THEME_STATUS THEME_OLD THEME_NEW DOTS_WARNINGS="${WARNINGS[*]}"
+    exec "$SELF" "${ORIG_ARGS[@]}"
+}
+
+snapshot_pre() {
+    ((DO_SNAPSHOT && SNAP_AVAILABLE)) || return 0
+    local desc="dots-update from ${DOTS_OLD:0:7}" last
+    local -a args=(pre)
+    # a rollback to this snapshot lists the migrations applied after it (install/migrate.sh --rearm)
+    last="$(applied_migrations | tail -n1)"
+    if [[ -n "$last" ]]; then args+=(--userdata "migration=$last"); fi
+    if ((DRY_RUN)); then
+        dry "$SNAPSHOT_CMD ${args[*]} '$desc'"
+        return 0
+    fi
+    if SNAP_PRE="$("$SNAPSHOT_CMD" "${args[@]}" "$desc")"; then
+        [[ -z "$SNAP_PRE" ]] || info "Pre-update snapshot: #$SNAP_PRE"
+    else
+        SNAP_PRE=""
+        confirm "The pre-update snapshot failed. Continue without one?" || die "Stopped before changing anything."
+        WARNINGS+=("no pre-update snapshot: dots-snapshot pre failed")
+    fi
+    return 0
+}
+
+# true when the run changed the root filesystem: a package changed, a migration was applied, or
+# install.sh ran a command as root (it only does when something is out of place)
+root_changed() {
+    [[ -n "$(pkg_changes)" ]] && return 0
+    ((${#MIGRATIONS_APPLIED[@]})) && return 0
+    # the package phase's own sudo lines are before LOG_CONVERGE_LINE; -1: install.sh did not run
+    ((LOG_CONVERGE_LINE >= 0)) && [[ -n "${LOG_FILE:-}" && -f "$LOG_FILE" ]] || return 1
+    # no grep -q: an early exit would make tail fail with SIGPIPE under pipefail
+    tail -n "+$((LOG_CONVERGE_LINE + 1))" "$LOG_FILE" | grep -aE '^[0-9:]+ RUN +(sudo|as_root|pkexec) ' >/dev/null
+}
+
+snapshot_post() {
+    [[ -n "$SNAP_PRE" ]] || return 0
+    if ! root_changed; then
+        if "$SNAPSHOT_CMD" discard "$SNAP_PRE"; then
+            SNAP_RESULT="#$SNAP_PRE discarded, nothing on / changed"
+        else
+            problem "could not discard the unused pre-update snapshot #$SNAP_PRE"
+        fi
+        SNAP_PRE=""
+        return 0
+    fi
+    if SNAP_POST="$("$SNAPSHOT_CMD" post "$SNAP_PRE" "dots-update to ${DOTS_NEW:0:7}")"; then
+        SNAP_RESULT="#$SNAP_PRE..#$SNAP_POST (snapper -c root status $SNAP_PRE..$SNAP_POST lists every file the run changed)"
+    else
+        SNAP_RESULT="#$SNAP_PRE, no post snapshot"
+        problem "post-update snapshot for #$SNAP_PRE failed"
+    fi
+    return 0
+}
+
+upgrade_packages() {
+    if ((!DO_PACKAGES)); then
+        info "Skipping package upgrades (--no-packages)"
+        return 0
+    fi
+    local helper="" pending
+    local -a noconfirm=()
+    ((ASSUME_YES)) && noconfirm=(--noconfirm)
+    helper="$(aur_helper)" || warn "No AUR helper, AUR packages are not upgraded"
+
+    if ((DRY_RUN)); then
+        # "name old -> new" lines; the summary reads them as pacman.log lines to predict reboots
+        pending="$(checkupdates 2>/dev/null || true)"
+        dry "sudo pacman -Sy --needed archlinux-keyring && sudo pacman -Su: $(grep -c . <<<"$pending" || true) package(s)"
+        indent "$pending"
+        DRY_CHANGES="$pending"
+        if [[ -n "$helper" ]]; then
+            pending="$("$helper" -Qua 2>/dev/null || true)"
+            dry "$(basename "$helper") -Sua: $(grep -c . <<<"$pending" || true) package(s)"
+            indent "$pending"
+            DRY_CHANGES+=$'\n'"$pending"
+        fi
+        if command -v flatpak &>/dev/null; then dry "sudo flatpak update -y --noninteractive"; fi
+        return 0
+    fi
+
+    # Arch news since the last upgrade: manual interventions are announced there
+    if [[ "$helper" == */yay ]]; then "$helper" -Pw 2>/dev/null || true; fi
+
+    # keyring first: a machine that was off for months cannot verify new packages with old keys.
+    # -Sy followed at once by -Su is a full upgrade, not a partial one.
+    info "Upgrading official packages..."
+    if run sudo pacman -Sy --needed --noconfirm archlinux-keyring && run sudo pacman -Su ${noconfirm[@]+"${noconfirm[@]}"}; then
+        PKG_RESULT=ok
+    else
+        PKG_RESULT=failed
+        confirm "The package upgrade did not finish (declined or failed). Continue with install.sh anyway?" ||
+            die "Stopped after the package upgrade; nothing else was changed."
+        WARNINGS+=("official package upgrade did not finish")
+    fi
+
+    if [[ -n "$helper" ]]; then
+        info "Upgrading AUR packages..."
+        if run "$helper" -Sua --sudoloop ${noconfirm[@]+"${noconfirm[@]}"}; then
+            AUR_RESULT=ok
+        else
+            AUR_RESULT=failed
+            problem "AUR upgrade failed or was declined; rerun: $(basename "$helper") -Sua"
+        fi
+    fi
+
+    if command -v flatpak &>/dev/null && [[ -n "$(flatpak list --app --columns=application 2>/dev/null)" ]]; then
+        info "Updating flatpaks..."
+        if run sudo flatpak update -y --noninteractive; then
+            FLATPAK_RESULT=ok
+        else
+            FLATPAK_RESULT=failed
+            problem "flatpak update failed"
+        fi
+    fi
+    return 0
+}
+
+converge() {
+    if ((!DO_CONVERGE)); then
+        info "Skipping install.sh (--no-converge)"
+        return 0
+    fi
+    # the sync, the theme check and the full upgrade already happened here
+    local skip="" rc=0 id
+    local -a args=(--yes --no-upgrade)
+    [[ -d "$THEME_DIR/.git" ]] && skip=theme # not synced (--no-pull) and missing: stage 2 clones it
+    ((DO_PACKAGES)) || skip="${skip:+$skip,}packages"
+    [[ -n "$skip" ]] && args+=("--skip=$skip")
+    ((DRY_RUN)) && args+=(--dry-run)
+    ((VERBOSE)) || args+=(--quiet)
+    LOG_CONVERGE_LINE=0
+    if [[ -n "${LOG_FILE:-}" && -f "$LOG_FILE" ]]; then LOG_CONVERGE_LINE="$(wc -l <"$LOG_FILE")"; fi
+    info "Converging: install.sh ${args[*]} ${INSTALL_ARGS[*]}"
+    "$DOTFILES_DIR/install.sh" "${args[@]}" ${INSTALL_ARGS[@]+"${INSTALL_ARGS[@]}"} || rc=$?
+
+    # stage 8 ran the migrations; what it recorded tells what it did
+    local -A before=()
+    for id in $MIGRATIONS_BEFORE; do before["$id"]=1; done
+    while IFS= read -r id; do
+        [[ -n "${before[$id]:-}" ]] || MIGRATIONS_APPLIED+=("$id")
+    done < <(applied_migrations)
+    mapfile -t MIGRATIONS_LEFT < <(pending_migrations)
+
+    case "$rc" in
+        0) CONVERGE_RESULT=ok ;;
+        3)
+            CONVERGE_RESULT="ok, a migration is still pending"
+            problem "migration ${MIGRATIONS_LEFT[0]:-?} failed and stays pending (output above); after fixing the cause: ${DOTFILES_DIR/#$HOME/\~}/install/migrate.sh"
+            ;;
+        *) die "install.sh failed (exit $rc); the output above says where. It is idempotent: fix the cause and rerun dots-update." ;;
+    esac
+    return 0
+}
+
+# "action name (old -> new)" for everything pacman did since the package phase started; in a dry
+# run, for what the package phase would upgrade
+pkg_changes() {
+    if ((DRY_RUN)); then
+        awk 'NF >= 4 && $3 == "->" { printf "upgraded %s (%s -> %s)\n", $1, $2, $4 }' <<<"$DRY_CHANGES"
+        return 0
+    fi
+    local size
+    size="$(stat -c %s "$PACMAN_LOG" 2>/dev/null || echo 0)"
+    ((size < PACLOG_OFFSET)) && PACLOG_OFFSET=0 # rotated
+    # -a: a pacman.log that survived a power cut holds NUL bytes and grep would call it binary
+    tail -c "+$((PACLOG_OFFSET + 1))" "$PACMAN_LOG" 2>/dev/null |
+        grep -a -oE '\[ALPM\] (upgraded|installed|removed|downgraded|reinstalled) [^ ]+ \(.*\)$' | sed 's/^\[ALPM\] //' || true
+}
+
+repo_line() { # repo_line name dir status old new
+    local name="$1" dir="$2" status="$3" old="$4" new="$5"
+    case "$status" in
+        updated | would-update)
+            if [[ -n "$old" ]]; then
+                printf ' %-10s %s -> %s (%s commit(s)%s)\n' "$name" "${old:0:7}" "${new:0:7}" \
+                    "$(git -C "$dir" rev-list --count "$old..$new")" "$([[ "$status" == would-update ]] && echo ', not pulled in a dry run')"
+                git -C "$dir" log --format='              %h %s' "$old..$new" | head -n 15
+            else
+                printf ' %-10s cloned\n' "$name"
+            fi
+            ;;
+        "") printf ' %-10s not synced (--no-pull)\n' "$name" ;;
+        *) printf ' %-10s %s\n' "$name" "$status" ;;
+    esac
+}
+
+report() {
+    local changes="" line action pkg kind reason result=ok
+    local -a reboot=() relogin=() restart=() todo=()
+    changes="$(pkg_changes)"
+    while read -r action pkg _; do
+        [[ -n "$pkg" && "$action" != removed ]] || continue
+        if in_list "$pkg" "${REBOOT_PKGS[@]}"; then reboot+=("$pkg upgraded"); fi
+        if in_list "$pkg" "${RELOGIN_PKGS[@]}"; then relogin+=("$pkg upgraded"); fi
+        if in_list "$pkg" "${RESTART_PKGS[@]}"; then restart+=("$pkg"); fi
+    done <<<"$changes"
+    if [[ -s "${DOTS_NOTES_FILE:-}" ]]; then
+        while IFS=$'\t' read -r kind reason; do
+            case "$kind" in
+                reboot) reboot+=("$reason") ;;
+                relogin) relogin+=("$reason") ;;
+                restart) restart+=("$reason") ;;
+                *) todo+=("$reason") ;;
+            esac
+        done <"$DOTS_NOTES_FILE"
+    fi
+    if kernel_stale; then reboot+=("the running kernel $(uname -r) has no modules on disk any more"); fi
+    if hyprland_stale; then relogin+=("the running Hyprland is older than the installed one"); fi
+    if [[ "${THEME_STATUS:-}" == updated && -n "${THEME_OLD:-}" ]] &&
+        ! git -C "$THEME_DIR" diff --quiet "$THEME_OLD" "$THEME_NEW" -- extras/ 2>/dev/null; then
+        restart+=("waybar, dunst and open GTK apps (new theme colours)")
+    fi
+    # plugins follow the tracked lock file only when asked to
+    if [[ "${DOTS_STATUS:-}" == @(updated|would-update) && -n "${DOTS_OLD:-}" ]] &&
+        ! git -C "$DOTFILES_DIR" diff --quiet "$DOTS_OLD" "$DOTS_NEW" -- nvim/lazy-lock.json 2>/dev/null; then
+        todo+=("nvim/lazy-lock.json changed: run :Lazy restore in nvim")
+    fi
+
+    {
+        echo
+        if ((DRY_RUN)); then
+            echo "-- update summary (dry run: what a real run would do) ----------"
+        else
+            echo "-- update summary ---------------------------------------------"
+        fi
+        repo_line dotfiles "$DOTFILES_DIR" "${DOTS_STATUS:-}" "${DOTS_OLD:-}" "${DOTS_NEW:-}"
+        repo_line theme "$THEME_DIR" "${THEME_STATUS:-}" "${THEME_OLD:-}" "${THEME_NEW:-}"
+        if ((DO_PACKAGES && DRY_RUN)); then
+            printf ' %-10s %s to upgrade\n' packages "$(grep -c . <<<"$changes" || true)"
+        elif ((DO_PACKAGES)); then
+            printf ' %-10s %s\n' packages "$(awk '{ c[$1]++ } END { printf "%d upgraded, %d installed, %d removed", c["upgraded"] + c["downgraded"] + c["reinstalled"], c["installed"], c["removed"] }' <<<"$changes")${PKG_RESULT:+ ($PKG_RESULT)}"
+            if [[ -n "$AUR_RESULT" ]]; then printf ' %-10s %s\n' aur "$AUR_RESULT"; fi
+            if [[ -n "$FLATPAK_RESULT" ]]; then printf ' %-10s %s\n' flatpak "$FLATPAK_RESULT"; fi
+        fi
+        if ((DO_CONVERGE)); then
+            if ((DRY_RUN)); then
+                printf ' %-10s %s pending (stage 8 above shows what each would do)\n' migrations "${#MIGRATIONS_LEFT[@]}"
+            elif ((${#MIGRATIONS_APPLIED[@]})); then
+                printf ' %-10s applied: %s\n' migrations "${MIGRATIONS_APPLIED[*]}"
+            else
+                printf ' %-10s none applied\n' migrations
+            fi
+            if [[ -n "$CONVERGE_RESULT" ]]; then printf ' %-10s %s\n' install.sh "$CONVERGE_RESULT"; fi
+        fi
+        if [[ -n "$SNAP_RESULT" ]]; then printf ' %-10s %s\n' snapshot "$SNAP_RESULT"; fi
+        if command -v pacdiff &>/dev/null; then
+            while read -r line; do
+                if [[ -n "$line" ]]; then printf ' %-10s %s\n' pacnew "$line"; fi
+            done < <(pacdiff -o 2>/dev/null || true)
+        fi
+        for line in ${todo[@]+"${todo[@]}"}; do printf ' %-10s %s\n' todo "$line"; done
+        for line in ${WARNINGS[@]+"${WARNINGS[@]}"}; do printf ' %-10s %s\n' WARNING "$line"; done
+        for line in ${restart[@]+"${restart[@]}"}; do printf ' %-10s %s\n' restart "$line"; done
+        for line in ${relogin[@]+"${relogin[@]}"}; do printf ' %-10s %s\n' RELOGIN "$line"; done
+        for line in ${reboot[@]+"${reboot[@]}"}; do printf ' %-10s %s\n' REBOOT "$line"; done
+        if ((${#reboot[@]} + ${#relogin[@]} == 0)); then printf ' %-10s no reboot or relogin needed\n' ""; fi
+        if [[ -n "${LOG_FILE:-}" ]]; then printf ' %-10s %s\n' log "${LOG_FILE/#$HOME/\~}"; fi
+    } | tee -a "${LOG_FILE:-/dev/null}"
+    if [[ -n "${LOG_FILE:-}" && -n "$changes" ]]; then printf '%s\n' "--- packages" "$changes" >>"$LOG_FILE"; fi
+
+    ((DRY_RUN)) && return 0
+    ((${#WARNINGS[@]})) && result=warnings
+    local -a keys=("last_run=$(date +%s)" "last_result=$result" "last_log=${LOG_FILE:-}"
+        "prev_dotfiles=${DOTS_OLD:-}" "prev_theme=${THEME_OLD:-}")
+    if ((${#reboot[@]})); then keys+=("reboot=1" "reboot_boot_id=$(boot_id)"); fi
+    if ((${#relogin[@]})) && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        keys+=("relogin=1" "relogin_session=$HYPRLAND_INSTANCE_SIGNATURE")
+    fi
+    # the sync database is fresh now, so the pending counts are known without the network
+    if [[ "$PKG_RESULT" == ok ]]; then keys+=("checked=$(date +%s)" "official=$(pacman -Qu 2>/dev/null | wc -l || true)"); fi
+    if [[ "$AUR_RESULT" == ok ]]; then keys+=("aur=0"); fi
+    if ((DO_CONVERGE)); then keys+=("migrations=${#MIGRATIONS_LEFT[@]}"); fi
+    if [[ "${DOTS_STATUS:-}" == @(updated|current|ahead) ]]; then keys+=("dotfiles_behind=0"); fi
+    if [[ "${THEME_STATUS:-}" == @(updated|current|ahead) ]]; then keys+=("theme_behind=0"); fi
+    status_set "${keys[@]}"
+    rm -f "${DOTS_NOTES_FILE:-}"
+    if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v notify-send &>/dev/null; then
+        local body="Finished"
+        if ((${#reboot[@]})); then
+            body="Reboot needed"
+        elif ((${#relogin[@]})); then
+            body="Relogin needed"
+        fi
+        if ((${#WARNINGS[@]})); then body+=", with warnings"; fi
+        notify-send -a "dots-update" "System update" "$body" || true
+    fi
+    return 0
+}
+
+# shellcheck disable=SC2329 # called by the ERR trap set in main
+on_error() {
+    error "dots-update failed in ${PHASE}.${LOG_FILE:+ Log: $LOG_FILE}"
+    snapshot_hint
+}
+
+main() {
+    ORIG_ARGS=("$@")
+    parse_args "$@"
+    export DOTFILES_DIR DRY_RUN
+    ((DRY_RUN)) && export DRY_FETCH=1
+    # shellcheck source=install/utils.sh
+    source "$DOTFILES_DIR/install/utils.sh"
+    # shellcheck source=install/migrate.sh
+    source "$DOTFILES_DIR/install/migrate.sh"
+
+    if ((CHECK)); then
+        do_check
+        exit 0
+    fi
+    # HEAD before and after the sync; a self re-exec hands the values over in the environment
+    DOTS_STATUS="${DOTS_STATUS:-}" THEME_STATUS="${THEME_STATUS:-}"
+    DOTS_OLD="${DOTS_OLD:-$(git -C "$DOTFILES_DIR" rev-parse HEAD 2>/dev/null || true)}"
+    DOTS_NEW="${DOTS_NEW:-$DOTS_OLD}"
+    THEME_OLD="${THEME_OLD:-$(git -C "$THEME_DIR" rev-parse HEAD 2>/dev/null || true)}"
+    THEME_NEW="${THEME_NEW:-$THEME_OLD}"
+
+    trap on_error ERR
+    trap 'error "Interrupted in ${PHASE}."; snapshot_hint; exit 130' INT
+
+    preflight
+    start_log "$@"
+
+    if [[ -n "${DOTS_RESUME:-}" ]]; then
+        mapfile -t WARNINGS < <(printf '%s' "${DOTS_WARNINGS:-}")
+        unset DOTS_RESUME DOTS_WARNINGS
+    else
+        PHASE=sync
+        sync_repos
+        reexec_if_changed
+    fi
+    PHASE=verify
+    if ((DO_CONVERGE)); then verify_theme; fi
+    PHASE=snapshot
+    MIGRATIONS_BEFORE="$(applied_migrations | paste -sd' ')"
+    snapshot_pre
+    PACLOG_OFFSET="$(stat -c %s "$PACMAN_LOG" 2>/dev/null || echo 0)"
+    PHASE=packages
+    upgrade_packages
+    PHASE=converge
+    converge
+    PHASE=snapshot
+    snapshot_post
+    PHASE=report
+    report
+    ((${#WARNINGS[@]})) && exit 2
+    exit 0
+}
+
+main "$@"
