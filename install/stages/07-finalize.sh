@@ -113,3 +113,14 @@ echo "  - desktop WiFi: pin the connection to the AP's BSSID and 5 GHz band"
 echo "  - default apps: xdg-mime default zen.desktop x-scheme-handler/http (full list in README.md)"
 echo "  - fill in opencode/google-workspace.env; paste the Slack theme from ~/p/eggfriedrice.nvim/extras/slack"
 echo "  - Neovim: start nvim once, then :Lazy restore to pin plugins to lazy-lock.json"
+
+# Machine profile notes (machines/<layer>/notes): every line that is not a comment is a manual step
+mapfile -t note_files < <(profile_files notes)
+for notes in "${note_files[@]}"; do
+    mapfile -t note_lines < <(sed 's/^[[:space:]]*//; /^#/d; /^$/d' "$notes")
+    if (( ${#note_lines[@]} )); then
+        echo
+        info "For the $(layer_of "$notes") profile:"
+        printf '  - %s\n' "${note_lines[@]}"
+    fi
+done

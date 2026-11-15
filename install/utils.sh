@@ -91,24 +91,25 @@ install_package_names() {
     plan_packages "${to_install[@]}"
 }
 
-# Install packages from a .txt list via pacman
+# install_packages FILE [LABEL]: install a .txt list via pacman; LABEL names it in the output
+# (default: the file name without .txt)
 install_packages() {
     local file="$1"
+    local name="${2:-$(basename "$file" .txt)}"
     if [[ ! -f "$file" ]]; then
         error "Package list not found: $file"
         return 1
     fi
     local -a pkgs
     mapfile -t pkgs < <(parse_package_list "$file")
-    info "Installing $(basename "$file" .txt) packages..."
-    install_package_names "$(basename "$file" .txt)" "${pkgs[@]}"
+    info "Installing ${name} packages..."
+    install_package_names "$name" "${pkgs[@]}"
 }
 
-# Install AUR packages from a .txt list via $AUR_HELPER
+# install_aur_packages FILE [LABEL]: install a .txt list via $AUR_HELPER
 install_aur_packages() {
     local file="$1"
-    local name
-    name="$(basename "$file" .txt)"
+    local name="${2:-$(basename "$file" .txt)}"
     if [[ ! -f "$file" ]]; then
         error "Package list not found: $file"
         return 1
@@ -187,6 +188,32 @@ install_etc_file() {
     fi
     info "Installing: $dest"
     run sudo install -Dm644 "$src" "$dest"
+}
+
+# install_etc_tree DIR: every file under DIR (a tree laid out like /etc) to the same path under /etc
+install_etc_tree() {
+    local src="${1%/}" file
+    [[ -d "$src" ]] || return 0
+    while IFS= read -r -d '' file; do
+        install_etc_file "$file" "/etc/${file#"$src"/}"
+    done < <(find "$src" -type f -print0 | sort -z)
+}
+
+# profile_files NAME: machines/<layer>/NAME for each layer of the active profile that has one,
+# base layer first (PROFILE_LAYERS is set by install.sh)
+profile_files() {
+    local layer
+    for layer in ${PROFILE_LAYERS[@]+"${PROFILE_LAYERS[@]}"}; do
+        if [[ -e "${DOTFILES_DIR}/machines/${layer}/$1" ]]; then
+            printf '%s\n' "${DOTFILES_DIR}/machines/${layer}/$1"
+        fi
+    done
+}
+
+# layer_of PATH: the profile layer a machines/<layer>/... path belongs to
+layer_of() {
+    local rel="${1#"${DOTFILES_DIR}/machines/"}"
+    printf '%s' "${rel%%/*}"
 }
 
 enable_system_service() {

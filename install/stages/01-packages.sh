@@ -86,6 +86,12 @@ for list in base system audio hyprland fonts apps dev; do
     install_packages "${DOTFILES_DIR}/install/packages/${list}.txt"
 done
 
+# Machine profile packages (machines/<layer>/packages.txt), base layer first
+mapfile -t profile_lists < <(profile_files packages.txt)
+for list in "${profile_lists[@]}"; do
+    install_packages "$list" "$(layer_of "$list") profile"
+done
+
 # Clone and build yay-bin; returns non-zero instead of aborting (AUR down, makepkg failure)
 bootstrap_yay() {
     local tmpdir status=0
@@ -98,10 +104,18 @@ bootstrap_yay() {
     return "$status"
 }
 
-aur_lists=(aur)
+# AUR lists: the shared one, then the profile layers' aur.txt
+aur_lists=("${DOTFILES_DIR}/install/packages/aur.txt")
+aur_labels=(aur)
 if [[ "$PROFILE" == "desktop" ]]; then
-    aur_lists+=(aur-desktop)
+    aur_lists+=("${DOTFILES_DIR}/install/packages/aur-desktop.txt")
+    aur_labels+=(aur-desktop)
 fi
+mapfile -t profile_aur_lists < <(profile_files aur.txt)
+for list in "${profile_aur_lists[@]}"; do
+    aur_lists+=("$list")
+    aur_labels+=("$(layer_of "$list") profile")
+done
 
 # AUR helper: yay is what the existing machines use; bootstrap yay-bin when nothing is present
 AUR_HELPER=""
@@ -121,15 +135,15 @@ else
         AUR_HELPER="yay"
     else
         # the official packages are in; everything after this stage still works without the AUR ones
-        warn "Could not build yay-bin, skipping the AUR lists: ${aur_lists[*]}"
-        FAILED+=("yay-bin bootstrap; AUR lists not installed: ${aur_lists[*]}")
+        warn "Could not build yay-bin, skipping the AUR lists: ${aur_labels[*]}"
+        FAILED+=("yay-bin bootstrap; AUR lists not installed: ${aur_labels[*]}")
     fi
 fi
 export AUR_HELPER
 
 if [[ -n "$AUR_HELPER" ]]; then
-    for list in "${aur_lists[@]}"; do
-        install_aur_packages "${DOTFILES_DIR}/install/packages/${list}.txt"
+    for i in "${!aur_lists[@]}"; do
+        install_aur_packages "${aur_lists[$i]}" "${aur_labels[$i]}"
     done
 fi
 

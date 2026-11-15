@@ -18,6 +18,12 @@ if has_pkg zram-generator; then
     install_etc_file "$etc_src/systemd/zram-generator.conf" /etc/systemd/zram-generator.conf
 fi
 
+# Machine profile /etc files (machines/<layer>/etc/, laid out like /etc), base layer first
+mapfile -t etc_trees < <(profile_files etc)
+for tree in "${etc_trees[@]}"; do
+    install_etc_tree "$tree"
+done
+
 # Bluetooth: advertise as fast-connectable (quicker headphone and keyboard reconnects).
 # The key lives in [General]; a main.conf without even the commented default gets it appended there.
 bt_conf=/etc/bluetooth/main.conf
@@ -149,6 +155,20 @@ if [[ "$PROFILE" == "desktop" ]]; then
     # The key also matches an older video=DP-N: entry (the monitor was on DP-3 until Sep 10).
     kernel_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240" 'video=DP-[0-9]+:'
 fi
+
+# Machine profile kernel parameters (machines/<layer>/grub: "VARIABLE PARAMETER [KEY]" per line)
+mapfile -t grub_lists < <(profile_files grub)
+for list in "${grub_lists[@]}"; do
+    grub_layer="$(layer_of "$list")"
+    while read -r grub_var grub_param grub_key || [[ -n "$grub_var" ]]; do
+        [[ -z "$grub_var" || "$grub_var" == \#* ]] && continue
+        if [[ -z "$grub_param" ]]; then
+            warn "machines/${grub_layer}/grub: no parameter after $grub_var, line skipped"
+            continue
+        fi
+        kernel_param "$grub_var" "$grub_param" ${grub_key:+"$grub_key"}
+    done < "$list"
+done
 
 if [[ -f "$grub_file" ]]; then
     if grep -q '^GRUB_TIMEOUT=2$' "$grub_file"; then

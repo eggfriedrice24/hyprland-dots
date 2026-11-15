@@ -40,6 +40,15 @@ if has_pkg docker; then
     fi
 fi
 
+# Machine profile services (machines/<layer>/services: one system unit per line, # comments)
+mapfile -t service_lists < <(profile_files services)
+for list in "${service_lists[@]}"; do
+    mapfile -t units < <(parse_package_list "$list")
+    for unit in "${units[@]}"; do
+        enable_system_service "$unit"
+    done
+done
+
 # User services: pipewire is socket-activated, the sockets are what Arch enables globally
 enable_user_service pipewire.socket
 enable_user_service pipewire-pulse.socket
