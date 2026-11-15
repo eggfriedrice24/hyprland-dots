@@ -1,5 +1,7 @@
 # Main
-alias installed="grep -i installed /var/log/pacman.log"
+# -a: a pacman.log that lived through a power cut holds a NUL byte, and grep would only say
+# "binary file matches"
+alias installed="grep -ai installed /var/log/pacman.log"
 # up: dots-update (bin/, linked into ~/.local/bin by install stage 3); until that link exists,
 # the copy in the checkout this zsh config lives in
 if (( $+commands[dots-update] )); then
