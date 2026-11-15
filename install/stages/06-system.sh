@@ -15,6 +15,7 @@ for tree in "${etc_trees[@]}"; do
         case "$changed" in
             /etc/modprobe.d/*) note reboot "kernel module options changed ($changed)" ;;
             /etc/ssh/sshd_config.d/*) note restart "sshd, for $changed: sudo systemctl restart sshd" ;;
+            /etc/systemd/logind.conf.d/*) note reboot "logind reads the lid setting at boot ($changed)" ;;
         esac
     done
 done
