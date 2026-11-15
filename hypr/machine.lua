@@ -120,7 +120,7 @@ end
 
 local name, source = resolve()
 if not exists(name) then
-	print("machine profile '" .. tostring(name) .. "' not found, using generic")
+	print("machine profile '" .. tostring(name) .. "' not found in " .. machines .. ", using generic")
 	name, source = "generic", "error"
 end
 

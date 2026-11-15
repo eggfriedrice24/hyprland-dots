@@ -11,14 +11,17 @@ if not ok then
 	efr = { border = "rgb(c9a747)", fg_gutter_ui = "rgb(586480)" }
 end
 
--- Monitors
-hl.monitor({ output = "DP-1", mode = "2560x1440@240", position = "0x0", scale = 1, bitdepth = 10 }) -- 10bpc matches the boot console's link config, avoids a second DP retrain at login
--- HP P27q, right of main, in portrait (pivot).
--- transform 1 = 90 deg clockwise, 3 = counter-clockwise; position centers the
--- 2560-tall portrait against the 1440-tall main (y from -560 to 2000).
-hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@60", position = "2560x-560", scale = 1, transform = 1 })
-hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1 })
--- hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
+-- Monitors, devices and other per-machine values: machines/<profile>/hypr.lua, picked by machine.lua
+-- (the same resolution as install/machine.sh). A broken profile leaves no monitor rules, not a dead session.
+local machine_ok, machine = pcall(require, "machine")
+if not machine_ok or type(machine) ~= "table" then
+	print("machine.lua did not load: " .. tostring(machine))
+	machine = { name = "generic", monitors = {} }
+end
+hl.env("DOTFILES_PROFILE", machine.name)
+for _, monitor in ipairs(machine.monitors or {}) do
+	hl.monitor(monitor)
+end
 
 -- Input
 hl.config({
@@ -39,9 +42,6 @@ hl.config({
 		},
 	},
 })
-
-hl.device({ name = "razer-razer-deathadder-essential", sensitivity = -0.85 })
-hl.device({ name = "razer-razer-deathadder-essential-1", sensitivity = -0.85 })
 
 -- General
 hl.config({
@@ -138,3 +138,8 @@ hl.config({
 })
 
 -- master: defaults, see https://wiki.hypr.land/Configuring/Layouts/Master-Layout/
+
+-- Per-machine config, binds and devices go last so they win over the shared values above
+if machine.apply then
+	machine.apply()
+end
