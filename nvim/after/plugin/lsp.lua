@@ -81,7 +81,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		)
 
 		-- Telescope diagnostic keymaps
-		vim.keymap.set("n", "<leader>wd", function()
+		vim.keymap.set("n", "<leader>dw", function()
 			require("telescope.builtin").diagnostics()
 		end, vim.tbl_extend("force", opts, { desc = "Workspace diagnostics" }))
 
