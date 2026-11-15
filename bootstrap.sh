@@ -25,6 +25,11 @@ error() { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; }
 success() { printf "${GREEN}[OK]${NC} %s\n" "$*"; }
 die() { error "$*"; exit 1; }
 trap 'error "bootstrap failed at line $LINENO: $BASH_COMMAND"' ERR
+# the temporary NOPASSWD file must not outlive the run, whether it ends, dies or is interrupted.
+# An EXIT trap only: bash runs it on INT and TERM too, while an INT handler would let the script go on.
+SUDOERS_TMP=""
+cleanup() { if [[ -n "$SUDOERS_TMP" ]]; then rm -f "$SUDOERS_TMP"; fi; }
+trap cleanup EXIT
 
 # stdin may be a pipe (curl | bash); prompts always read the terminal
 ask() { # ask VAR "question" [default]
@@ -349,14 +354,16 @@ dotfiles_ok=0
 if [[ "$RUN_DOTFILES" =~ ^[Yy] ]]; then
     info "Running the dotfiles installer in the new system"
     # temporary passwordless sudo: the installer runs unattended as the user
-    echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >/mnt/etc/sudoers.d/99-bootstrap
-    chmod 440 /mnt/etc/sudoers.d/99-bootstrap
+    SUDOERS_TMP=/mnt/etc/sudoers.d/99-bootstrap
+    echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >"$SUDOERS_TMP"
+    chmod 440 "$SUDOERS_TMP"
     if arch-chroot /mnt sudo -u "$USERNAME" -H bash -c "cd '$DOTS' && ./install.sh --yes"; then
         dotfiles_ok=1
     else
         warn "The dotfiles installer failed in the chroot; rerun it after the first boot (it is idempotent)"
     fi
-    rm -f /mnt/etc/sudoers.d/99-bootstrap
+    rm -f "$SUDOERS_TMP"
+    SUDOERS_TMP=""
     # gpg daemons that makepkg started in the chroot keep running on the ISO: stop them, or
     # their keyring lock outlives the reboot and yay cannot import PGP keys any more
     arch-chroot /mnt sudo -u "$USERNAME" -H gpgconf --kill all 2>/dev/null || true
