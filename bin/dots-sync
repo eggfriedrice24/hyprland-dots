@@ -580,7 +580,12 @@ for spec in "${SPECS[@]}"; do
                     continue
                 fi
                 if [[ -n "${LINK[$f]:-}" ]]; then
-                    # a submodule: its own files, not its build output
+                    # a submodule: its own files, not its build output. One never initialised is an
+                    # empty folder without a .git: carried as that empty folder
+                    if [[ ! -e "$f/.git" ]]; then
+                        [[ -d "$f" ]] && printf 'f\0./%s\0' "$f"
+                        continue
+                    fi
                     printf 'f\0./%s/.git\0' "$f"
                     (cd -- "$f" 2>/dev/null && gopts . && git "${GO[@]}" ls-files -z -co --exclude-standard </dev/null) |
                         while IFS= read -r -d '' sf; do
@@ -594,7 +599,7 @@ for spec in "${SPECS[@]}"; do
             w="$(G config --local --name-only --get-regexp '^(core\.(fsmonitor|hookspath|sshcommand|pager|editor|askpass)|filter\..*|diff\..*\.textconv|include\.path|includeif\..*|alias\..*)$' 2>/dev/null | sort -u | tr '\n' ' ')"
             hooks="$(find .git/hooks -type f ! -name '*.sample' -printf '%f ' 2>/dev/null)"
             cred=""
-            G config --get-regexp '^remote\..*\.url$' 2>/dev/null | grep -qE '://[^/@]+@' && cred="a remote URL with credentials"
+            G config --get-regexp '^remote\..*\.url$' 2>/dev/null | grep -qE 'https?://[^/@]+@' && cred="a remote URL with credentials" # ssh://user@ is no secret
             summary="${w:+config: $w}${hooks:+hooks: $hooks}$cred"
             [[ -n "$summary" ]] && printf 'w\0%s\0' "$summary"
         fi
