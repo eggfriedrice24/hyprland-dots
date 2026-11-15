@@ -241,14 +241,14 @@ do_check() {
 preflight() {
     [[ $EUID -ne 0 ]] || die "Run as your normal user, not root; sudo is used where needed."
     [[ -f /etc/arch-release ]] || die "This is not Arch Linux."
-    # a system booted into a snapshot loses every change at the next boot
-    if ((DO_SNAPSHOT)) && [[ -x "$SNAPSHOT_CMD" ]]; then
+    # a system booted into a snapshot loses every change at the next boot; checked with --no-snapshot too
+    if [[ -x "$SNAPSHOT_CMD" ]]; then
         local text rc=0
         text="$("$SNAPSHOT_CMD" status 2>/dev/null)" || rc=$?
         case "$rc" in
-            0) SNAP_AVAILABLE=1 ;;
+            0) if ((DO_SNAPSHOT)); then SNAP_AVAILABLE=1; fi ;;
             2) die "Not updating: $text" ;;
-            *) info "No snapshot around this run: ${text:-dots-snapshot status exited $rc}" ;;
+            *) if ((DO_SNAPSHOT)); then info "No snapshot around this run: ${text:-dots-snapshot status exited $rc}"; fi ;;
         esac
     fi
     ((DRY_RUN)) && return 0
