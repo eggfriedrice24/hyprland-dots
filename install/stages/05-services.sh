@@ -19,9 +19,12 @@ if has_pkg valkey; then
     enable_system_service valkey
 fi
 
-# postgresql needs an initialised cluster before the service can start
+# postgresql needs an initialised cluster before the service can start. An enabled unit had its
+# cluster initialised before it was enabled, so the root-only data dir is not even looked at then.
 if has_pkg postgresql; then
-    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    if systemctl is-enabled postgresql &>/dev/null; then
+        : # enable_system_service below reports it
+    elif [[ "${DRY_RUN:-0}" == "1" ]]; then
         dry "initdb the postgresql cluster when /var/lib/postgres/data is empty"
     elif ! sudo test -f /var/lib/postgres/data/PG_VERSION; then
         info "Initialising postgresql cluster..."
