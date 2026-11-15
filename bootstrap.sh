@@ -444,7 +444,7 @@ if (( repo_ok )) && [[ "$RUN_DOTFILES" =~ ^[Yy] ]]; then
     SUDOERS_TMP=/mnt/etc/sudoers.d/99-bootstrap
     echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >"$SUDOERS_TMP"
     chmod 440 "$SUDOERS_TMP"
-    if arch-chroot /mnt sudo -u "$USERNAME" -H bash -c "cd '$DOTS' && ./install.sh --yes ${INSTALL_ARGS:-}"; then
+    if arch-chroot /mnt sudo -u "$USERNAME" -H bash -c "cd '$DOTS' && DOTFILES_BOOTSTRAP=1 ./install.sh --yes ${INSTALL_ARGS:-}"; then
         dotfiles_ok=1
     else
         warn "The dotfiles installer failed in the chroot; rerun it after the first boot (it is idempotent)"
