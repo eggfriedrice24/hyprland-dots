@@ -195,6 +195,9 @@ if has_cmd gsettings gsettings-desktop-schemas; then # gsettings is glib2's, pul
     fi
     gset color-scheme "'prefer-dark'"
     gset cursor-size "24"
+    # the theme's ui font (font.ui at weight.ui and size.sm in typography.lua); GTK3 has no CSS
+    # variables, so this setting is how GTK apps get it. monospace-font-name is left as it is
+    gset font-name "'Nunito Medium 10'"
 else
     warn "gsettings not found, GTK theme not applied"
 fi
