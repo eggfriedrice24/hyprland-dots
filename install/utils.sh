@@ -273,6 +273,10 @@ enable_user_service() {
     local service="$1"
     if systemctl --user is-enabled "$service" &>/dev/null; then
         success "Already enabled (user): $service"
+    elif systemctl --global is-enabled "$service" &>/dev/null; then
+        # packages like pipewire enable their user units for every user; without a user session
+        # (the bootstrap chroot) --user cannot answer, but the global state can
+        success "Already enabled for all users: $service"
     else
         info "Enabling user service: $service"
         if ! run systemctl --user enable "$service"; then
