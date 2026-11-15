@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Screen recording with wf-recorder: saved to ~/Videos/Recordings, no audio
+# Usage: screenrecord screen | area | stop | toggle
+#   screen  the focused monitor (unnamed, wf-recorder asks which output on stdin and gives up without a terminal)
+#   area    a region picked with slurp
+#   stop    finish the running recording
+#   toggle  stop when one is running, else record the focused monitor
+
+set -uo pipefail
+
+notify() { notify-send -a "Screen Recorder" "$@"; }
+recording() { pgrep -x wf-recorder >/dev/null; }
+
+stop() {
+    if ! pkill -INT -x wf-recorder; then
+        notify -u low -t 1500 "Not recording"
+    fi
+}
+
+start() {
+    local dir file mon geo
+    local -a target
+    if recording; then
+        notify -u low "Already recording"
+        exit 0
+    fi
+    case "$1" in
+        screen)
+            mon="$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')"
+            if [[ -z "$mon" ]]; then
+                notify -u critical "Recording failed" "no focused monitor"
+                exit 1
+            fi
+            target=(-o "$mon")
+            ;;
+        area)
+            geo="$(slurp)" || exit 0 # Escape cancels the selection
+            target=(-g "$geo")
+            ;;
+    esac
+    dir="$(xdg-user-dir VIDEOS)/Recordings"
+    mkdir -p "$dir"
+    file="$dir/$(date +%Y-%m-%d_%H-%M-%S).mp4"
+
+    notify -u low -t 1500 "Recording started"
+    # blocks until `screenrecord stop` interrupts it; SIGINT lets wf-recorder finish the file.
+    # -y and no stdin: nothing may wait on a prompt, there is no terminal to answer it
+    wf-recorder "${target[@]}" -y -f "$file" </dev/null >/dev/null 2>&1
+    if [[ -s "$file" ]]; then
+        notify "Recording saved" "$file"
+    else
+        notify -u critical "Recording failed" "wf-recorder wrote nothing"
+    fi
+}
+
+case "${1:-}" in
+    screen | area) start "$1" ;;
+    stop) stop ;;
+    toggle)
+        if recording; then
+            stop
+        else
+            start screen
+        fi
+        ;;
+    *)
+        echo "Usage: screenrecord screen | area | stop | toggle"
+        exit 1
+        ;;
+esac
