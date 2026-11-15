@@ -388,8 +388,7 @@ migrate_main() {
         error "Unknown machine profile '$PROFILE' (${PROFILE_SOURCE}). Known: $(list_profiles | paste -sd' ')"
         exit 1
     fi
-    PROFILE_DIR="${MACHINES_DIR}/${PROFILE}"
-    export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE PROFILE_DIR
+    export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE
     export PATH="$HOME/.local/bin:$PATH"
 
     case "$action" in
