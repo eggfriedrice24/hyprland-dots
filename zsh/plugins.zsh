@@ -31,10 +31,6 @@ typeset -gA ZINIT
 ZINIT[ZCOMPDUMP_PATH]=$_zcompdump
 source "${ZINIT_HOME}/zinit.git/zinit.zsh"
 
-# # Theme: Powerlevel10k
-# zinit light romkatv/powerlevel10k
-# [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
-
 # Completions
 zinit ice blockf atpull'zinit creinstall -q .'
 zinit light zsh-users/zsh-completions
@@ -51,11 +47,8 @@ zinit light-mode for \
   MichaelAquilina/zsh-you-should-use \
   zsh-users/zsh-autosuggestions
 
-
 zinit ice wait'3' lucid atload'bindkey "^[[A" history-substring-search-up; bindkey "^[[B" history-substring-search-down'
 zinit light zsh-users/zsh-history-substring-search
-
-
 
 zinit ice wait'2' lucid
 zinit light zdharma-continuum/history-search-multi-word
