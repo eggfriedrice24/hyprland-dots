@@ -407,7 +407,8 @@ upgrade_packages() {
 
     if [[ -n "$helper" ]]; then
         info "Upgrading AUR packages..."
-        if run "$helper" -Sua --sudoloop ${noconfirm[@]+"${noconfirm[@]}"}; then
+        # --removemake: build-only dependencies go again instead of piling up as orphans
+        if run "$helper" -Sua --sudoloop --removemake ${noconfirm[@]+"${noconfirm[@]}"}; then
             AUR_RESULT=ok
         else
             AUR_RESULT=failed
