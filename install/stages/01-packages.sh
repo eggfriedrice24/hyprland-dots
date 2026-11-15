@@ -53,8 +53,9 @@ else
     warn "Could not detect CPU or GPU vendor, no microcode or Vulkan driver selected"
 fi
 
-# Official repo packages (audio before hyprland so waybar picks pipewire-jack as its JACK provider)
-for list in base system audio hyprland apps dev fonts; do
+# Official repo packages. Audio before hyprland so waybar picks pipewire-jack as its JACK provider;
+# fonts before apps so steam's ttf-font dependency is already met by noto-fonts (not gnu-free-fonts)
+for list in base system audio hyprland fonts apps dev; do
     install_packages "${DOTFILES_DIR}/install/packages/${list}.txt"
 done
 
