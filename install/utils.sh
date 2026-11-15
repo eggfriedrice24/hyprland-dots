@@ -39,7 +39,27 @@ try() {
     fi
 }
 
-has_pkg() { pacman -Qq "$1" &>/dev/null; }
+# Packages a dry run of stage 1 would install. A dry run counts them (and their commands) as present,
+# so the later stages print what they would do with them instead of skipping them as missing.
+declare -A PLANNED_PKGS=()
+plan_packages() {
+    [[ "${DRY_RUN:-0}" == "1" ]] || return 0
+    local pkg
+    for pkg in "$@"; do
+        PLANNED_PKGS["$pkg"]=1
+    done
+}
+
+has_pkg() {
+    pacman -Qq "$1" &>/dev/null && return 0
+    [[ "${DRY_RUN:-0}" == "1" && -n "${PLANNED_PKGS[$1]:-}" ]]
+}
+
+# has_cmd CMD [PKG]: CMD is on PATH, or a dry run plans PKG (default: CMD), which provides it
+has_cmd() {
+    command -v "$1" &>/dev/null && return 0
+    [[ "${DRY_RUN:-0}" == "1" && -n "${PLANNED_PKGS[${2:-$1}]:-}" ]]
+}
 
 # Strip comments, blank lines and surrounding whitespace from a package list file
 parse_package_list() {
@@ -68,6 +88,7 @@ install_package_names() {
 
     info "Installing ${#to_install[@]} ${name} packages: ${to_install[*]}"
     run sudo pacman -S --needed --noconfirm "${to_install[@]}"
+    plan_packages "${to_install[@]}"
 }
 
 # Install packages from a .txt list via pacman
@@ -112,6 +133,7 @@ install_aur_packages() {
     fi
 
     info "Installing ${#to_install[@]} AUR packages: ${to_install[*]}"
+    plan_packages "${to_install[@]}"
     # AUR builds break for reasons outside this repo (upstream PKGBUILD, PGP keys); one failure
     # must not stop the configs from being linked, so retry one by one and report at the end
     if ! run "$AUR_HELPER" -S --needed --noconfirm "${to_install[@]}"; then

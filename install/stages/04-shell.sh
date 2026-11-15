@@ -57,8 +57,11 @@ fi
 
 # bat theme cache: the theme name in bat/config resolves only after a cache build with the tmTheme present
 bat_theme="${DOTFILES_DIR}/bat/themes/eggfriedrice.tmTheme"
-if ! command -v bat &>/dev/null; then
+if ! has_cmd bat; then
     warn "bat not found, skipping theme cache build"
+elif [[ ! -e "$bat_theme" && "${DRY_RUN:-0}" == "1" ]]; then
+    # fresh dry run: the link resolves once stage 2 has cloned the theme repo
+    dry "bat cache --build"
 elif [[ ! -e "$bat_theme" ]]; then
     error "bat theme missing or dangling: $bat_theme"
     return 1

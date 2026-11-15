@@ -37,7 +37,7 @@ if [[ -d "$scripts_dir" ]]; then
 fi
 
 # Rust: rustup ships no toolchain until one is selected
-if command -v rustup &>/dev/null; then
+if has_cmd rustup; then
     if rustup show active-toolchain &>/dev/null; then
         success "Rust toolchain: $(rustup show active-toolchain 2>/dev/null | cut -d' ' -f1)"
     else
@@ -47,7 +47,7 @@ if command -v rustup &>/dev/null; then
 fi
 
 # Node via fnm (versions live in ~/.local/share/fnm)
-if command -v fnm &>/dev/null; then
+if has_cmd fnm; then
     if fnm list 2>/dev/null | grep 'default' >/dev/null; then
         success "fnm default Node: $(fnm list 2>/dev/null | grep 'default' | awk '{print $2}')"
     else
@@ -79,7 +79,7 @@ elif [[ -f "$oc_env.example" ]]; then
 fi
 
 # Flatpak apps
-if command -v flatpak &>/dev/null; then
+if has_cmd flatpak; then
     if ! flatpak remotes --columns=name 2>/dev/null | grep -x 'flathub' >/dev/null; then
         info "Adding the flathub remote..."
         try "flatpak remote-add flathub" sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo

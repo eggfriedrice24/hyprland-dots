@@ -171,7 +171,7 @@ else
 fi
 
 # GTK theme and dark mode live in dconf; nothing in the dotfiles carries them otherwise
-if command -v gsettings &>/dev/null; then
+if has_cmd gsettings gsettings-desktop-schemas; then # gsettings is glib2's, pulled in by the schemas
     gset() {
         local key="$1" value="$2"
         if [[ "$(gsettings get org.gnome.desktop.interface "$key" 2>/dev/null)" == "$value" ]]; then
