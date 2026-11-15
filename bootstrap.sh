@@ -5,8 +5,9 @@
 #   bash bootstrap.sh
 #
 # Layout it builds:
-#   root disk (wiped):  1 GiB ESP at /boot (vfat) | optional swap | btrfs root
-#     btrfs subvolumes: @ /, @snapshots /.snapshots, @log /var/log, @pkg /var/cache/pacman/pkg, @docker /var/lib/docker
+#   root disk (wiped):  2 GiB ESP at /boot (vfat, room for the .old kernels) | optional swap (default none) | btrfs root
+#     btrfs subvolumes: @ /, @snapshots /.snapshots, @log /var/log, @pkg /var/cache/pacman/pkg, @docker /var/lib/docker,
+#     @flatpak /var/lib/flatpak (kept out of root snapshots; postgres, valkey, bluetooth and tailscale stay in @)
 #     snapper + snap-pac (snapshot per pacman transaction) + grub-btrfs (boot snapshots from the GRUB menu)
 #   /home: keep an existing ext4 partition untouched, format a whole second disk as ext4, or a @home subvolume
 #   optional LUKS2: passphrase for root at boot, key file on root for a new /home disk, random-key swap
@@ -19,6 +20,7 @@ DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/eggfriedrice24/hyprland-dots.
 INSTALL_ARGS="${INSTALL_ARGS:-}"
 DOTFILES_PUSH="git@github.com:eggfriedrice24/hyprland-dots.git"
 BTRFS_OPTS="noatime,compress=zstd:1"
+ESP_GB=2
 
 RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[0;33m' BLUE='\033[0;34m' BOLD='\033[1m' NC='\033[0m'
 info() { printf "${BLUE}[INFO]${NC} %s\n" "$*"; }
@@ -94,15 +96,16 @@ echo
 ask_required ROOT_DISK "Disk for the system (WILL BE WIPED)"
 [[ -b "$ROOT_DISK" && "$(lsblk -dno TYPE "$ROOT_DISK")" == disk ]] || die "$ROOT_DISK is not a disk"
 [[ "$ROOT_DISK" != "$ISO_DISK" ]] || die "$ROOT_DISK is the live ISO this runs from"
-ask SWAP_GB "Swap partition size in GiB (0 = none, zram is set up anyway)" 8
+# zram only by default; hibernation can come later from a btrfs swapfile without repartitioning
+ask SWAP_GB "Swap partition size in GiB (0 = none, zram is set up anyway)" 0
 [[ "$SWAP_GB" =~ ^[0-9]+$ ]] || die "Not a number: $SWAP_GB"
 ask ROOT_GB "Root size in GiB (empty = rest of the disk)" ""
 [[ -z "$ROOT_GB" || "$ROOT_GB" =~ ^[0-9]+$ ]] || die "Not a number: $ROOT_GB"
 # refuse sizes that do not fit before anything is wiped
 disk_gib=$(( $(lsblk -bdno SIZE "$ROOT_DISK") / 1024**3 ))
 root_min=${ROOT_GB:-20} # without a root size, leave at least 20 GiB for it
-(( 1 + SWAP_GB + root_min < disk_gib )) ||
-    die "1 GiB ESP + ${SWAP_GB} GiB swap + ${root_min} GiB root does not fit on $ROOT_DISK (${disk_gib} GiB)"
+(( ESP_GB + SWAP_GB + root_min < disk_gib )) ||
+    die "${ESP_GB} GiB ESP + ${SWAP_GB} GiB swap + ${root_min} GiB root does not fit on $ROOT_DISK (${disk_gib} GiB)"
 
 echo
 printf "${BOLD}Partitions:${NC}\n"
@@ -171,7 +174,7 @@ fi
 # ---------------------------------------------------------------- confirm
 echo
 printf "${BOLD}Summary${NC}\n"
-echo "  System disk:  $ROOT_DISK  (wiped: 1 GiB ESP, ${SWAP_GB} GiB swap, btrfs root ${ROOT_GB:-rest}${ROOT_GB:+ GiB})"
+echo "  System disk:  $ROOT_DISK  (wiped: ${ESP_GB} GiB ESP, ${SWAP_GB} GiB swap, btrfs root ${ROOT_GB:-rest}${ROOT_GB:+ GiB})"
 case "$HOME_MODE" in
     k) echo "  /home:        $HOME_DEV (kept, NOT formatted; a kept ~/dotfiles is $([[ "$PULL_KEPT" =~ ^[Yy] ]] || printf 'not ')fast-forwarded)" ;;
     f) echo "  /home:        $HOME_DISK (wiped, ext4)" ;;
@@ -200,7 +203,7 @@ info "Partitioning $ROOT_DISK"
 wipefs -af "$ROOT_DISK"
 sgdisk --zap-all "$ROOT_DISK"
 # the whole table in one sgdisk call
-sg_args=(-n1:0:+1G -t1:ef00 -c1:EFI)
+sg_args=(-n1:0:+"${ESP_GB}"G -t1:ef00 -c1:EFI)
 n=2
 SWAP_PART=""
 if (( SWAP_GB > 0 )); then
@@ -257,17 +260,18 @@ mkfs.btrfs -f -L arch "$BTRFS_DEV"
 
 info "Creating btrfs subvolumes"
 mount "$BTRFS_DEV" /mnt
-subvols=(@ @snapshots @log @pkg @docker)
+subvols=(@ @snapshots @log @pkg @docker @flatpak)
 [[ "$HOME_MODE" == s ]] && subvols+=(@home)
 for sv in "${subvols[@]}"; do btrfs subvolume create "/mnt/$sv"; done
 umount /mnt
 
 mount -o "$BTRFS_OPTS,subvol=@" "$BTRFS_DEV" /mnt
-mkdir -p /mnt/{boot,home,.snapshots,var/log,var/cache/pacman/pkg,var/lib/docker}
+mkdir -p /mnt/{boot,home,.snapshots,var/log,var/cache/pacman/pkg,var/lib/docker,var/lib/flatpak}
 mount -o "$BTRFS_OPTS,subvol=@snapshots" "$BTRFS_DEV" /mnt/.snapshots
 mount -o "$BTRFS_OPTS,subvol=@log" "$BTRFS_DEV" /mnt/var/log
 mount -o "$BTRFS_OPTS,subvol=@pkg" "$BTRFS_DEV" /mnt/var/cache/pacman/pkg
 mount -o "$BTRFS_OPTS,subvol=@docker" "$BTRFS_DEV" /mnt/var/lib/docker
+mount -o "$BTRFS_OPTS,subvol=@flatpak" "$BTRFS_DEV" /mnt/var/lib/flatpak
 mount "$ESP" /mnt/boot
 if [[ "$HOME_MODE" == s ]]; then
     mount -o "$BTRFS_OPTS,subvol=@home" "$BTRFS_DEV" /mnt/home
