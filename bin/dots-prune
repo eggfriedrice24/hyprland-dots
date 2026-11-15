@@ -4,7 +4,8 @@
 # Candidates are the explicitly installed packages that none of these name:
 #   install/packages/*.txt, and for each layer of the machine's profile machines/<layer>/packages.txt,
 #   aur.txt and keep.txt (keep.txt: what this machine keeps on purpose, tracked, one package per line)
-#   the packages bootstrap.sh installs (read from its pacstrap line), microcode, snap-pac, the AUR helper
+#   the packages bootstrap.sh installs (read from its pacstrap line), microcode and the Vulkan drivers
+#   stage 1 picks by hardware, snap-pac, the AUR helper
 # A package that provides a listed name counts as listed (frameit-bin for frameit).
 #
 # Interactive and opt-in: candidates come up in fzf with their size and how many dependencies would
@@ -67,6 +68,8 @@ mapfile -t names < <(awk '/^pacstrap -K \/mnt/ { on = 1 } on { print } on && !/\
     sed 's/\\$//' | tr -s ' ' '\n' | grep -E '^[a-z0-9][a-z0-9@._+-]*$' | grep -v -x -e pacstrap)
 add_known "${names[@]}"
 add_known amd-ucode intel-ucode snap-pac yay yay-bin paru paru-bin
+# the GPU drivers install/stages/01-packages.sh (detect_hardware_packages) adds next to the microcode
+add_known vulkan-radeon lib32-vulkan-radeon vulkan-intel lib32-vulkan-intel nvidia-utils lib32-nvidia-utils
 
 # ---------------------------------------------------------------- candidates
 # name -> provides, for every explicitly installed package
