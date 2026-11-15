@@ -15,7 +15,5 @@ resize-overlay = never
 gtk-wide-tabs = true
 gtk-toolbar-style = flat
 window-theme = ghostty
-# window-titlebar-background is provided by the theme (bg_dark)
-# titlebar text mirrors palette fg, overriding the theme's fg_dark
-window-titlebar-foreground = #d8d3c3
+# window-titlebar-background and -foreground are provided by the theme (bg_dark, fg)
 gtk-custom-css = gtk.css
