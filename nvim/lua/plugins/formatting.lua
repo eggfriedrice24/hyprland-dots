@@ -101,17 +101,16 @@ return {
 		config = function()
 			local lint = require("lint")
 
-			lint.linters.markdownlint.args = {
-				"--disable", "MD013", "--",
-			}
+			-- the buffer arrives on stdin, so --stdin must stay
+			lint.linters.markdownlint.args = { "--stdin", "--disable", "MD013" }
 
+			-- no zsh entry: shellcheck only knows sh, bash, dash and ksh
 			lint.linters_by_ft = {
 				lua = { "selene" },
-				go = { "golangci-lint" },
+				go = { "golangcilint" },
 				markdown = { "markdownlint" },
 				sh = { "shellcheck" },
 				bash = { "shellcheck" },
-				zsh = { "shellcheck" },
 			}
 
 			-- Resolve oxlint from nearest node_modules/.bin/ (monorepo-friendly)
