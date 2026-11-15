@@ -243,7 +243,7 @@ if has_cmd gsettings gsettings-desktop-schemas; then # gsettings is glib2's, pul
     # the theme's ui font (font.ui at weight.ui, Medium, and size.sm in typography.lua), the value
     # the font picker sets too; GTK3 has no CSS variables, so this setting is how GTK apps get it.
     # monospace-font-name is left as it is
-    ui_font="Nunito Medium 10"
+    ui_font="Atkinson Hyperlegible Next Medium 10"
     palette_json="$THEME_DIR/extras/palette/eggfriedrice.json"
     if [[ -f "$palette_json" ]]; then
         ui_family="$(jq -r '.typography.font.ui // empty' "$palette_json" 2>/dev/null)" || ui_family=""
