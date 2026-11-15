@@ -402,13 +402,35 @@ upgrade_packages() {
 
     if [[ -n "$helper" ]]; then
         info "Upgrading AUR packages..."
-        # --removemake: build-only dependencies go again instead of piling up as orphans
-        if run "$helper" -Sua --sudoloop --removemake ${noconfirm[@]+"${noconfirm[@]}"}; then
-            AUR_RESULT=ok
-        else
-            AUR_RESULT=failed
-            problem "AUR upgrade failed or was declined; rerun: $(basename "$helper") -Sua"
+        # The AUR is one server, no mirrors, and it drops connections now and then (DDoS
+        # protection): the helper then fails at once with "-> request failed" on stderr. That case
+        # gets two more tries; a declined prompt or a failed build does not. stderr still reaches
+        # the terminal; a copy says why in the summary.
+        aur_err="$(mktemp)"
+        AUR_RESULT=failed
+        for attempt in 1 2 3; do
+            # --removemake: build-only dependencies go again instead of piling up as orphans
+            aur_ok=0
+            run "$helper" -Sua --sudoloop --removemake ${noconfirm[@]+"${noconfirm[@]}"} 2> >(tee "$aur_err" >&2) && aur_ok=1
+            wait "$!" 2>/dev/null || true # the tee, so the copy is complete before it is read
+            if ((aur_ok)); then
+                AUR_RESULT=ok
+                break
+            fi
+            if ! grep -q 'request failed' "$aur_err" || ((attempt == 3)); then
+                break
+            fi
+            warn "The AUR did not answer ($(sed -n 's/.*: \([^:]*\)$/\1/p' "$aur_err" | head -n 1)); trying again in 10s"
+            sleep 10
+        done
+        if [[ "$AUR_RESULT" != ok ]]; then
+            if grep -q 'request failed' "$aur_err"; then
+                problem "AUR unreachable ($(sed -n 's/.*: \([^:]*\)$/\1/p' "$aur_err" | head -n 1)); rerun later: $(basename "$helper") -Sua"
+            else
+                problem "AUR upgrade failed or was declined; rerun: $(basename "$helper") -Sua"
+            fi
         fi
+        rm -f "$aur_err"
     fi
 
     if command -v flatpak &>/dev/null && [[ -n "$(flatpak list --app --columns=application 2>/dev/null)" ]]; then
