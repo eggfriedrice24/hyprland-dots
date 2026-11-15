@@ -21,12 +21,22 @@ Usage: dots-snapshot COMMAND [options]
   create [DESC]          one important snapshot now (dots=manual); prints its number
   list [--tsv]           the snapshots; --tsv prints: number, type, pre number, date (UTC),
                          dots label, commit, kernels, description
+  rollback [N]           make snapshot N the system again, together with its own kernel (default:
+                         the booted snapshot, else the newest pre-update one); takes effect at the
+                         next boot; the replaced root is kept as @broken-<time>
+  undo                   put back the root and the kernel the last rollback replaced (next boot)
+  cleanup                delete the old roots (@broken-*) and kernel backups rollbacks left behind
 
 Options:
   --userdata KEY=VALUE   extra snapper userdata for pre and create (repeatable)
+  -n, --dry-run          rollback, undo, cleanup: show every step, change nothing
+  -y, --yes              rollback, undo, cleanup: do not ask (and do not offer the reboot)
+  --device DEV           rollback, undo, cleanup from the Arch ISO when the system does not boot:
+                         the btrfs filesystem (after cryptsetup open, /dev/mapper/<name>)
+  --esp DEV|DIR          with --device: the ESP partition, or where it is mounted
   -h, --help             this text
 
-Test overrides: PROC_CMDLINE, SNAPSHOTS_DIR, RUN_DIR.
+Test overrides: PROC_CMDLINE, SNAPSHOTS_DIR, RUN_DIR, FSTAB.
 EOF
 }
 
@@ -36,7 +46,10 @@ PROC_CMDLINE="${PROC_CMDLINE:-/proc/cmdline}"
 SNAPSHOTS_DIR="${SNAPSHOTS_DIR:-/.snapshots}"
 # tmpfs: a marker here is gone after the reboot that completes a rollback
 RUN_DIR="${RUN_DIR:-/run/dots-snapshot}"
+FSTAB="${FSTAB:-/etc/fstab}"
 SNAPPER_CONFIG=root
+# State that must survive a rollback: copied from the replaced root into the restored one
+CARRY_OVER=(etc/NetworkManager/system-connections var/lib/bluetooth var/lib/tailscale)
 
 # shellcheck source=install/utils.sh
 source "${DOTFILES_DIR}/install/utils.sh"
@@ -188,11 +201,70 @@ snapshot_kernels() {
     done
 }
 
+# fstab_subvol FILE MOUNTPOINT: "<spec> <subvolume>" of the btrfs entry for MOUNTPOINT (the
+# subvolume without its leading /); returns 1 when there is none
+fstab_subvol() {
+    local file="$1" want="$2" spec mp type opts rest opt subvol
+    local -a list=()
+    [[ -r "$file" ]] || return 1
+    while read -r spec mp type opts rest || [[ -n "${spec:-}" ]]; do
+        [[ -n "${spec:-}" && "$spec" != \#* ]] || continue
+        [[ "${mp:-}" == "$want" && "${type:-}" == btrfs ]] || continue
+        subvol=""
+        IFS=, read -ra list <<<"${opts:-}" || true
+        for opt in "${list[@]}"; do
+            if [[ "$opt" == subvol=* ]]; then
+                subvol="${opt#subvol=}"
+            fi
+        done
+        printf '%s %s\n' "$spec" "${subvol#/}"
+        return 0
+    done <"$file"
+    return 1
+}
+
+# read_kv FILE: KEY=VALUE lines into KV (never sourced, the file lives on a FAT partition)
+declare -A KV=()
+read_kv() {
+    local line
+    KV=()
+    [[ -r "$1" ]] || return 1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^([a-z_]+)=(.*)$ ]]; then
+            KV["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+        fi
+    done <"$1"
+    return 0
+}
+
 # ---------------------------------------------------------------- availability
+
+# layout_problem: why the running system has no snapshots; nothing when it has them
+layout_problem() {
+    local fstype opts
+    fstype="$(findmnt -no FSTYPE / 2>/dev/null || true)"
+    if [[ "$fstype" != btrfs ]]; then
+        echo "/ is ${fstype:-unknown}, not btrfs; snapshots need the layout bootstrap.sh builds"
+        return 0
+    fi
+    opts="$(findmnt -no OPTIONS "$SNAPSHOTS_DIR" 2>/dev/null || true)"
+    if [[ ",$opts," != *,subvol=@snapshots,* && ",$opts," != *,subvol=/@snapshots,* ]]; then
+        echo "$SNAPSHOTS_DIR is not the @snapshots subvolume; snapshots need the layout bootstrap.sh builds"
+        return 0
+    fi
+    if ! command -v snapper &>/dev/null; then
+        echo "snapper is not installed"
+        return 0
+    fi
+    if [[ ! -e "/etc/snapper/configs/$SNAPPER_CONFIG" ]]; then
+        echo "snapper has no '$SNAPPER_CONFIG' config (install.sh stage 7 creates it)"
+    fi
+    return 0
+}
 
 # availability: STATUS_CODE and STATUS_TEXT, the answer `status` gives
 availability() {
-    local num fstype opts
+    local num
     num="$(booted_snapshot)"
     if [[ -n "$num" ]]; then
         STATUS_CODE=2
@@ -204,23 +276,9 @@ availability() {
         STATUS_TEXT="$(head -n1 "$RUN_DIR/pending") is waiting for a reboot"
         return 0
     fi
-    STATUS_CODE=1
-    fstype="$(findmnt -no FSTYPE / 2>/dev/null || true)"
-    if [[ "$fstype" != btrfs ]]; then
-        STATUS_TEXT="/ is ${fstype:-unknown}, not btrfs; snapshots need the layout bootstrap.sh builds"
-        return 0
-    fi
-    opts="$(findmnt -no OPTIONS "$SNAPSHOTS_DIR" 2>/dev/null || true)"
-    if [[ ",$opts," != *,subvol=@snapshots,* && ",$opts," != *,subvol=/@snapshots,* ]]; then
-        STATUS_TEXT="$SNAPSHOTS_DIR is not the @snapshots subvolume; snapshots need the layout bootstrap.sh builds"
-        return 0
-    fi
-    if ! command -v snapper &>/dev/null; then
-        STATUS_TEXT="snapper is not installed"
-        return 0
-    fi
-    if [[ ! -e "/etc/snapper/configs/$SNAPPER_CONFIG" ]]; then
-        STATUS_TEXT="snapper has no '$SNAPPER_CONFIG' config (install.sh stage 7 creates it)"
+    STATUS_TEXT="$(layout_problem)"
+    if [[ -n "$STATUS_TEXT" ]]; then
+        STATUS_CODE=1
         return 0
     fi
     STATUS_CODE=0
@@ -270,7 +328,8 @@ userdata() {
 }
 
 dotfiles_commit() {
-    git -C "$DOTFILES_DIR" rev-parse --short=12 HEAD 2>/dev/null || true
+    # safe.directory: rollback runs as root on the user's checkout
+    git -c safe.directory="$DOTFILES_DIR" -C "$DOTFILES_DIR" rev-parse --short=12 HEAD 2>/dev/null || true
 }
 
 # snapshot_number OUTPUT: the number snapper printed, or a failure
@@ -381,15 +440,570 @@ cmd_list() {
     done < <(snapshot_numbers)
 }
 
+# ---------------------------------------------------------------- rollback, undo, cleanup
+#
+# These work on the btrfs top level (subvolid=5), where @ and @snapshots are plain directories:
+# a rollback is a writable copy of the snapshot renamed to @, the replaced root renamed to
+# @broken-<time>, and the ESP kernel and initramfs swapped for ones that match the copy's modules.
+# Everything is staged first; only renames happen after the point of no return.
+
+DRY_RUN=0 ASSUME_YES=0 OPT_DEVICE="" OPT_ESP=""
+ISO=0 TOP="" BOOT="" ROOT_SUBVOL="@" SNAP_SUBVOL="@snapshots" BOOTED=""
+
+# become_root: run this same command again as root, in a private mount namespace, so every mount
+# made below disappears with the process however it ends. The caller's state dir and ids travel along.
+become_root() {
+    [[ "${DOTS_SNAPSHOT_NS:-0}" == 1 ]] && return 0
+    local rc=0 problem
+    # no password prompt on a machine that has nothing to roll back
+    if [[ -z "$OPT_DEVICE" && -z "$(booted_snapshot)" ]]; then
+        problem="$(layout_problem)"
+        [[ -z "$problem" ]] || die "No snapshots here: $problem"
+    fi
+    local -a env=(
+        DOTS_SNAPSHOT_NS=1
+        "DOTS_STATE_DIR=${DOTS_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles}"
+        "DOTS_SNAPSHOT_OWNER=$(id -u):$(id -g)"
+        "TERM=${TERM:-dumb}" "FSTAB=$FSTAB" "PROC_CMDLINE=$PROC_CMDLINE" "RUN_DIR=$RUN_DIR"
+    )
+    if [[ -n "${LOG_FILE:-}" ]]; then
+        env+=("LOG_FILE=$LOG_FILE")
+    fi
+    if [[ $EUID -eq 0 ]]; then
+        exec env "${env[@]}" unshare --mount --propagation private -- "$SELF" "${ORIG_ARGS[@]}"
+    fi
+    as_root env "${env[@]}" unshare --mount --propagation private -- "$SELF" "${ORIG_ARGS[@]}" || rc=$?
+    exit "$rc"
+}
+
+confirm() {
+    local answer
+    (( ASSUME_YES || DRY_RUN )) && return 0
+    [[ -t 0 ]] || die "No terminal to ask on; rerun with --yes"
+    read -rp "$1 [y/N] " answer
+    [[ "$answer" =~ ^[Yy]$ ]]
+}
+
+pending_kind() {
+    if [[ -s "$RUN_DIR/pending" ]]; then
+        awk 'NR == 1 { print $1 }' "$RUN_DIR/pending"
+    fi
+}
+
+# open_layout: mount the btrfs top level at TOP and find the ESP (BOOT); sets ROOT_SUBVOL,
+# SNAP_SUBVOL, BOOTED and ISO
+open_layout() {
+    local dev="" entry problem
+    command -v btrfs &>/dev/null || die "btrfs-progs is not installed"
+    mkdir -p "$RUN_DIR"
+    if [[ -n "$OPT_DEVICE" ]]; then
+        ISO=1
+        dev="$OPT_DEVICE"
+        [[ -b "$dev" ]] || die "Not a block device: $dev (an encrypted root needs: cryptsetup open <partition> cryptroot)"
+        [[ -n "$OPT_ESP" ]] || die "--device needs --esp too (the ESP partition or where it is mounted)"
+    else
+        BOOTED="$(booted_snapshot)"
+        if [[ -z "$BOOTED" ]]; then
+            problem="$(layout_problem)"
+            [[ -z "$problem" ]] || die "No snapshots here: $problem"
+        fi
+        # the fstab names the default root even when / is a snapshot under an overlay
+        entry="$(fstab_subvol "$FSTAB" /)" || die "No btrfs / in $FSTAB"
+        ROOT_SUBVOL="${entry#* }"
+        dev="${entry%% *}"
+        entry="$(fstab_subvol "$FSTAB" /.snapshots)" || die "No btrfs /.snapshots in $FSTAB"
+        SNAP_SUBVOL="${entry#* }"
+        if [[ "$dev" == *=* ]]; then
+            dev="$(findfs "$dev" 2>/dev/null)" || dev=""
+        fi
+        if [[ ! -b "$dev" ]]; then
+            dev="$(findmnt -no SOURCE /.snapshots 2>/dev/null || true)"
+            dev="${dev%%\[*}"
+        fi
+        [[ -b "$dev" ]] || die "Cannot find the btrfs device of / (fstab: ${entry%% *})"
+    fi
+
+    TOP="$RUN_DIR/top"
+    mkdir -p "$TOP"
+    mountpoint -q "$TOP" || mount -o subvolid=5 "$dev" "$TOP" || die "Cannot mount the top level of $dev"
+    if (( ISO )); then
+        # the installed system's fstab says what its subvolumes are called
+        if entry="$(fstab_subvol "$TOP/$ROOT_SUBVOL/etc/fstab" /)"; then
+            ROOT_SUBVOL="${entry#* }"
+        fi
+        if entry="$(fstab_subvol "$TOP/$ROOT_SUBVOL/etc/fstab" /.snapshots)"; then
+            SNAP_SUBVOL="${entry#* }"
+        fi
+    fi
+    [[ -n "$ROOT_SUBVOL" && "$ROOT_SUBVOL" != */* ]] ||
+        die "/ is mounted from '${ROOT_SUBVOL}', not a top-level subvolume like the @ bootstrap.sh creates"
+    [[ -n "$SNAP_SUBVOL" && "$SNAP_SUBVOL" != */* ]] || die "/.snapshots is not a top-level subvolume (${SNAP_SUBVOL})"
+    [[ -d "$TOP/$ROOT_SUBVOL" ]] || die "No $ROOT_SUBVOL subvolume on $dev"
+    [[ -d "$TOP/$SNAP_SUBVOL" ]] || die "No $SNAP_SUBVOL subvolume on $dev"
+
+    if (( ISO )); then
+        if [[ -b "$OPT_ESP" ]]; then
+            BOOT="$RUN_DIR/esp"
+            mkdir -p "$BOOT"
+            mountpoint -q "$BOOT" || mount "$OPT_ESP" "$BOOT" || die "Cannot mount the ESP $OPT_ESP"
+        elif [[ -d "$OPT_ESP" ]]; then
+            BOOT="$(cd "$OPT_ESP" && pwd)"
+        else
+            die "--esp: not a device or a directory: $OPT_ESP"
+        fi
+    else
+        BOOT=/boot
+        [[ "$(findmnt -no FSTYPE --mountpoint /boot 2>/dev/null || true)" == vfat ]] ||
+            die "The ESP is not mounted at /boot (it is nofail in fstab; sudo mount /boot, then retry)"
+    fi
+    [[ -d "$BOOT/grub" ]] || warn "$BOOT has no grub/ directory; is it really the ESP?"
+}
+
+# delete_subvolume PATH: with the subvolumes nested in it (systemd creates some under /var/lib),
+# innermost first. A subvolume root is inode 256 on its own st_dev, which find -xdev lists without entering.
+delete_subvolume() {
+    local path="$1" child
+    while IFS= read -r -d '' child; do
+        delete_subvolume "$child"
+    done < <(find "$path" -mindepth 1 -xdev -type d -inum 256 -print0 2>/dev/null)
+    run btrfs subvolume delete "$path"
+}
+
+# boot_pkgbases DIR: the kernel packages that have a vmlinuz-<pkgbase> on the ESP (not the .old ones)
+boot_pkgbases() {
+    local file name
+    for file in "$1"/vmlinuz-*; do
+        [[ -f "$file" ]] || continue
+        name="${file##*/vmlinuz-}"
+        [[ "$name" == *.old ]] || printf '%s\n' "$name"
+    done
+}
+
+# build_initramfs ROOT VERSION OUTDIR IMAGE [mkinitcpio args]: run ROOT's own mkinitcpio for
+# VERSION inside ROOT, with OUTDIR mounted as its /boot. A nested namespace: no mount outlives it.
+build_initramfs() {
+    local root="$1" ver="$2" out="$3" image="$4"
+    shift 4
+    info "Building $image for $ver with the restored root's own mkinitcpio"
+    if (( DRY_RUN )); then
+        dry "chroot $root mkinitcpio -k $ver -g /boot/$image $*"
+        return 0
+    fi
+    # shellcheck disable=SC2016 # expanded by the inner bash
+    unshare --mount --propagation private -- bash -euc '
+        r="$1" out="$2"
+        shift 2
+        mount --bind "$r" "$r"
+        mount -t proc -o nosuid,noexec,nodev proc "$r/proc"
+        mount -t sysfs -o nosuid,noexec,nodev,ro sys "$r/sys"
+        mount -t devtmpfs -o mode=0755,nosuid udev "$r/dev"
+        mount -t tmpfs -o mode=1777,nosuid,nodev tmp "$r/tmp"
+        mount --bind "$out" "$r/boot"
+        exec chroot "$r" "$@"
+    ' _ "$root" "$out" mkinitcpio -k "$ver" -g "/boot/$image" "$@" >&2
+}
+
+# carry_over FROM TO: the state in CARRY_OVER, replaced in TO by what FROM has
+carry_over() {
+    local from="$1" to="$2" path
+    for path in "${CARRY_OVER[@]}"; do
+        if [[ -e "$from/$path" ]]; then
+            info "Carrying over /$path"
+            run rm -rf -- "${to:?}/$path"
+            run mkdir -p -- "$(dirname "$to/$path")"
+            run cp -a -- "$from/$path" "$to/$path"
+        fi
+    done
+}
+
+# write_kv FILE KEY=VALUE...
+write_kv() {
+    local file="$1"
+    shift
+    if (( DRY_RUN )); then
+        dry "write $file: $*"
+        return 0
+    fi
+    printf '%s\n' "$@" >"$file"
+}
+
+# record STATE KEY=VALUE...: the caller's $DOTS_STATE_DIR/last-rollback, owned by the caller
+record() {
+    local dir="${DOTS_STATE_DIR:-}" owner="${DOTS_SNAPSHOT_OWNER:-}" file
+    (( ISO || DRY_RUN )) && return 0
+    [[ -n "$dir" && -n "$owner" ]] || return 0
+    file="$dir/last-rollback"
+    if [[ ! -d "$dir" ]] && ! { mkdir -p "$dir" && chown "$owner" "$dir"; }; then
+        warn "Cannot create $dir; not recording the rollback"
+        return 0
+    fi
+    if ! { printf '%s\n' "state=$1" "time=$(date -Iseconds)" "boot_id=$(cat /proc/sys/kernel/random/boot_id)" "${@:2}" >"$file" &&
+        chown "$owner" "$file"; }; then
+        warn "Cannot write $file"
+    fi
+}
+
+mark_pending() {
+    (( ISO || DRY_RUN )) && return 0
+    printf '%s\n' "$*" >"$RUN_DIR/pending"
+}
+
+# migrations_after DATE: migrations whose last recorded state is "applied", applied after DATE
+# (UTC, as in info.xml). The restored root does not have what they did; /home still says it does.
+migrations_after() {
+    local since file id state when epoch
+    local -A last_state=() last_time=()
+    file="${DOTS_STATE_DIR:-}/migrations"
+    [[ -n "${DOTS_STATE_DIR:-}" && -r "$file" ]] || return 0
+    since="$(date -d "$1 UTC" +%s 2>/dev/null)" || return 0
+    while read -r id state when _; do
+        [[ -n "${id:-}" ]] || continue
+        last_state["$id"]="$state"
+        last_time["$id"]="$when"
+    done <"$file"
+    for id in "${!last_state[@]}"; do
+        [[ "${last_state[$id]}" == applied ]] || continue
+        epoch="$(date -d "${last_time[$id]}" +%s 2>/dev/null)" || continue
+        if (( epoch > since )); then
+            printf '%s\n' "$id"
+        fi
+    done | sort
+}
+
+offer_reboot() {
+    local answer
+    if (( ISO )); then
+        info "Reboot into the installed system when you are done here"
+    elif (( DRY_RUN )); then
+        return 0
+    elif (( ASSUME_YES )) || [[ ! -t 0 ]]; then
+        info "Reboot to finish: systemctl reboot"
+    else
+        read -rp "Reboot now? [y/N] " answer
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+            systemctl reboot
+        else
+            info "Reboot to finish: systemctl reboot"
+        fi
+    fi
+}
+
+newest_pre_update() {
+    local num
+    while IFS= read -r num; do
+        if snapshot_info "$1/$num/info.xml" && [[ "${SNAP_DATA[dots]:-}" == pre-update ]]; then
+            printf '%s\n' "$num"
+            return 0
+        fi
+    done < <(snapshot_numbers "$1" | sort -rn)
+    return 0
+}
+
+# state shared with the EXIT handler, which puts things back when a rollback stops half-way
+PHASE="" NEW="" STAGE="" BACKUP="" BROKEN="" ROOT_OUT=0 ROOT_IN=0
+MOVED_OUT=() MOVED_IN=()
+
+rollback_exit() {
+    local status="$1" name
+    trap - EXIT ERR
+    set +e
+    if (( status != 0 )) && [[ "$PHASE" == staging || "$PHASE" == swap ]]; then
+        error "Rollback stopped (exit $status); putting everything back"
+        for name in "${MOVED_IN[@]}"; do
+            rm -f -- "$BOOT/$name" || error "Remove by hand: $BOOT/$name"
+        done
+        for name in "${MOVED_OUT[@]}"; do
+            mv -- "$BACKUP/$name" "$BOOT/$name" || error "Move back by hand: $BACKUP/$name -> $BOOT/$name"
+        done
+        if [[ -n "$BACKUP" && -d "$BACKUP" ]]; then
+            rm -f -- "$BACKUP/info"
+            rmdir -- "$BACKUP" 2>/dev/null
+        fi
+        if (( ROOT_IN )); then
+            mv -- "$TOP/$ROOT_SUBVOL" "$NEW" || error "Rename by hand (top level of the btrfs device): $ROOT_SUBVOL -> ${NEW##*/}"
+        fi
+        if (( ROOT_OUT )); then
+            mv -- "$TOP/$BROKEN" "$TOP/$ROOT_SUBVOL" || error "Rename by hand (top level of the btrfs device): $BROKEN -> $ROOT_SUBVOL"
+        fi
+        if [[ -n "$NEW" && -d "$NEW" ]]; then
+            delete_subvolume "$NEW" >/dev/null || error "Delete by hand: btrfs subvolume delete ${NEW##*/}"
+        fi
+        if [[ -n "$STAGE" && -d "$STAGE" ]]; then
+            rm -rf -- "$STAGE"
+        fi
+        error "Nothing was rolled back."
+    fi
+    exit "$status"
+}
+
+cmd_rollback() {
+    local num="${1:-}" src snaps entry pkgbase ver name ts commit_now need=0 avail size
+    local s_date s_type s_desc s_commit
+    local -a kernels=() staged=() names=() applied=()
+    local -A seen=()
+    [[ -z "$num" || "$num" =~ ^[0-9]+$ ]] || die "rollback takes a snapshot number (dots-snapshot list)"
+    become_root
+    if [[ -n "$(pending_kind)" ]]; then
+        die "$(head -n1 "$RUN_DIR/pending") is waiting for a reboot; reboot before rolling back again"
+    fi
+    open_layout
+    snaps="$TOP/$SNAP_SUBVOL"
+    [[ -n "$num" ]] || num="$BOOTED"
+    [[ -n "$num" ]] || num="$(newest_pre_update "$snaps")"
+    [[ -n "$num" ]] || die "No pre-update snapshot to go back to; pick one from: dots-snapshot list"
+    snapshot_info "$snaps/$num/info.xml" || die "No snapshot #$num in $SNAP_SUBVOL"
+    s_date="$SNAP_DATE" s_type="$SNAP_TYPE" s_desc="$SNAP_DESC" s_commit="${SNAP_DATA[commit]:-}"
+    src="$snaps/$num/snapshot"
+    [[ -d "$src/usr/lib" ]] || die "Snapshot #$num has no root tree at $src"
+    mapfile -t kernels < <(snapshot_kernels "$src")
+    (( ${#kernels[@]} )) || die "Snapshot #$num has no kernel under /usr/lib/modules, nothing could boot it"
+
+    # the ESP holds the current kernels while the snapshot's are staged next to them
+    for entry in "${kernels[@]}"; do
+        pkgbase="${entry%% *}" ver="${entry#* }"
+        size="$(stat -c %s "$src/usr/lib/modules/$ver/vmlinuz")"
+        need=$(( need + size ))
+        if [[ -f "$BOOT/initramfs-$pkgbase.img" ]]; then
+            need=$(( need + $(stat -c %s "$BOOT/initramfs-$pkgbase.img") ))
+        else
+            need=$(( need + 96 * 1024 * 1024 ))
+        fi
+        if [[ -f "$BOOT/initramfs-$pkgbase-fallback.img" ]]; then
+            need=$(( need + $(stat -c %s "$BOOT/initramfs-$pkgbase-fallback.img") ))
+        fi
+    done
+    avail="$(df --output=avail -B1 "$BOOT" | tail -n1)"
+    if (( avail < need + 16 * 1024 * 1024 )); then
+        die "The ESP has $(( avail / 1048576 )) MiB free, the snapshot's kernel needs about $(( need / 1048576 + 16 )) MiB; delete old kernels (*.old) or run dots-snapshot cleanup"
+    fi
+
+    info "Roll back to snapshot #$num ($s_type, $(date -d "$s_date UTC" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$s_date")): $s_desc"
+    info "  kernel: $(printf '%s\n' "${kernels[@]}" | paste -sd, - | sed 's/,/, /g')"
+    info "  the current root ($ROOT_SUBVOL) is kept as @broken-<time>: dots-snapshot undo brings it back, dots-snapshot cleanup deletes it"
+    info "  carried over: NetworkManager connections, Bluetooth pairings, Tailscale state"
+    info "  not rolled back: /home, /var/log, the pacman cache, docker and flatpak (own subvolumes)"
+    [[ -z "$BOOTED" || "$BOOTED" == "$num" ]] || warn "This system runs from snapshot #$BOOTED, not #$num"
+    confirm "Roll back to snapshot #$num?" || die "Nothing changed"
+
+    trap 'rollback_exit $?' EXIT
+    trap 'exit 130' INT TERM
+    PHASE=staging
+    NEW="$TOP/@rollback-new"
+    STAGE="$BOOT/.rollback-new"
+    if [[ -e "$NEW" ]]; then
+        info "Removing @rollback-new, left by a rollback that did not finish"
+        delete_subvolume "$NEW"
+    fi
+    run rm -rf -- "$STAGE"
+    run mkdir -p -- "$STAGE"
+    info "Copying snapshot #$num to a writable @rollback-new"
+    run btrfs subvolume snapshot "$src" "$NEW"
+    # snap-pac took the snapshot inside a pacman transaction, so it still holds pacman's lock
+    run rm -f -- "$NEW/var/lib/pacman/db.lck"
+    carry_over "$TOP/$ROOT_SUBVOL" "$NEW"
+    for entry in "${kernels[@]}"; do
+        pkgbase="${entry%% *}" ver="${entry#* }"
+        info "Staging vmlinuz-$pkgbase $ver"
+        run cp -- "$src/usr/lib/modules/$ver/vmlinuz" "$STAGE/vmlinuz-$pkgbase"
+        staged+=("vmlinuz-$pkgbase")
+        build_initramfs "$NEW" "$ver" "$STAGE" "initramfs-$pkgbase.img"
+        staged+=("initramfs-$pkgbase.img")
+        if [[ -f "$BOOT/initramfs-$pkgbase-fallback.img" ]]; then
+            build_initramfs "$NEW" "$ver" "$STAGE" "initramfs-$pkgbase-fallback.img" -S autodetect
+            staged+=("initramfs-$pkgbase-fallback.img")
+        fi
+    done
+
+    # point of no return: renames only, not interrupted
+    trap '' INT TERM
+    PHASE=swap
+    ts="$(date +%Y%m%d-%H%M%S)"
+    BROKEN="@broken-$ts"
+    BACKUP="$BOOT/.rollback-old-$ts"
+    [[ ! -e "$TOP/$BROKEN" && ! -e "$BACKUP" ]] || die "$BROKEN or $BACKUP already exists"
+    info "Renaming $ROOT_SUBVOL to $BROKEN and @rollback-new to $ROOT_SUBVOL"
+    run mv -- "$TOP/$ROOT_SUBVOL" "$TOP/$BROKEN"
+    ROOT_OUT=1
+    run mv -- "$NEW" "$TOP/$ROOT_SUBVOL"
+    ROOT_IN=1
+    # every kernel either root knows about leaves the ESP; the backup is what undo puts back
+    while IFS= read -r pkgbase; do
+        [[ -n "$pkgbase" && -z "${seen[$pkgbase]:-}" ]] || continue
+        seen["$pkgbase"]=1
+        names+=("vmlinuz-$pkgbase" "initramfs-$pkgbase.img" "initramfs-$pkgbase-fallback.img")
+    done < <(boot_pkgbases "$BOOT"; printf '%s\n' "${kernels[@]%% *}")
+    run mkdir -p -- "$BACKUP"
+    info "Swapping the kernel on the ESP (the replaced files go to ${BACKUP#"$BOOT"/})"
+    for name in "${names[@]}"; do
+        if [[ -e "$BOOT/$name" ]]; then
+            run mv -- "$BOOT/$name" "$BACKUP/$name"
+            MOVED_OUT+=("$name")
+        fi
+    done
+    for name in "${staged[@]}"; do
+        run mv -- "$STAGE/$name" "$BOOT/$name"
+        MOVED_IN+=("$name")
+    done
+    run rm -rf -- "$STAGE"
+    write_kv "$BACKUP/info" "snapshot=$num" "root=$ROOT_SUBVOL" "broken=$BROKEN" "time=$(date -Iseconds)" \
+        "moved_out=${MOVED_OUT[*]}" "moved_in=${MOVED_IN[*]}" "commit=$s_commit"
+    PHASE=finished
+    trap - INT TERM
+
+    mark_pending "rollback to snapshot #$num"
+    record rolled-back "snapshot=$num" "snapshot_date=$s_date" "broken=$BROKEN" "backup=$BACKUP" "commit=$s_commit"
+    if (( DRY_RUN )); then
+        info "Dry run: nothing was changed"
+        return 0
+    fi
+    success "Snapshot #$num is the root from the next boot on; the replaced root is $BROKEN"
+    # grub.cfg already boots vmlinuz-<pkgbase> with rootflags=subvol=$ROOT_SUBVOL, so it needs no
+    # change. Regenerating it now would be wrong: grub-mkconfig reads the root subvolume from the
+    # running system, which is $BROKEN until the reboot.
+    if [[ "$(boot_pkgbases "$BOOT" | sort | paste -sd' ')" != "$(printf '%s\n' "${MOVED_OUT[@]}" | sed -n 's/^vmlinuz-//p' | sort | paste -sd' ')" ]]; then
+        warn "The restored root has other kernel packages than before; after the reboot run: sudo grub-mkconfig -o /boot/grub/grub.cfg"
+    fi
+    if (( ISO )); then
+        info "Migrations applied after the snapshot are recorded in your home; after the boot check: install/migrate.sh --status"
+    else
+        mapfile -t applied < <(migrations_after "$s_date")
+        if (( ${#applied[@]} )); then
+            warn "Migrations applied after this snapshot are undone in the system but still recorded as applied:"
+            for name in "${applied[@]}"; do
+                printf '  %s/install/migrate.sh --rearm %s\n' "$DOTFILES_DIR" "$name" >&2
+            done
+            info "Rearm the ones whose work you want again, then run install.sh"
+        fi
+    fi
+    commit_now="$(dotfiles_commit)"
+    if [[ -n "$s_commit" && "${commit_now:0:7}" != "${s_commit:0:7}" ]]; then
+        info "The snapshot was taken at dotfiles commit ${s_commit:0:12}; the checkout (in /home, not rolled back) is at ${commit_now:-unknown}. Nothing was checked out."
+    fi
+    offer_reboot
+}
+
+cmd_undo() {
+    local kind dir name ts undone snapshot
+    local -a moved_in=() moved_out=()
+    become_root
+    kind="$(pending_kind)"
+    [[ -z "$kind" || "$kind" == rollback ]] ||
+        die "$(head -n1 "$RUN_DIR/pending") is waiting for a reboot; reboot first"
+    open_layout
+    BACKUP=""
+    for dir in "$BOOT"/.rollback-old-*; do
+        if [[ -f "$dir/info" ]]; then
+            BACKUP="$dir" # the names sort by time: the last one is the newest
+        fi
+    done
+    [[ -n "$BACKUP" ]] || die "No rollback to undo (no $BOOT/.rollback-old-*/info; dots-snapshot cleanup deletes them)"
+    read_kv "$BACKUP/info"
+    BROKEN="${KV[broken]:-}" snapshot="${KV[snapshot]:-?}"
+    read -ra moved_in <<<"${KV[moved_in]:-}" || true
+    read -ra moved_out <<<"${KV[moved_out]:-}" || true
+    [[ "$BROKEN" == @broken-* && -d "$TOP/$BROKEN" ]] || die "The replaced root ${BROKEN:-?} is gone; nothing to undo"
+    [[ "${KV[root]:-}" == "$ROOT_SUBVOL" ]] || die "That rollback replaced ${KV[root]:-?}, the root is $ROOT_SUBVOL now"
+
+    ts="$(date +%Y%m%d-%H%M%S)"
+    undone="@broken-$ts"
+    info "Undo the rollback to snapshot #$snapshot: $BROKEN becomes $ROOT_SUBVOL again, with the kernel it had"
+    info "  the restored copy of #$snapshot is kept as $undone (dots-snapshot cleanup deletes it)"
+    confirm "Undo the rollback?" || die "Nothing changed"
+
+    trap '' INT TERM
+    run mv -- "$TOP/$ROOT_SUBVOL" "$TOP/$undone"
+    if ! run mv -- "$TOP/$BROKEN" "$TOP/$ROOT_SUBVOL"; then
+        mv -- "$TOP/$undone" "$TOP/$ROOT_SUBVOL" || error "Rename by hand (top level): $undone -> $ROOT_SUBVOL"
+        die "Could not rename $BROKEN to $ROOT_SUBVOL; nothing was undone"
+    fi
+    for name in "${moved_in[@]}"; do
+        run rm -f -- "$BOOT/$name"
+    done
+    for name in "${moved_out[@]}"; do
+        run mv -- "$BACKUP/$name" "$BOOT/$name" || error "Move back by hand: $BACKUP/$name -> $BOOT/$name"
+    done
+    run rm -f -- "$BACKUP/info"
+    run rmdir -- "$BACKUP"
+    trap - INT TERM
+
+    mark_pending "undo of the rollback to snapshot #$snapshot"
+    record undone "snapshot=$snapshot" "broken=$undone"
+    if (( DRY_RUN )); then
+        info "Dry run: nothing was changed"
+        return 0
+    fi
+    success "The root and kernel from before the rollback are back from the next boot on"
+    info "Migrations rearmed after the rollback run again with the next install.sh; their work is still in this root"
+    offer_reboot
+}
+
+cmd_cleanup() {
+    local path root_dev
+    local -a subvols=() dirs=()
+    become_root
+    [[ -z "$(pending_kind)" ]] || die "$(head -n1 "$RUN_DIR/pending") is waiting for a reboot; reboot first"
+    open_layout
+    root_dev="$(stat -c %d / 2>/dev/null || true)"
+    for path in "$TOP"/@broken-* "$TOP/@rollback-new"; do
+        [[ -d "$path" ]] || continue
+        if [[ "$(stat -c %d "$path")" == "$root_dev" ]]; then
+            warn "${path##*/} is the running root, keeping it"
+            continue
+        fi
+        subvols+=("$path")
+    done
+    for path in "$BOOT"/.rollback-old-* "$BOOT/.rollback-new"; do
+        if [[ -d "$path" ]]; then
+            dirs+=("$path")
+        fi
+    done
+    if (( ${#subvols[@]} + ${#dirs[@]} == 0 )); then
+        success "Nothing to clean up"
+        return 0
+    fi
+    info "To delete:"
+    for path in "${subvols[@]}"; do
+        printf '  subvolume %s\n' "${path##*/}" >&2
+    done
+    for path in "${dirs[@]}"; do
+        printf '  %s\n' "${path/#"$BOOT"/\/boot}" >&2
+    done
+    if [[ " ${dirs[*]} " == *"/.rollback-old-"* ]]; then
+        warn "Without the kernel backups the rollbacks they belong to can no longer be undone"
+    fi
+    confirm "Delete them?" || die "Nothing deleted"
+    for path in "${subvols[@]}"; do
+        delete_subvolume "$path"
+    done
+    for path in "${dirs[@]}"; do
+        run rm -rf -- "$path"
+    done
+    if (( DRY_RUN )); then
+        info "Dry run: nothing was deleted"
+    else
+        success "Cleaned up"
+    fi
+}
+
 main() {
     set -Eeuo pipefail
     trap 'error "dots-snapshot failed at line $LINENO: $BASH_COMMAND"' ERR
 
+    ORIG_ARGS=("$@")
     local cmd=""
     local -a args=()
     LIST_TSV=0
     while (( $# )); do
         case "$1" in
+            -n|--dry-run) DRY_RUN=1 ;;
+            -y|--yes) ASSUME_YES=1 ;;
+            --device|--esp)
+                [[ -n "${2:-}" ]] || die "$1 needs a value"
+                if [[ "$1" == --device ]]; then OPT_DEVICE="$2"; else OPT_ESP="$2"; fi
+                shift
+                ;;
+            --device=*) OPT_DEVICE="${1#--device=}" ;;
+            --esp=*) OPT_ESP="${1#--esp=}" ;;
             --userdata)
                 [[ "${2:-}" =~ ^[A-Za-z0-9_]+=[A-Za-z0-9_.:/@+-]+$ ]] ||
                     die "--userdata needs KEY=VALUE (letters, digits and _.:/@+- only, no commas)"
@@ -424,6 +1038,9 @@ main() {
         discard) cmd_discard "${args[@]}" ;;
         create) cmd_create "${args[@]}" ;;
         list) cmd_list ;;
+        rollback) cmd_rollback "${args[@]}" ;;
+        undo) cmd_undo ;;
+        cleanup) cmd_cleanup ;;
         "") usage >&2; exit 1 ;;
         *) error "Unknown command: $cmd"; usage >&2; exit 1 ;;
     esac
