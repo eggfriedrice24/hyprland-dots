@@ -15,7 +15,6 @@ hl.window_rule({ match = { class = "^(Code)$" }, opacity = "0.80 0.80" })
 -- thunar: translucent through gtk-3.0/thunar.css instead, so text and icons stay opaque
 hl.window_rule({ match = { class = "^(file-roller)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(nwg-look)$" }, opacity = "0.80 0.80" })
-hl.window_rule({ match = { class = "^(qt5ct)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(discord)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(WebCord)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(pavucontrol)$" }, opacity = "0.80 0.70" })

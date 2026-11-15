@@ -12,7 +12,6 @@ adw-gtk-theme
 papirus-icon-theme
 gsettings-desktop-schemas
 polkit-kde-agent
-qt5ct
 wl-clipboard
 cliphist
 hyprlock
