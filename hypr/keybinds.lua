@@ -70,9 +70,6 @@ hl.bind(
 hl.bind("SUPER + SHIFT + F", hl.dsp.exec_cmd("killall rofi || ~/.config/hypr/scripts/font-picker"))
 -- clipboard history (text only): Enter copies, Shift+Delete removes an entry, Ctrl+Shift+Delete wipes it all
 hl.bind("SUPER + V", hl.dsp.exec_cmd("killall rofi || " .. scriptsDir .. "/clipboard"))
--- "WB" is not a valid key name, these binds never triggered in the old config either
--- hl.bind("SUPER + SHIFT + WB", hl.dsp.exec_cmd("killall -SIGUSR2 waybar")) -- Reload waybar
--- hl.bind("SUPER + WB", hl.dsp.exec_cmd("killall -SIGUSR1 waybar")) -- Hide waybar
 
 -- Window management
 hl.bind("SUPER + Q", hl.dsp.window.close())
