@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Stage 7: Fonts, directories, toolchains, external installers, final notes
+# Stage 9: Fonts, directories, toolchains, external installers, final notes
 
-info "=== Stage 7: Finalize ==="
+info "=== Stage 9: Finalize ==="
 
 # Cartograph CF is linked into ~/.local/share/fonts in stage 3; make fontconfig see it
 if fc-match 'Cartograph CF' 2>/dev/null | grep 'Cartograph' >/dev/null; then
@@ -92,7 +92,7 @@ if has_cmd flatpak; then
     fi
 fi
 
-success "=== Stage 7: Complete ==="
+success "=== Stage 9: Complete ==="
 # --quiet (dots-update): only what went wrong; the caller prints its own summary and notes
 if [[ "${QUIET:-0}" != "1" ]]; then
     echo

@@ -53,7 +53,7 @@ note() {
     return 0
 }
 
-# Optional steps that failed; stage 7 lists them at the end instead of the install stopping
+# Optional steps that failed; stage 9 (finalize) lists them at the end instead of the install stopping
 FAILED=()
 
 # try LABEL CMD...: run an optional step through run; a failure is reported and collected, never fatal
