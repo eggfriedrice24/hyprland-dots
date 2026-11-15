@@ -39,35 +39,90 @@ if [[ -f /etc/conf.d/wireless-regdom ]]; then
 fi
 
 # GRUB kernel command line
+grub_file=/etc/default/grub
 grub_changed=0
+
+# grub_add_param VAR PARAM [KEY]: make PARAM one of the words of VAR. Words matching KEY, an ERE
+# for the parameter's name (default: PARAM up to its "="), are replaced instead of a second value
+# being appended, so a moved connector (video=DP-3 -> DP-1) leaves nothing behind. Only a single,
+# plain double-quoted assignment is edited; anything else gets a warning and is left alone.
 grub_add_param() {
-    local var="$1" param="$2"
+    local var="$1" param="$2" key="${3:-}"
+    if [[ -z "$key" ]]; then
+        key="${param%%=*}="
+        key="${key//./\\.}"
+    fi
     local line
-    line="$(grep -E "^${var}=" /etc/default/grub || true)"
+    line="$(grep -E "^${var}=" "$grub_file" || true)"
     if [[ -z "$line" ]]; then
-        warn "$var not found in /etc/default/grub, skipping $param"
+        warn "$var not found in $grub_file; add $param to the kernel command line by hand"
         return 0
     fi
-    if [[ "$line" == *"$param"* ]]; then
+    local plain_re='^'"$var"'="([^"$`\\]*)"[[:space:]]*$'
+    if [[ "$line" == *$'\n'* || ! "$line" =~ $plain_re ]]; then
+        warn "$var in $grub_file is not a single plain double-quoted value; add $param by hand"
+        return 0
+    fi
+
+    local -a words kept=() replaced=()
+    local word has=0
+    read -ra words <<<"${BASH_REMATCH[1]}"
+    for word in "${words[@]}"; do
+        if [[ "$word" == "$param" && $has -eq 0 ]]; then
+            kept+=("$word")
+            has=1
+        elif [[ "$word" == "$param" || "$word" =~ ^${key} ]]; then
+            # the first old value is replaced in place, later ones are dropped
+            replaced+=("$word")
+            if [[ $has -eq 0 ]]; then
+                kept+=("$param")
+                has=1
+            fi
+        else
+            kept+=("$word")
+        fi
+    done
+    if [[ $has -eq 1 && ${#replaced[@]} -eq 0 ]]; then
         success "GRUB $var already has $param"
         return 0
     fi
-    info "Adding $param to GRUB $var"
-    run sudo sed -i -E "s|^(${var}=\")(.*)\"[[:space:]]*$|\1\2 ${param}\"|; s|^(${var}=\") |\1|" /etc/default/grub
+    if [[ $has -eq 0 ]]; then
+        kept+=("$param")
+    fi
+
+    local new="${kept[*]}" escaped
+    if (( ${#replaced[@]} )); then
+        info "Replacing ${replaced[*]} with $param in GRUB $var"
+    else
+        info "Adding $param to GRUB $var"
+    fi
+    escaped="$(printf '%s' "$new" | sed 's/[\\|&]/\\&/g')"
+    run sudo sed -i -E "s|^${var}=.*|${var}=\"${escaped}\"|" "$grub_file"
+
+    # only a verified edit triggers grub-mkconfig
+    if [[ "${DRY_RUN:-0}" != "1" ]]; then
+        local after
+        after="$(grep -E "^${var}=" "$grub_file" || true)"
+        if [[ "$after" != "${var}=\"${new}\"" ]]; then
+            warn "GRUB $var did not take $param (now: ${after:-missing}); add it by hand"
+            return 0
+        fi
+    fi
     grub_changed=1
 }
 
-if [[ -f /etc/default/grub ]]; then
+if [[ -f "$grub_file" ]]; then
     grub_add_param GRUB_CMDLINE_LINUX "zswap.enabled=0" # zram replaces zswap
     if [[ "$MACHINE" == "desktop" ]]; then
-        # ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see hypr/hyprland.lua)
-        grub_add_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240"
+        # ASUS OLED on DP-1: fix the link at boot so login does not retrain it (see hypr/hyprland.lua).
+        # The key also matches an older video=DP-N: entry (the monitor was on DP-3 until Sep 10).
+        grub_add_param GRUB_CMDLINE_LINUX_DEFAULT "video=DP-1:2560x1440@240" 'video=DP-[0-9]+:'
     fi
-    if grep -q '^GRUB_TIMEOUT=2$' /etc/default/grub; then
+    if grep -q '^GRUB_TIMEOUT=2$' "$grub_file"; then
         success "GRUB timeout already 2s"
     else
         info "Setting GRUB timeout to 2s"
-        run sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=2/' /etc/default/grub
+        run sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=2/' "$grub_file"
         grub_changed=1
     fi
     if [[ $grub_changed -eq 1 ]]; then
