@@ -37,11 +37,8 @@
     "max-length": 40,
     "separate-outputs": true,
     "rewrite": {
-      "(.*) - Mozilla Firefox": "󰈹 $1",
       "(.*) - nvim": " $1",
-      "[Gg]hostty": "󰊠 ghostty",
-      "Spotify": "󰓇 Spotify",
-      "thunar(.*)": "󰉋 Files$1"
+      "[Gg]hostty": "󰊠 ghostty"
     }
   },
   "clock": {
