@@ -11,12 +11,13 @@ local files       = "thunar"
 local browser     = "zen-browser"
 local browserP    = "helium-browser"
 
--- Volume and brightness
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(volume .. " i"))
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(volume .. " d"))
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd(volume .. " m"))
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontrol.sh i"))
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontrol.sh d"))
+-- Volume and brightness: locked so they also work on the lock screen. Volume steps repeat while
+-- held; brightness does not yet, because held presses would race on the DDC path
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(volume .. " i"), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(volume .. " d"), { locked = true, repeating = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(volume .. " m"), { locked = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontrol.sh i"), { locked = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scriptsDir .. "/brightnesscontrol.sh d"), { locked = true })
 
 -- Screenshot and recording
 hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("wf-recorder -f $(xdg-user-dir VIDEOS)/$(date +'%H:%M:%S_%d-%m-%Y.mp4')"))
