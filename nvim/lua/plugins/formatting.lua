@@ -113,6 +113,18 @@ return {
 				bash = { "shellcheck" },
 			}
 
+			-- An unknown name makes try_lint assert and skip the rest of the
+			-- list, so drop it here and say so once instead of swallowing it.
+			for ft, names in pairs(lint.linters_by_ft) do
+				lint.linters_by_ft[ft] = vim.tbl_filter(function(name)
+					if lint.linters[name] then
+						return true
+					end
+					vim.notify_once(("nvim-lint: no linter named %q, skipping it"):format(name), vim.log.levels.WARN)
+					return false
+				end, names)
+			end
+
 			-- Resolve oxlint from nearest node_modules/.bin/ (monorepo-friendly)
 			local oxlint = lint.linters.oxlint
 			if oxlint then
@@ -139,14 +151,15 @@ return {
 						return
 					end
 
-					-- Safely try linting, ignore errors if linter not found
-					pcall(lint.try_lint)
+					-- names were checked above; a missing executable is
+					-- reported by nvim-lint itself
+					lint.try_lint()
 
 					-- Run oxlint for JS/TS when .oxlintrc.json exists in project
 					local ft = vim.bo.filetype
 					if vim.tbl_contains({ "javascript", "javascriptreact", "typescript", "typescriptreact" }, ft) then
 						if vim.fs.find(".oxlintrc.json", { path = vim.fn.expand("%:p:h"), upward = true })[1] then
-							pcall(lint.try_lint, "oxlint")
+							lint.try_lint("oxlint")
 						end
 					end
 				end,
