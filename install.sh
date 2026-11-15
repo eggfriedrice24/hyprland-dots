@@ -208,6 +208,10 @@ elif [[ -n "$PROFILE_FLAG" && "$current_pin" != "$PROFILE" ]]; then
     fi
 fi
 
+# Before stage 3 links anything: a machine whose ~/.config already links into the dotfiles has
+# every migration pending, a new one records them all as baseline (install/migrate.sh)
+migrations_init
+
 for stage in "${DOTFILES_DIR}"/install/stages/[0-9]*.sh; do
     CURRENT_STAGE="$(basename "$stage" .sh)"
     if [[ ",$SKIP_STAGES," == *",${CURRENT_STAGE#*-},"* ]]; then
