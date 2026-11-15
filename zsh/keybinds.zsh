@@ -13,24 +13,15 @@ _sudo_command_line() {
 }
 zle -N _sudo_command_line
 
-# Function to fix vi search
-_vi_search_fix() {
-    zle vi-cmd-mode
-    zle vi-history-search-backward
-}
-zle -N _vi_search_fix
-
 bindkey '^[[H' beginning-of-line
 bindkey '^[[F' end-of-line
 bindkey -s '^K' 'ls^M'
 
 # prepend sudo on the current commmand
 bindkey -M emacs '' _sudo_command_line
-bindkey -M vicmd '' _sudo_command_line
-bindkey -M viins '' _sudo_command_line
 
-# fix backspace and other stuff in vi-mode
-bindkey -M viins '\e/' _vi_search_fix
+# plain backspace (zsh-autopair rebinds it to also delete the closing pair) and
+# Ctrl+U kills to the start of the line instead of the whole line
 bindkey "^?" backward-delete-char
 bindkey "^H" backward-delete-char
 bindkey "^U" backward-kill-line

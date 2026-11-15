@@ -2,6 +2,10 @@
 ## Options
 ##
 
+# Emacs keymap everywhere. Without this zsh picks vi whenever EDITOR or VISUAL contains
+# "vi", so a nested shell (EDITOR=nvim inherited) behaved differently from a top-level one.
+bindkey -e
+
 # History, persisted under XDG state (the installer creates the directory, this covers manual setups)
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
 [[ -d "${HISTFILE:h}" ]] || mkdir -p "${HISTFILE:h}"
