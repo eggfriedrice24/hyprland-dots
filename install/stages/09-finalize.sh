@@ -136,7 +136,7 @@ if [[ "${QUIET:-0}" != "1" ]]; then
     echo
 fi
 if (( ${#AUR_FAILED[@]} )); then
-    warn "These AUR packages failed to build; install them by hand: yay -S ${AUR_FAILED[*]}"
+    warn "These AUR packages failed to build; install them by hand: ${AUR_HELPER:-yay} -S ${AUR_FAILED[*]}"
     echo
 fi
 if (( ${#FAILED[@]} )); then
