@@ -25,22 +25,29 @@ zinit_home="${XDG_DATA_HOME:-$HOME/.local/share}/zinit"
 fsh_plugin="$zinit_home/plugins/zdharma-continuum---fast-syntax-highlighting"
 fsh_theme="$theme_extras/fsh/eggfriedrice.ini"
 
-# zinit clones its plugins on the first interactive shell; do it here, visibly, so fast-theme can run
+# zinit clones its plugins on the first interactive shell; do it here, visibly, so fast-theme can run.
+# A failed bootstrap (offline, GitHub down) only costs the plugins until the next shell, so it warns
+# instead of aborting; `exit 0` keeps the rc's last status out of it.
 if [[ -d "$fsh_plugin" ]]; then
     success "zinit plugins already installed"
 elif [[ "${DRY_RUN:-0}" == "1" ]]; then
-    dry "zsh -ic exit (bootstrap zinit and its plugins)"
+    dry "zsh -ic 'exit 0' (bootstrap zinit and its plugins)"
     dry "zsh -ic fast-theme $fsh_theme"
 else
     info "Installing zinit and its plugins (first interactive shell)..."
-    zsh -ic 'exit'
+    if ! zsh -ic 'exit 0'; then
+        warn "zsh exited with an error while bootstrapping zinit; the next shell retries"
+    fi
 fi
 
 # fast-syntax-highlighting theme (fast-theme persists it into the plugin work dir)
 if [[ ! -f "$fsh_theme" ]]; then
     warn "fsh theme not found, skipping: $fsh_theme"
 elif [[ ! -d "$fsh_plugin" ]]; then
-    : # dry-run on a fresh machine, printed above
+    # dry run on a fresh machine: printed above. A real run gets here when the bootstrap failed.
+    if [[ "${DRY_RUN:-0}" != "1" ]]; then
+        warn "fast-syntax-highlighting not installed, skipping its theme; rerun the installer once zinit has its plugins"
+    fi
 elif zsh -ic '[[ "$FAST_THEME_NAME" == "eggfriedrice" ]]' &>/dev/null; then
     success "fast-syntax-highlighting theme is already eggfriedrice"
 else
