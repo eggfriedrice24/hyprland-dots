@@ -231,9 +231,11 @@ Only machines installed with bootstrap.sh have snapshots (root on the btrfs subv
 - grub-btrfs lists them in GRUB's snapshots submenu, and grub-btrfs-overlayfs boots the read-only ones with a writable
   overlay.
 - A pacman hook keeps the outgoing kernel and initramfs on the ESP as `vmlinuz-<pkgbase>.old` and
-  `initramfs-<pkgbase>.img.old`, so a snapshot from before a kernel upgrade still boots a kernel it has the modules for;
-  vfat in the initramfs keeps `/boot` mountable if one boots with a mismatched kernel anyway. The `.old` entry in GRUB's
-  advanced menu is today's root with the old kernel, not a way back.
+  `initramfs-<pkgbase>.old.img`, so a snapshot from before a kernel upgrade still boots a kernel it has the modules for:
+  each snapshot in GRUB's snapshot menu has a second entry, `vmlinuz-linux.old & initramfs-linux.old.img`, and that is
+  the one to pick for a snapshot older than the last kernel upgrade. vfat in the initramfs keeps `/boot` mountable if
+  one boots with a mismatched kernel anyway. The `.old` entry in GRUB's advanced menu is today's root with the old
+  kernel, not a way back.
 - `/home` is never snapshotted or rolled back, and neither is `~/dotfiles` in it.
 
 ```bash

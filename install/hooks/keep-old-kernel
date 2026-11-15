@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # pacman hook (10-keep-old-kernel.hook, PreTransaction): before mkinitcpio's remove hook (60-)
 # deletes the kernel and initramfs of a kernel package that is upgraded or removed, keep them on
-# the ESP as vmlinuz-<pkgbase>.old and initramfs-<pkgbase>.img.old.
+# the ESP as vmlinuz-<pkgbase>.old and initramfs-<pkgbase>.old.img.
 #
 # A snapshot taken before the upgrade holds the old modules; the old kernel and the initramfs built
-# for it are what boots it (GRUB's 10_linux pairs the two .old files, grub-btrfs lists them for each
-# snapshot). One generation back only: the next upgrade replaces them.
+# for it are what boots it. The names serve both menus: GRUB's 10_linux orders a .old kernel after
+# the current one (so the default never changes) and finds its initrd as initramfs-<version>.img with
+# version <pkgbase>.old; grub-btrfs pairs a kernel and an initrd only when the initrd is named
+# initramfs-<kernel suffix>.img, so it offers the old pair for every snapshot. The 10_linux-style
+# initramfs-<pkgbase>.img.old would be invisible to grub-btrfs (found in VM QA). One generation back
+# only: the next upgrade replaces them.
 #
 # stdin: the hook's targets, usr/lib/modules/<version>/vmlinuz of the outgoing versions.
 # Never fails the transaction: every problem is a message and exit 0.
@@ -40,6 +44,9 @@ while IFS= read -r target; do
 
     kernel="$BOOT_DIR/vmlinuz-$pkgbase"
     image="$BOOT_DIR/initramfs-$pkgbase.img"
+    old_kernel="$kernel.old"
+    old_image="$BOOT_DIR/initramfs-$pkgbase.old.img"
+    legacy_image="$image.old" # the name earlier versions of this hook wrote
     if [[ ! -f "$kernel" || ! -f "$image" ]]; then
         say "no $kernel and $image (is the ESP mounted at $BOOT_DIR?), nothing kept for $pkgbase"
         continue
@@ -55,7 +62,7 @@ while IFS= read -r target; do
     # room for the copies plus the incoming kernel; the copies replace the previous .old files
     need=$(( $(stat -c %s "$kernel") + $(stat -c %s "$image") + MARGIN ))
     freed=0
-    for old in "$kernel.old" "$image.old"; do
+    for old in "$old_kernel" "$old_image" "$legacy_image"; do
         if [[ -f "$old" ]]; then
             freed=$(( freed + $(stat -c %s "$old") ))
         fi
@@ -68,11 +75,12 @@ while IFS= read -r target; do
     fi
 
     # copy to a temporary name first, so a full ESP never leaves a half-written .old behind
-    if cp -- "$kernel" "$kernel.old.tmp" && cp -- "$image" "$image.old.tmp" &&
-        mv -f -- "$kernel.old.tmp" "$kernel.old" && mv -f -- "$image.old.tmp" "$image.old"; then
-        say "kept $pkgbase $version as ${kernel##*/}.old and ${image##*/}.old"
+    if cp -- "$kernel" "$old_kernel.tmp" && cp -- "$image" "$old_image.tmp" &&
+        mv -f -- "$old_kernel.tmp" "$old_kernel" && mv -f -- "$old_image.tmp" "$old_image"; then
+        rm -f -- "$legacy_image"
+        say "kept $pkgbase $version as ${old_kernel##*/} and ${old_image##*/}"
     else
-        rm -f -- "$kernel.old.tmp" "$image.old.tmp"
+        rm -f -- "$old_kernel.tmp" "$old_image.tmp"
         say "could not copy $pkgbase $version to the ESP, not kept"
     fi
 done
