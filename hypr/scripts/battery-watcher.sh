@@ -23,12 +23,53 @@ last_level=-1
 
 ls -d "$PS"/BAT* >/dev/null 2>&1 || exit 0
 
+# One level for the whole machine. A single battery reports its own capacity. With several packs
+# (ThinkPad Power Bridge drains one at a time, leaving the other idle and low) it is the stored
+# energy, or charge, over the summed full capacity, and the mean of capacity when a pack lacks those
+# files, so an idle low pack does not read as the machine running out.
 get_percent() {
-  cat "$PS"/BAT*/capacity 2>/dev/null | sort -n | head -n1
+  set -- "$PS"/BAT*
+  if [ "$#" -eq 1 ]; then
+    cat "$1/capacity" 2>/dev/null
+    return
+  fi
+  for kind in energy charge; do
+    now=0
+    full=0
+    ok=1
+    for b in "$@"; do
+      n=$(cat "$b/${kind}_now" 2>/dev/null)
+      f=$(cat "$b/${kind}_full" 2>/dev/null)
+      case $n in '' | *[!0-9]*) ok=0; break ;; esac
+      case $f in '' | *[!0-9]*) ok=0; break ;; esac
+      now=$((now + n))
+      full=$((full + f))
+    done
+    if [ "$ok" -eq 1 ] && [ "$full" -gt 0 ]; then
+      echo $((now * 100 / full))
+      return
+    fi
+  done
+  total=0
+  count=0
+  for b in "$@"; do
+    c=$(cat "$b/capacity" 2>/dev/null)
+    case $c in '' | *[!0-9]*) continue ;; esac
+    total=$((total + c))
+    count=$((count + 1))
+  done
+  if [ "$count" -gt 0 ]; then
+    echo $((total / count))
+  fi
 }
 
-get_status() {
-  cat "$PS"/BAT*/status 2>/dev/null | head -n1
+# discharging when any battery is; the idle pack of a pair reports "Not charging" or "Unknown"
+# (the same test as idle-suspend's on_battery)
+discharging() {
+  for b in "$PS"/BAT*; do
+    [ "$(cat "$b/status" 2>/dev/null)" = "Discharging" ] && return 0
+  done
+  return 1
 }
 
 on_ac() {
@@ -71,9 +112,8 @@ rearm() {
 
 while :; do
   cap=$(get_percent)
-  status=$(get_status)
 
-  if [ -z "$cap" ] || on_ac || [ "$status" != "Discharging" ]; then
+  if [ -z "$cap" ] || on_ac || ! discharging; then
     rearm
   elif [ "$cap" -le "$SUSPEND_AT" ]; then
     if [ "$last_level" -eq "$SUSPEND_AT" ]; then
