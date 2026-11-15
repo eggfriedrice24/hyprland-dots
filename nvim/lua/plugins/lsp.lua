@@ -63,23 +63,14 @@ return {
 		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
 			"williamboman/mason.nvim",
-			"williamboman/mason-lspconfig.nvim",
 		},
 		config = function()
-			-- JSON Language Server
-			vim.lsp.config("jsonls", {
-				single_file_support = true,
-			})
-
-			-- Tailwind CSS Language Server
-			vim.lsp.config("tailwindcss", {
-				root_markers = { ".git" },
-			})
+			-- Overrides merge over nvim-lspconfig's lsp/<name>.lua. Where that
+			-- file defines root_dir, root_markers here would be ignored, and
+			-- servers without a root already run single-file.
 
 			-- TypeScript Language Server
 			vim.lsp.config("ts_ls", {
-				root_markers = { ".git" },
-				single_file_support = true,
 				settings = {
 					typescript = {
 						inlayHints = {
@@ -122,22 +113,12 @@ return {
 
 			-- ESLint Language Server (linting + formatting for JS/TS)
 			-- Only attaches when an ESLint config is found in the project
+			-- (nvim-lspconfig's root_dir checks for one). The server reads its
+			-- settings at the top level, not under an `eslint` key; flat versus
+			-- eslintrc is left to the project's ESLint version.
 			vim.lsp.config("eslint", {
-				root_markers = {
-					"eslint.config.js",
-					"eslint.config.mjs",
-					"eslint.config.cjs",
-					".eslintrc.json",
-					".eslintrc.js",
-					".eslintrc.yml",
-					".eslintrc.yaml",
-					".eslintrc",
-				},
 				settings = {
-					eslint = {
-						useFlatConfig = true,
-						run = "onSave",
-					},
+					run = "onSave",
 				},
 				on_attach = function(client, bufnr)
 					vim.api.nvim_buf_create_user_command(bufnr, "LspEslintFixAll", function()
@@ -160,7 +141,6 @@ return {
 
 			-- Lua Language Server
 			vim.lsp.config("lua_ls", {
-				single_file_support = true,
 				settings = {
 					Lua = {
 						workspace = {
@@ -276,7 +256,6 @@ return {
 				"eslint",
 				"lua_ls",
 				"basedpyright",
-				"emmet-language-server",
 				"rust_analyzer",
 			})
 		end,
