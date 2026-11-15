@@ -79,7 +79,160 @@ return {
 			"nvim-telescope/telescope-file-browser.nvim",
 		},
 		cmd = "Telescope",
-		event = "VeryLazy",
+		init = function()
+			-- `nvim <dir>`: load now so file_browser takes the directory
+			-- buffer over from netrw (it hijacks netrw once set up)
+			if vim.fn.argc(-1) == 1 and vim.fn.isdirectory(vim.fn.argv(0)) == 1 then
+				require("telescope")
+			end
+		end,
+		keys = {
+			{
+				"fP",
+				function()
+					require("telescope.builtin").find_files({
+						cwd = require("lazy.core.config").options.root,
+					})
+				end,
+				desc = "Find Plugin File",
+			},
+			{
+				"ff",
+				function()
+					require("telescope.builtin").find_files({
+						no_ignore = false,
+						hidden = true,
+					})
+				end,
+				desc = "Lists files in your current working directory, respects .gitignore",
+			},
+			{
+				"ft",
+				function()
+					require("telescope.builtin").live_grep({
+						additional_args = { "--hidden" },
+					})
+				end,
+				desc = "Search for a string in your current working directory and get results live as you type, respects .gitignore",
+			},
+			{
+				"\\\\",
+				function()
+					require("telescope.builtin").buffers()
+				end,
+				desc = "Lists open buffers",
+			},
+			{
+				"ht",
+				function()
+					require("telescope.builtin").help_tags()
+				end,
+				desc = "Lists available help tags and opens a new window with the relevant help info on <cr>",
+			},
+			{
+				";;",
+				function()
+					require("telescope.builtin").resume()
+				end,
+				desc = "Resume the previous telescope picker",
+			},
+			{
+				";e",
+				function()
+					require("telescope.builtin").diagnostics()
+				end,
+				desc = "Lists Diagnostics for all open buffers or a specific buffer",
+			},
+			{
+				";s",
+				function()
+					require("telescope.builtin").treesitter()
+				end,
+				desc = "Lists Function names, variables, from Treesitter",
+			},
+			{
+				";c",
+				function()
+					require("telescope.builtin").lsp_incoming_calls()
+				end,
+				desc = "Lists LSP incoming calls for word under the cursor",
+			},
+			{
+				"sf",
+				function()
+					require("telescope").extensions.file_browser.file_browser({
+						path = "%:p:h",
+						cwd = vim.fn.expand("%:p:h"),
+						respect_gitignore = false,
+						hidden = true,
+						grouped = true,
+						previewer = false,
+						initial_mode = "normal",
+						layout_config = { height = 40 },
+					})
+				end,
+				desc = "Open File Browser with the path of the current buffer",
+			},
+		},
+		config = function()
+			local telescope = require("telescope")
+			local actions = require("telescope.actions")
+			local fb_actions = telescope.extensions.file_browser.actions
+
+			telescope.setup({
+				defaults = {
+					wrap_results = true,
+					layout_strategy = "horizontal",
+					layout_config = { prompt_position = "top" },
+					sorting_strategy = "ascending",
+					winblend = 0,
+					mappings = {
+						n = {},
+					},
+				},
+				pickers = {
+					diagnostics = {
+						theme = "ivy",
+						initial_mode = "normal",
+						layout_config = {
+							preview_cutoff = 9999,
+						},
+					},
+				},
+				extensions = {
+					file_browser = {
+						theme = "dropdown",
+						-- disables netrw and use telescope-file-browser in its place
+						hijack_netrw = true,
+						mappings = {
+							["n"] = {
+								-- your custom normal mode mappings
+								["N"] = fb_actions.create,
+								["h"] = fb_actions.goto_parent_dir,
+								["/"] = function()
+									vim.cmd("startinsert")
+								end,
+								["<C-u>"] = function(prompt_bufnr)
+									for _ = 1, 10 do
+										actions.move_selection_previous(prompt_bufnr)
+									end
+								end,
+								["<C-d>"] = function(prompt_bufnr)
+									for _ = 1, 10 do
+										actions.move_selection_next(prompt_bufnr)
+									end
+								end,
+								["<PageUp>"] = actions.preview_scrolling_up,
+								["<PageDown>"] = actions.preview_scrolling_down,
+							},
+						},
+					},
+				},
+			})
+
+			telescope.load_extension("fzf")
+			telescope.load_extension("file_browser")
+		end,
 	},
 
 	{
@@ -147,6 +300,21 @@ return {
 
 	{
 		"ThePrimeagen/harpoon",
-		event = "VeryLazy",
+		keys = {
+			{
+				"<leader>a",
+				function()
+					require("harpoon.mark").add_file()
+				end,
+				desc = "Harpoon: mark file",
+			},
+			{
+				"<leader>p",
+				function()
+					require("harpoon.ui").toggle_quick_menu()
+				end,
+				desc = "Harpoon: quick menu",
+			},
+		},
 	},
 }

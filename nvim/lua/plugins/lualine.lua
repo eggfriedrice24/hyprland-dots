@@ -1,9 +1,14 @@
-local status_ok, lualine = pcall(require, "lualine")
-if not status_ok then
-	return
-end
+-- statusline
 
-local palette = require("eggfriedrice.colors").get(require("eggfriedrice").config)
+-- A palette role as a lualine colour. Resolved on first draw, not when lazy
+-- reads this spec, because the colorscheme is not loaded yet at that point.
+local palette
+local function colour(role)
+	return function()
+		palette = palette or require("eggfriedrice.colors").get(require("eggfriedrice").config)
+		return { fg = palette[role] }
+	end
+end
 
 -- Custom components
 local function lsp_clients()
@@ -29,8 +34,7 @@ local function modified_indicator()
 	return ""
 end
 
--- Setup lualine
-lualine.setup({
+local opts = {
 	options = {
 		theme = "auto",
 		globalstatus = true,
@@ -89,7 +93,7 @@ lualine.setup({
 			},
 			{
 				modified_indicator,
-				color = { fg = palette.git_change },
+				color = colour("git_change"),
 			},
 		},
 		lualine_x = {
@@ -101,7 +105,7 @@ lualine.setup({
 				cond = function()
 					return package.loaded["noice"] and require("noice").api.status.command.has()
 				end,
-				color = { fg = palette.yellow },
+				color = colour("yellow"),
 			},
 			{
 				function()
@@ -110,12 +114,12 @@ lualine.setup({
 				cond = function()
 					return package.loaded["noice"] and require("noice").api.status.mode.has()
 				end,
-				color = { fg = palette.yellow },
+				color = colour("yellow"),
 			},
 			-- LSP clients
 			{
 				lsp_clients,
-				color = { fg = palette.cyan },
+				color = colour("cyan"),
 				cond = function()
 					return #vim.lsp.get_clients({ bufnr = 0 }) > 0
 				end,
@@ -171,4 +175,11 @@ lualine.setup({
 		"quickfix",
 		"man",
 	},
-})
+}
+
+return {
+	"nvim-lualine/lualine.nvim",
+	dependencies = { "nvim-tree/nvim-web-devicons" },
+	event = "VeryLazy",
+	opts = opts,
+}

@@ -149,12 +149,7 @@ return {
 		end,
 	},
 
-	-- statusline
-	{
-		"nvim-lualine/lualine.nvim",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		event = "VeryLazy",
-	},
+	-- statusline: lualine.lua
 
 	{
 		"folke/zen-mode.nvim",
