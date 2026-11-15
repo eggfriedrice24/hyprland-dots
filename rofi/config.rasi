@@ -19,7 +19,9 @@ configuration {
 
 // colours are the launcher roles of the imported palette (@panel, @panel-edge, @panel-divider,
 // @muted, @accent, @on-accent, ...); @panel must stay above the rofi layer rule's ignore_alpha (0.20)
-// for the hyprland blur to show through. rofi/global/emoji.rasi imports this file and overrides the list.
+// for the hyprland blur to show through. rofi/global/emoji.rasi, calc.rasi and clipboard.rasi import
+// this file (emoji overrides the list), and hypr/scripts/font-picker uses it as its theme, so a change
+// here reaches all of them.
 // fonts are the palette file's typography properties (@font-ui-sm, @font-ui-md, @font-icon, ...)
 * {
     background-color: transparent;
