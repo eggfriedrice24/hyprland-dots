@@ -42,6 +42,13 @@ ask() { # ask VAR "question" [default]
     fi
     printf -v "$__var" '%s' "$__ans"
 }
+ask_required() { # ask_required VAR "question" [default]: like ask, but asks again on an empty answer
+    while :; do
+        ask "$@"
+        [[ -n "${!1}" ]] && break
+        warn "An answer is required"
+    done
+}
 ask_password() { # ask_password VAR "label"
     local __var="$1" __a __b
     while :; do
@@ -55,6 +62,15 @@ ask_password() { # ask_password VAR "label"
 # /dev/nvme0n1 + 2 -> /dev/nvme0n1p2, /dev/sda + 2 -> /dev/sda2
 part() { if [[ "$1" =~ [0-9]$ ]]; then echo "${1}p$2"; else echo "$1$2"; fi; }
 disk_of() { echo "/dev/$(lsblk -no PKNAME "$1" | head -1)"; }
+# the disk the ISO booted from, empty when it is not mounted (copytoram, CD-ROM, PXE)
+iso_boot_disk() {
+    local src pk
+    src="$(findmnt -no SOURCE --mountpoint /run/archiso/bootmnt 2>/dev/null)" || return 0
+    [[ -b "$src" ]] || return 0
+    pk="$(lsblk -no PKNAME "$src" 2>/dev/null | head -1)"
+    [[ -n "$pk" ]] && src="/dev/$pk"
+    if [[ "$(lsblk -dno TYPE "$src" 2>/dev/null)" == disk ]]; then echo "$src"; fi
+}
 
 # ---------------------------------------------------------------- preflight
 [[ $EUID -eq 0 ]] || die "Run as root from the Arch live ISO."
@@ -66,12 +82,16 @@ timedatectl set-ntp true
 sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
 
 # ---------------------------------------------------------------- questions
+ISO_DISK="$(iso_boot_disk)"
 echo
 printf "${BOLD}Disks:${NC}\n"
-lsblk -dpno NAME,SIZE,MODEL -e 7,11 | grep -v zram
+# USB disks stay listed and selectable (Framework storage expansion cards are USB)
+lsblk -dpno NAME,SIZE,TRAN,MODEL -e 7,11 | awk -v b="$ISO_DISK" '$1 != b && $1 !~ /zram/'
+[[ -n "$ISO_DISK" ]] && echo "  ($ISO_DISK is the live ISO and not listed)"
 echo
-ask ROOT_DISK "Disk for the system (WILL BE WIPED)"
+ask_required ROOT_DISK "Disk for the system (WILL BE WIPED)"
 [[ -b "$ROOT_DISK" && "$(lsblk -dno TYPE "$ROOT_DISK")" == disk ]] || die "$ROOT_DISK is not a disk"
+[[ "$ROOT_DISK" != "$ISO_DISK" ]] || die "$ROOT_DISK is the live ISO this runs from"
 ask SWAP_GB "Swap partition size in GiB (0 = none, zram is set up anyway)" 8
 [[ "$SWAP_GB" =~ ^[0-9]+$ ]] || die "Not a number: $SWAP_GB"
 ask ROOT_GB "Root size in GiB (empty = rest of the disk)" ""
@@ -87,23 +107,29 @@ printf "${BOLD}Partitions:${NC}\n"
 lsblk -pno NAME,SIZE,FSTYPE,LABEL -e 7,11 | grep -v zram
 echo
 echo "Home: [k]eep an existing ext4 partition (not formatted), [f]ormat a whole disk as ext4, [s]ubvolume on the root disk"
-# a single disk (laptop) can only hold home as a subvolume
-other_disks="$(lsblk -dpno NAME,TYPE -e 7,11 | awk -v r="$ROOT_DISK" '$2 == "disk" && $1 != r && $1 !~ /zram/' | wc -l)"
+# a single disk (laptop) can only hold home as a subvolume. The ISO's own disk does not count; when
+# it is not known, USB and removable disks are left out of this default (they can still be chosen)
+other_disks="$(lsblk -dpno NAME,TYPE,RM,TRAN -e 7,11 | awk -v r="$ROOT_DISK" -v b="$ISO_DISK" '
+    $2 != "disk" || $1 == r || $1 ~ /zram/ { next }
+    b != "" && $1 == b { next }
+    b == "" && ($3 == "1" || $4 == "usb") { next }
+    { n++ } END { print n + 0 }')"
 home_default=s
 (( other_disks > 0 )) && home_default=k
-ask HOME_MODE "Home" "$home_default"
+ask_required HOME_MODE "Home" "$home_default"
 HOME_DEV=""
 case "$HOME_MODE" in
     k)
-        ask HOME_DEV "Existing home partition" "$(blkid -L home 2>/dev/null || true)"
+        ask_required HOME_DEV "Existing home partition" "$(blkid -L home 2>/dev/null || true)"
         [[ -b "$HOME_DEV" ]] || die "$HOME_DEV is not a block device"
         [[ "$(blkid -o value -s TYPE "$HOME_DEV")" == ext4 ]] || die "$HOME_DEV is not ext4"
         [[ "$(disk_of "$HOME_DEV")" != "$ROOT_DISK" ]] || die "$HOME_DEV is on the disk that gets wiped"
         ;;
     f)
-        ask HOME_DISK "Disk for /home (WILL BE WIPED)"
+        ask_required HOME_DISK "Disk for /home (WILL BE WIPED)"
         [[ -b "$HOME_DISK" && "$(lsblk -dno TYPE "$HOME_DISK")" == disk ]] || die "$HOME_DISK is not a disk"
         [[ "$HOME_DISK" != "$ROOT_DISK" ]] || die "Pick a different disk than the system disk, or use [s]"
+        [[ "$HOME_DISK" != "$ISO_DISK" ]] || die "$HOME_DISK is the live ISO this runs from"
         ;;
     s) ;;
     *) die "Unknown choice: $HOME_MODE" ;;
