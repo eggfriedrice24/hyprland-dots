@@ -10,5 +10,16 @@ return {
 	config = {
 		-- VERIFY: fractional scale blurs XWayland apps unless they render at native size
 		xwayland = { force_zero_scaling = true },
+		input = {
+			-- natural_scroll comes from the shared input block
+			touchpad = { tap_to_click = true, disable_while_typing = true },
+			-- a touchscreen maps to the internal panel, not to whichever output is focused
+			touchdevice = { output = "eDP-1" },
+		},
 	},
+
+	setup = function()
+		-- VERIFY: three-finger swipe between workspaces
+		hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+	end,
 }
