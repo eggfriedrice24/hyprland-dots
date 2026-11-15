@@ -36,13 +36,20 @@ for src_name in "${link_names[@]}"; do
     link_path "${DOTFILES_DIR}/${src_name}" "${symlinks[$src_name]}"
 done
 
-# Links into this repo whose target no longer exists (a config dir removed from the repo)
+# Commands (dots-update, dots-snapshot): every executable in bin/ goes on PATH through ~/.local/bin,
+# a real directory other tools install into too, so the files are linked one by one
+for cmd in "${DOTFILES_DIR}"/bin/*; do
+    [[ -f "$cmd" && -x "$cmd" ]] || continue
+    link_path "$cmd" "$HOME/.local/bin/$(basename "$cmd")"
+done
+
+# Links into this repo whose target no longer exists (a config dir or command removed from the repo)
 while IFS= read -r -d '' link; do
     target="$(readlink "$link")"
     if [[ "$target" == "$DOTFILES_DIR"/* && ! -e "$link" ]]; then
         info "Removing dangling link: $link -> $target"
         run rm "$link"
     fi
-done < <(find "$HOME" "$HOME/.config" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
+done < <(find "$HOME" "$HOME/.config" "$HOME/.local/bin" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
 
 success "=== Stage 3: Complete ==="
