@@ -279,3 +279,158 @@ enable_user_service() {
         fi
     fi
 }
+
+# ---------------------------------------------------------------- repositories and theme
+
+# THEME_REPO can point at a local mirror (VM tests); THEME_DIR is where every theme link expects it
+THEME_REPO="${THEME_REPO:-https://github.com/eggfriedrice24/eggfriedrice.nvim}"
+THEME_DIR="${THEME_DIR:-$HOME/p/eggfriedrice.nvim}"
+export THEME_DIR
+
+# repo_sync DIR NAME: fast-forward a clone to its upstream and nothing else: no stash, no rebase,
+# no merge commit. A dirty tree is fine as long as the incoming commits do not touch the dirty files;
+# git refuses the whole fast-forward otherwise and the checkout stays as it was.
+# Result in REPO_SYNC_STATUS: updated current ahead diverged blocked busy detached no-upstream
+# offline missing, plus would-update in a dry run. REPO_SYNC_OLD and REPO_SYNC_NEW hold HEAD
+# before and after, REPO_SYNC_DETAIL the reason when nothing was pulled. Never fails.
+# A dry run fetches only with DRY_FETCH=1 (dots-update sets it; a fetch moves origin/* and nothing else).
+repo_sync() {
+    local dir="$1" name="$2" gitdir counts ahead behind out
+    REPO_SYNC_STATUS="" REPO_SYNC_OLD="" REPO_SYNC_NEW="" REPO_SYNC_DETAIL=""
+
+    if ! git -C "$dir" rev-parse --git-dir &>/dev/null; then
+        REPO_SYNC_STATUS=missing REPO_SYNC_DETAIL="not a git checkout: $dir"
+        warn "$name: $REPO_SYNC_DETAIL"
+        return 0
+    fi
+    REPO_SYNC_OLD="$(git -C "$dir" rev-parse HEAD)"
+    REPO_SYNC_NEW="$REPO_SYNC_OLD"
+    gitdir="$(git -C "$dir" rev-parse --absolute-git-dir)"
+
+    if [[ -e "$gitdir/MERGE_HEAD" || -e "$gitdir/CHERRY_PICK_HEAD" || -d "$gitdir/rebase-merge" || -d "$gitdir/rebase-apply" ]]; then
+        REPO_SYNC_STATUS=busy REPO_SYNC_DETAIL="a merge, rebase or cherry-pick is in progress"
+    elif ! git -C "$dir" symbolic-ref -q HEAD >/dev/null; then
+        REPO_SYNC_STATUS=detached REPO_SYNC_DETAIL="HEAD is detached"
+    elif ! git -C "$dir" rev-parse -q --verify '@{u}' &>/dev/null; then
+        REPO_SYNC_STATUS=no-upstream REPO_SYNC_DETAIL="the branch has no upstream"
+    fi
+    if [[ -n "$REPO_SYNC_STATUS" ]]; then
+        warn "$name: not pulling, $REPO_SYNC_DETAIL"
+        return 0
+    fi
+
+    if [[ "${DRY_RUN:-0}" == "1" && "${DRY_FETCH:-0}" != "1" ]]; then
+        dry "git -C $dir fetch, then merge --ff-only @{u}"
+        REPO_SYNC_STATUS=current
+        return 0
+    fi
+    # without a terminal nothing may ask for a passphrase or a password
+    local -a fetch=(git -C "$dir" fetch --quiet)
+    if [[ ! -t 0 ]]; then
+        fetch=(env GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=10" timeout 45 "${fetch[@]}")
+    fi
+    if ! out="$("${fetch[@]}" 2>&1)"; then
+        REPO_SYNC_STATUS=offline REPO_SYNC_DETAIL="${out%%$'\n'*}"
+        warn "$name: fetch failed, keeping the local checkout (${REPO_SYNC_DETAIL:-no output})"
+        return 0
+    fi
+
+    counts="$(git -C "$dir" rev-list --left-right --count 'HEAD...@{u}')"
+    ahead="${counts%%[[:space:]]*}"
+    behind="${counts##*[[:space:]]}"
+    if (( behind == 0 )); then
+        if (( ahead > 0 )); then
+            REPO_SYNC_STATUS=ahead REPO_SYNC_DETAIL="$ahead unpushed commit(s)"
+            info "$name: up to date, $REPO_SYNC_DETAIL"
+        else
+            REPO_SYNC_STATUS=current
+            success "$name: up to date"
+        fi
+    elif (( ahead > 0 )); then
+        REPO_SYNC_STATUS=diverged REPO_SYNC_DETAIL="$ahead local and $behind remote commit(s); rebase or merge by hand: git -C $dir pull --rebase"
+        warn "$name: diverged, not pulling ($REPO_SYNC_DETAIL)"
+    elif [[ "${DRY_RUN:-0}" == "1" ]]; then
+        REPO_SYNC_STATUS=would-update
+        REPO_SYNC_NEW="$(git -C "$dir" rev-parse '@{u}')"
+        dry "$name: fast-forward $behind commit(s)"
+    elif out="$(git -C "$dir" merge --ff-only --quiet '@{u}' 2>&1)"; then
+        REPO_SYNC_STATUS=updated
+        REPO_SYNC_NEW="$(git -C "$dir" rev-parse HEAD)"
+        info "$name: fast-forwarded $behind commit(s) to ${REPO_SYNC_NEW:0:7}"
+    else
+        REPO_SYNC_STATUS=blocked
+        REPO_SYNC_DETAIL="$(sed -n 's/^[[:space:]]\+//p' <<<"$out" | paste -sd' ')"
+        warn "$name: $behind commit(s) NOT pulled, local changes are in the way: ${REPO_SYNC_DETAIL:-$out}"
+    fi
+    return 0
+}
+
+# Clone the theme repo when it is missing, fast-forward it otherwise
+theme_ensure() {
+    if [[ -d "$THEME_DIR/.git" ]]; then
+        repo_sync "$THEME_DIR" theme
+    else
+        info "Cloning theme repo to $THEME_DIR..."
+        run mkdir -p "$(dirname "$THEME_DIR")"
+        run git clone --quiet "$THEME_REPO" "$THEME_DIR"
+        REPO_SYNC_STATUS=updated REPO_SYNC_OLD="" REPO_SYNC_NEW="" REPO_SYNC_DETAIL="cloned"
+    fi
+}
+
+# Every extra the dotfiles reference. Most consumers fall back silently when one is missing,
+# so a broken theme would otherwise go unnoticed until the desktop looks wrong.
+THEME_REQUIRED_EXTRAS=(
+    adw/gtk-3.0.css
+    adw/gtk-4.0.css
+    bat/eggfriedrice.tmTheme
+    btop/eggfriedrice.theme
+    dunst/eggfriedrice.conf
+    eza/eggfriedrice.yml
+    frameit/eggfriedrice.toml
+    fsh/eggfriedrice.ini
+    fzf/eggfriedrice.sh
+    ghostty/eggfriedrice
+    gtk/eggfriedrice.css
+    hyprland/eggfriedrice.conf
+    lazygit/eggfriedrice.yml
+    lua/eggfriedrice.lua
+    opencode/eggfriedrice.json
+    papirus/eggfriedrice.sh
+    rofi/eggfriedrice.rasi
+    tmux/eggfriedrice.tmux
+    zsh/eggfriedrice.zsh
+)
+
+# The theme repo has every required extra, and every symlink tracked in the dotfiles resolves
+# (most of them point into the theme repo). Skipped in a dry run that has not cloned it yet.
+verify_theme() {
+    local missing=0 extra entry mode path
+    if [[ ! -d "$THEME_DIR/extras" ]]; then
+        if [[ "${DRY_RUN:-0}" == "1" ]]; then
+            warn "Theme repo not cloned in dry-run, skipping the extras and link check"
+            return 0
+        fi
+        error "Theme repo has no extras/ directory: $THEME_DIR"
+        return 1
+    fi
+    for extra in "${THEME_REQUIRED_EXTRAS[@]}"; do
+        if [[ ! -s "$THEME_DIR/extras/$extra" ]]; then
+            error "Missing theme extra: $THEME_DIR/extras/$extra"
+            missing=1
+        fi
+    done
+    # ls-files -s: "<mode> <object> <stage>\t<path>"; 120000 is a symlink
+    while IFS= read -r -d '' entry; do
+        mode="${entry%% *}"
+        path="${entry#*$'\t'}"
+        if [[ "$mode" == 120000 && ! -e "$DOTFILES_DIR/$path" ]]; then
+            error "Dangling link in the dotfiles: $path -> $(readlink "$DOTFILES_DIR/$path")"
+            missing=1
+        fi
+    done < <(git -C "$DOTFILES_DIR" ls-files -s -z 2>/dev/null)
+    if (( missing )); then
+        error "Theme repo is incomplete or older than the dotfiles expect; update $THEME_DIR (or run 'make extras' there) and retry"
+        return 1
+    fi
+    success "All ${#THEME_REQUIRED_EXTRAS[@]} theme extras present, every tracked link resolves"
+}
