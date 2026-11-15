@@ -225,8 +225,12 @@ dots-sync --to tt              # on the desktop: push to the ThinkPad
 dots-sync --to tf --only claude --sessions   # Claude only, with the chat transcripts
 ```
 
-Nothing is deleted on the receiving side and a file that is newer there is never overwritten, so runs both ways
-converge. What moves is listed in `sync.conf`:
+Nothing is deleted on the receiving side. When a file differs, the copy with the later modification time replaces the
+other one whole: nothing inside a file is merged, except the MCP servers and, with `--sessions`, the prompt history. A
+file replaced on the receiving side is kept under `~/.local/state/dotfiles/dots-sync/<time>/`, and the run says how
+many there are; one that is newer there stays and is listed. The clocks decide which copy is newer, so keep time sync
+on. An entry that is a file on one side and a folder, repo or symlink on the other is left alone and reported. What
+moves is listed in `sync.conf`:
 
 - **Claude**, for `claude` (`~/.claude`) and `claudew` (`~/.claude-work`): `CLAUDE.md`, settings, skills, agents,
   commands, plugins, every project's memory, and the user MCP servers (merged into the receiver's `.claude.json`). Not
@@ -234,7 +238,24 @@ converge. What moves is listed in `sync.conf`:
 - **Projects** in `~/p`, `~/tth` and `~/nox`: a repo the receiver lacks arrives with its history, uncommitted work and
   `.env` files, without what git ignores (`node_modules`, `target`, ...). A repo both sides have is left to git: only
   the `.env`-style files move, and the run lists the repos whose commits or uncommitted work differ so you push or
-  pull. Folders that are not repos are copied minus `node_modules` and the like. `skip` lines leave entries out.
+  pull. A new repo is assembled under a temporary name and moved into place only when complete (an interrupted run
+  resumes it). Folders that are not repos are copied minus `node_modules` and the like, and a repo inside such a folder
+  is planned as a repo of its own. `skip` lines leave entries out.
+
+Syncing from a machine lets it run code on this one: its `settings.json` (hooks, status line, `env`, permissions),
+skills, agents, commands, plugins, project memory and MCP servers become this machine's Claude setup, and a new repo
+arrives with its `.git/config` and hooks. Sync only between machines you trust as much as this one. The plan names a
+new repo whose git config runs commands (fsmonitor, filters, hooks) before you confirm; dots-sync itself runs git with
+those switched off.
+
+Secrets that travel besides the files you see: MCP server definitions with their `env` and `headers` (API keys and
+tokens, named in the plan), a new repo's `.git/config` (including credentials in a remote URL), its untracked files,
+the `.env`-style files, and with `--sessions` the transcripts and prompt history, which often hold pasted secrets.
+Everything under `~/.claude-work` reaches every machine you sync with. Never carried: `.credentials.json` (the login)
+and the rest of `~/.claude.json` apart from `mcpServers`.
+
+Every machine needs the same user and home path, because Claude's memory folders and git worktrees are named after
+absolute paths; dots-sync refuses a machine whose home differs, and one that turns out to be this machine.
 
 The receiving machine has to accept this one's SSH key: `dots-sync --pair HOST` sets that up (the laptops take keys
 only; there it prints the line to run on the laptop instead).
