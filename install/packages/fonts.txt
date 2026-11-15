@@ -1,6 +1,9 @@
 # Fonts. Two ship in fonts/ and are linked by the installer: Cartograph CF (terminal only) and Nunito,
 # the ui font of the theme's typography tokens. Nunito is the variable font from Google Fonts because
 # Arch's ttf-nunito is the old static set without a Medium weight, and the tokens ask for Medium.
+# The other font-picker candidates: Inter is packaged (below); the rest come from Google Fonts in
+# stage 9 (hypr/scripts/font-picker --fetch) because no package of theirs has a Medium.
+inter-font
 ttf-jetbrains-mono-nerd
 ttf-nerd-fonts-symbols-mono
 noto-fonts
