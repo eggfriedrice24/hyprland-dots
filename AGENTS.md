@@ -7,10 +7,23 @@ modular architecture with a unified eggfriedrice theme generated from the eggfri
 
 ## Installation & Setup
 
-**Installer:** `install.sh` runs the stages in `install/stages/` in order (packages, theme repo clone, symlinks, shell,
-services, system drop-ins from `install/etc/`, finalize). Package lists live in `install/packages/*.txt`. Use
-`./install.sh --dry-run` first; `--laptop` / `--desktop` override the battery-based machine detection, and `MACHINE` gates
-the desktop-only bits (rtw89 modprobe options, GRUB `video=` line, `aur-desktop.txt`). Rerunning is idempotent.
+**Installer:** `install.sh` runs the nine stages in `install/stages/` in order (01-packages, 02-theme, 03-symlinks,
+04-shell, 05-services, 06-system, 07-snapshots, 08-migrations, 09-finalize). Package lists live in
+`install/packages/*.txt`. Use `./install.sh --dry-run --yes` first; `--profile NAME|auto` picks or unpins the machine
+profile, `--print-profile` shows it, `--no-upgrade`, `--skip=a,b` and `--quiet` exist for `dots-update`. Exit status 3
+means a migration is still pending. Rerunning is idempotent. Helpers every stage uses (`run`, `try`, `note`,
+`install_etc_file`, `profile_files`, ...) are in `install/utils.sh`.
+
+**Machine profiles:** `machines/<profile>/` (desktop, laptop, thinkpad, framework, generic) holds everything
+machine-specific: `hypr.lua` (monitors, config, setup, hypridle), `extends`, `packages.txt`, `aur.txt`, `services`,
+`etc/`, `grub`, `system.sh`, `notes`. `machines/index` maps DMI strings to a profile; `install/machine.sh` and
+`hypr/machine.lua` resolve it identically (flag, pin in `~/.config/dotfiles/profile`, DMI, battery -> laptop, else
+generic). Hostnames are `t` (desktop), `tt` (ThinkPad), `tf` (Framework), but nothing may key on the hostname.
+
+**Commands:** `bin/` is linked into `~/.local/bin` by stage 3. `bin/dots-update` (alias `up`) syncs both repos,
+snapshots, upgrades packages and runs `install.sh --no-upgrade`. `bin/dots-snapshot` owns every snapper call (status,
+pre, post, list, rollback, undo, cleanup); it is a no-op on this ext4 desktop. `install/migrate.sh` runs and lists the
+one-off migrations in `install/migrations/`. README.md documents all three.
 
 **Zsh XDG Setup:** `~/.zshenv` is a symlink to `zsh/.zshenv`, which sets `ZDOTDIR="$HOME/.config/zsh"`.
 
@@ -35,8 +48,10 @@ All major components use a source/import pattern to split configs into logical m
 - `windowrule.lua` - Window and layer rules
 - `keybinds.lua` - Keyboard shortcuts
 - `eggfriedrice.lua` - symlink to the eggfriedrice.nvim Lua palette module (`extras/lua`); `require("eggfriedrice")` gives `.border`, `.alpha.<name>`, `.hex.<name>`
+- `machine.lua` - resolves the machine profile and loads `machines/<profile>/hypr.lua` through the tracked
+  `hypr/machines -> ../machines` link; `hyprland.lua` applies its monitors first and its config and `setup()` last
 
-`hypr/hypridle.conf` and
+`hypr/hypridle.conf` (the desktop's lock-only idle; laptops use `machines/laptop/hypridle.conf`) and
 `hypr/hyprlock.conf` belong to hypridle/hyprlock (separate tools, still hyprlang).
 Lua API reference: `/usr/share/hypr/stubs/hl.meta.lua` (lua-ls picks it up via `hypr/.luarc.json`).
 
@@ -149,13 +164,26 @@ The Neovim configuration supports these languages with full LSP/formatting/linti
 
 ## Important Configuration Details
 
-### Hyprland Multi-Monitor Setup
+### Monitors and other per-machine values
 
-Configured in `hypr/hyprland.lua`:
+Configured in `machines/<profile>/hypr.lua`, never in the shared hypr files:
 
-- Desktop: DP-1 (2560x1440@240Hz)
-- Laptop: eDP-1 (preferred mode)
+- Desktop: DP-1 (ASUS OLED, 2560x1440@240, bitdepth 10, coupled to `video=DP-1` in `machines/desktop/grub`) and
+  HDMI-A-1 (HP, portrait, SUPER+O flips it)
+- Laptop layer: eDP-1 at scale 1 plus a catch-all rule for anything plugged in
+- Framework: eDP-1 at scale 1.6 (VERIFY values are settled with `machines/framework/ARRIVAL.md`), gestures, lid handling
 - Waybar on all outputs
+
+### Migrations, updates and snapshots
+
+- A change that must remove or replace something on machines that already ran an older version (a package, a config
+  dir, an `/etc` file) is a new migration: `install/migrate.sh --new <slug>`, description on line 2, helpers from
+  `install/utils.sh` and `install/migrate.sh` (`remove_packages`, `swap_package`, `remove_path`, `remove_etc_file`,
+  `as_root`). Never edit a migration that has been pushed; delete one when the thing it removes is added back.
+- Gate behaviour on `PROFILE` or on a capability (`has_battery`, `has_snapshots`, `has_pkg`), never on the hostname.
+- `dots-update` is the only caller of `dots-snapshot pre/post/discard`; snap-pac covers ad-hoc pacman runs.
+- State lives in `~/.local/state/dotfiles/` (`migrations`, `update/`, `install/` logs, `last-rollback`); the profile
+  pin in `~/.config/dotfiles/profile`.
 
 ### Keyboard Layouts
 

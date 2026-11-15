@@ -1,6 +1,6 @@
 # dotfiles
 
-Personal dotfiles for Arch Linux with Hyprland, used on a desktop and a laptop.
+Personal dotfiles for Arch Linux with Hyprland, shared by three machines (see [Machines](#machines)).
 
 **Author:** eggfriedrice
 
@@ -22,32 +22,42 @@ opencode, tmux, lazygit), so the palette lives in one place and `make extras` in
 are relative (`../../p/eggfriedrice.nvim/...`), so the dotfiles and the theme repo have to be siblings under `$HOME`.
 The installer clones the theme repo before it links anything.
 
+## Machines
+
+| Machine | Hostname | Profile | Recognised by |
+| --- | --- | --- | --- |
+| Desktop: Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX, ASUS OLED on DP-1, HP in portrait on HDMI-A-1 | `t` | `desktop` | DMI vendor and board name |
+| ThinkPad, the existing laptop | `tt` | `thinkpad` | vendor `LENOVO` with a ThinkPad product version or family |
+| Framework Laptop 13 Pro (Intel Core Ultra X7 358H), arriving December 2026 | `tf` | `framework` | vendor `Framework`, product name `Laptop*` (a guess until it is here) |
+| any other laptop | | `laptop` | a `BAT*` battery |
+| anything else (a VM, a borrowed machine) | | `generic` | nothing matched |
+
+`thinkpad` and `framework` extend the shared `laptop` layer, so the ThinkPad behaves the same while its DMI strings are
+not in `machines/index` yet. How profiles work: [Machine profiles](#machine-profiles).
+
 ## Fresh install from the Arch ISO
 
-`bootstrap.sh` replaces archinstall: boot the ISO in UEFI mode, connect (`iwctl` for WiFi), then
+`bootstrap.sh` replaces archinstall: boot the ISO in UEFI mode with Secure Boot off (GRUB is unsigned), connect
+(`iwctl` for WiFi), then
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/eggfriedrice24/hyprland-dots/master/bootstrap.sh -o bootstrap.sh
 bash bootstrap.sh
 ```
 
-It asks for the disks, host, user and locale, shows a summary, and wipes nothing until you type `ERASE`. It builds a 1 GiB
-ESP at `/boot`, optional swap, and btrfs root (`@`, `@snapshots`, `@log`, `@pkg`, `@docker`, zstd compression) with
-snapper, snap-pac and grub-btrfs, so every pacman transaction is a snapshot you can boot from GRUB. `/home` is an existing
-ext4 partition kept as is, a whole second disk formatted as ext4, or a `@home` subvolume. Optional LUKS2 (the default on
-a laptop): one passphrase at boot opens root; a new `/home` disk opens with a key file stored on root, and swap gets a
-random key every boot (so no hibernation). A kept `/home` stays unencrypted. It then clones this repo and runs
-`install.sh --yes` inside the new system; if that fails, rerun `./install.sh` after the first boot.
+It asks for the disks, the hostname (`t`, `tt` or `tf`; there is no default), user and locale, shows a summary, and
+wipes nothing until you type `ERASE`. It builds a 2 GiB ESP at `/boot` (room for the `.old` kernels), an optional swap
+partition (none by default; zram comes from the dotfiles), and a btrfs root with zstd compression and the subvolumes
+`@`, `@snapshots`, `@log`, `@pkg`, `@docker` and `@flatpak`, with snapper, snap-pac and grub-btrfs, so every pacman
+transaction is a snapshot you can boot from GRUB (see [Snapshots and recovery](#snapshots-and-recovery)). `/home` is an
+existing ext4 partition kept as is, a whole second disk formatted as ext4, or a `@home` subvolume. Optional LUKS2 (the
+default on a laptop): one passphrase at boot opens root; a new `/home` disk opens with a key file stored on root, a swap
+partition gets a random key every boot (so no hibernation), and the emergency shell works although root has no
+password. A kept `/home` stays unencrypted. It then clones this repo over https and runs `install.sh --yes` inside the
+new system; if that fails, rerun `./install.sh` after the first boot.
 
-Rollback after a bad update: boot the good snapshot from the GRUB menu (`snapper list` shows its number N), then make it the
-new `@` (fstab and GRUB mount `@` by name, so `snapper rollback` does not apply):
-
-```bash
-sudo mount -o subvolid=5 /dev/disk/by-label/arch /mnt
-sudo mv /mnt/@ /mnt/@broken
-sudo btrfs subvolume snapshot /mnt/@snapshots/N/snapshot /mnt/@
-sudo umount /mnt && reboot    # delete @broken later: sudo btrfs subvolume delete /mnt/@broken
-```
+To test unpushed commits in a VM, `DOTFILES_REPO=http://10.0.2.2:8000/.git` points the clone at a local server, and
+`INSTALL_ARGS="--profile framework"` picks a profile (a VM matches no DMI line, so it would otherwise be `generic`).
 
 ## Installation
 
@@ -55,29 +65,197 @@ Prerequisites on a fresh Arch install: a user in the `wheel` group with `sudo`, 
 else, including the AUR helper (yay) and the theme repo, is installed by the script.
 
 ```bash
-git clone git@github.com:eggfriedrice24/hyprland-dots.git ~/dotfiles
+git clone https://github.com/eggfriedrice24/hyprland-dots.git ~/dotfiles
+git -C ~/dotfiles remote set-url --push origin git@github.com:eggfriedrice24/hyprland-dots.git
 cd ~/dotfiles
-./install.sh --dry-run   # prints every action without executing
-./install.sh             # laptop or desktop is detected from the battery; force with --laptop / --desktop
+./install.sh --print-profile   # the machine profile and how it was found
+./install.sh --dry-run         # prints every action without executing
+./install.sh
 ```
+
+| Option | Effect |
+| --- | --- |
+| `--dry-run` | print every action, change nothing |
+| `--yes` | no confirmation prompt (bootstrap.sh uses it) |
+| `--profile NAME` | use `machines/NAME` and pin it in `~/.config/dotfiles/profile`, which Hyprland reads too; `--laptop` and `--desktop` are short for it |
+| `--profile auto` | remove the pin and detect the machine again |
+| `--print-profile` | print the profile and its source (`flag`, `pinned`, `dmi`, `battery` or `fallback`), then exit |
+| `--no-upgrade` | no keyring refresh and full upgrade in stage 1 (dots-update has just done both) |
+| `--skip=a,b` | skip stages by name: `packages`, `theme`, `symlinks`, `shell`, `services`, `system`, `snapshots`, `migrations`, `finalize` |
+| `--quiet` | only print what changes |
+
+Exit status: 0 done, 1 a stage failed (the message names the file, line and command), 3 every stage ran but a migration
+is still pending. A real run is logged to `~/.local/state/dotfiles/install/<time>.log`. `THEME_REPO` overrides the theme
+repo's clone URL (a local mirror for VM tests).
 
 The stages in `install/stages/` run in order:
 
-1. **packages** - enables `[multilib]`, full system upgrade, microcode and Vulkan driver by detected vendor, then the
-   lists in `install/packages/` (official repos, then AUR via yay; `aur-desktop.txt` only on the desktop)
-2. **theme** - clones or updates `~/p/eggfriedrice.nvim` and checks every extra the configs reference
-3. **symlinks** - links each config directory into `~/.config`, plus `~/.zshenv`, `~/.wallpapers` and the Cartograph
-   fonts; existing real files are backed up as `*.bak.<timestamp>`
-4. **shell** - `chsh` to zsh, first zinit run, fast-syntax-highlighting theme, bat theme cache
-5. **services** - NetworkManager, sshd, bluetooth, timesyncd, fstrim, tailscaled, valkey, postgresql (with `initdb`),
-   docker group, pipewire user sockets
-6. **system** - the tracked `/etc` drop-ins in `install/etc/` (btusb autosuspend, rtw89 on the desktop, zram), bluetooth
-   FastConnectable, wireless regdom, GRUB command line (`zswap.enabled=0`, and the ASUS `video=` fix on the desktop),
-   GTK theme (adw-gtk3-dark, recolored from the palette by `gtk-3.0/` and `gtk-4.0/`), Papirus-Dark with the
-   palette's folders (`install/papirus-folders.sh`), and dark mode via gsettings
-7. **finalize** - font cache, XDG user dirs, state dirs, Rust nightly, Node 22 via fnm, Claude Code, Stremio flatpak
+1. **packages** - enables `[multilib]`; stops with the exact command when `rust`, `jack2` or `pulseaudio` would have to
+   be removed; refreshes `archlinux-keyring`, then a full upgrade; microcode and Vulkan driver by detected vendor; the
+   lists in `install/packages/` (base, system, audio, hyprland, fonts, apps, dev), then the profile's `packages.txt`;
+   AUR via yay (`aur.txt`, then the profile's `aur.txt`), bootstrapping yay-bin when no helper is present
+2. **theme** - clones or fast-forwards `~/p/eggfriedrice.nvim`, checks every extra the configs reference and that every
+   tracked symlink resolves
+3. **symlinks** - links each config directory into `~/.config`, plus `~/.zshenv`, `~/.wallpapers`, the Cartograph
+   fonts and every command in `bin/` into `~/.local/bin`; existing real files are backed up as `*.bak.<timestamp>`, and
+   links into the repo whose target is gone are removed
+4. **shell** - `chsh` to zsh, first zinit run, then the fast-syntax-highlighting theme and the bat cache, each rebuilt
+   only when the theme is newer; a warning when the Starship palette drifted from the theme
+5. **services** - NetworkManager, sshd, timesyncd, fstrim, bluetooth, tailscaled, valkey, postgresql (with `initdb`),
+   docker group, the profile's `services`, pipewire user sockets, the `ssh-agent.socket` user unit
+6. **system** - the profile's `/etc` files (`machines/<profile>/etc/`), zram, wireless regdom FR, GRUB command line
+   (`zswap.enabled=0` plus the profile's `grub` file), GTK theme (adw-gtk3-dark, recolored from the palette by
+   `gtk-3.0/` and `gtk-4.0/`), Papirus-Dark with the palette's folders (`install/papirus-folders.sh`, rebuilt only when
+   something changed), dark mode and the UI font via gsettings, then the profile's `system.sh` hook
+7. **snapshots** - on the btrfs layout bootstrap.sh builds only: snapper retention, the pacman hook that keeps the
+   outgoing kernel, vfat in the initramfs; one line and no change anywhere else
+8. **migrations** - the one-off changes in `install/migrations/` this machine has not run yet (see [Migrations](#migrations))
+9. **finalize** - font cache, XDG user dirs, state dirs, Rust nightly, Node 22 via fnm, Neovim plugins and Mason tools
+   (headless, on a machine that has none yet), Claude Code, Stremio flatpak, then a summary: failed optional steps, what
+   needs a restart, relogin or reboot, the manual steps and the profile's `notes`
 
-The script is idempotent: rerun it after pulling to converge a machine.
+Optional steps (AUR builds, rustup, fnm, Neovim, Claude Code, flatpak, gsettings) do not stop the run; they are
+listed at the end. The script is idempotent: rerun it after pulling to converge a machine, or let `dots-update` do both.
+
+## Machine profiles
+
+Everything that belongs to one machine lives in `machines/<profile>/`; the rest of the repo is shared.
+
+| File | Read by | Holds |
+| --- | --- | --- |
+| `hypr.lua` (required) | Hyprland | a table with `monitors` (`hl.monitor` specs), `config` (applied after the shared `hl.config` values), `setup` (a function for binds, devices and event handlers) and `hypridle` (an idle config in that directory) |
+| `extends` | both | the profile this one builds on, applied first (`thinkpad` and `framework` extend `laptop`) |
+| `packages.txt`, `aur.txt` | stage 1 | extra packages |
+| `services` | stage 5 | system units to enable, one per line |
+| `etc/` | stage 6 | files laid out like `/etc` |
+| `grub` | stage 6 | kernel parameters, `VARIABLE PARAMETER [KEY]` per line |
+| `system.sh` | stage 6 | a hook for edits that are not whole files |
+| `notes` | stage 9 | lines that are not comments are printed as manual steps |
+| `hypridle.conf` | Hyprland | the laptop layer's idle config |
+
+The installer (`install/machine.sh`) and Hyprland (`hypr/machine.lua`) pick the profile the same way: `--profile`
+(installer only; it also writes the pin), the pin in `~/.config/dotfiles/profile`, the DMI strings against
+`machines/index` (`profile|sys_vendor|product_name|product_version|product_family`, a trailing `*` is a prefix match,
+first match wins), a `BAT*` battery means `laptop`, anything else is `generic`. Hyprland resolves on every config load
+and exports `DOTFILES_PROFILE`, so the session side needs nothing but a pull; a profile that fails to load leaves
+Hyprland without monitor rules, not without a session. `DMI_DIR` and `PS_DIR` point both resolvers at a fake tree for
+tests.
+
+What each profile carries today:
+
+- **desktop** - DP-1 at 2560x1440@240 and 10 bpc, the HP in portrait (SUPER+O flips it), Razer mouse sensitivity,
+  `it87-dkms-git`, rtw89 and btusb module options, `video=DP-1:2560x1440@240` on the kernel command line (keep it in sync
+  with the DP-1 rule), Bluetooth FastConnectable, the WiFi BSSID note
+- **laptop** - eDP-1 at scale 1 plus a rule for anything plugged in, `sof-firmware`, a key-only sshd drop-in, the idle
+  config in `machines/laptop/hypridle.conf` (dim at 2.5 min, lock at 5, display off at 5.5, suspend at 15 on battery
+  only), a key press wakes the display
+- **thinkpad** - the laptop layer as it is
+- **framework** - eDP-1 at scale 1.6, XWayland zero scaling, tap to click, three-finger workspace swipe, touch mapped
+  to the panel, the lid turns the panel off on a dock, `intel-media-driver`, `libva-utils`, `fwupd`, `powertop`,
+  `framework-system`, `power-profiles-daemon`; every value marked VERIFY is settled on the machine with
+  `machines/framework/ARRIVAL.md`
+- **generic** - every output at its preferred mode
+
+A new machine needs a directory with at least `hypr.lua` (and an `extends` file for a laptop), a line in
+`machines/index` from `cat /sys/class/dmi/id/{sys_vendor,product_name,product_version,product_family}`, and
+`./install.sh --print-profile` to confirm. Switching a machine to another profile never undoes the old one's packages or
+files; that is a migration.
+
+## Keeping a machine in sync
+
+`dots-update` (alias `up`; stage 3 links it into `~/.local/bin`) brings a machine up to date in one run:
+
+1. fetch and fast-forward `~/dotfiles` and `~/p/eggfriedrice.nvim`, never stash, rebase or merge (a repo that cannot be
+   fast-forwarded is left as it is and reported), and start over when the pull changed `dots-update` itself
+2. check the theme extras and every tracked link
+3. a pre-update snapshot, on machines that have snapshots
+4. Arch news, `archlinux-keyring`, `pacman -Su`, AUR (`yay` or `paru`), `flatpak update`
+5. `install.sh --no-upgrade`: new packages, links, services, `/etc` files, theme caches, and the migrations
+6. the matching post snapshot, or the pre one discarded when nothing changed
+7. a report: commits pulled, packages changed, `.pacnew` files, and what needs a restart, a relogin or a reboot
+
+```bash
+up --dry-run    # show the plan; fetches the remotes, changes nothing else
+up              # pacman and the AUR helper ask as usual; --yes answers for them
+up --check      # refresh the status file without sudo: pending packages, commits behind, reboot or relogin needed
+up -- --profile framework   # anything after -- goes to install.sh
+```
+
+`--no-pull`, `--no-packages`, `--no-converge` and `--no-snapshot` leave a phase out. Exit status: 0 done, 1 stopped, 2
+done with warnings, 130 interrupted. Logs are in `~/.local/state/dotfiles/update/log/` (the newest linked as
+`last.log`), the status file is `~/.local/state/dotfiles/update/status`. On battery below 30 percent it asks first.
+Without a terminal (a keybind or bar), `hypr/scripts/systemupdate.sh up` opens it in a Ghostty window that stays open;
+`systemupdate.sh` alone prints one waybar JSON line from the status file.
+
+## Migrations
+
+The stages only add and converge. Removing or replacing what an older version of the dotfiles left on a machine is
+the job of a migration: `install/migrations/<YYYYMMDD-HHMM>-<slug>.sh`, line 2 a one-line description. Each runs once
+per machine, oldest first, as stage 8 (after the stages have put the new state in place), in its own
+`set -Eeuo pipefail` shell with the installer's helpers (`remove_packages`, `swap_package`, `remove_path`,
+`remove_etc_file`, `as_root`) and `DOTFILES_DIR`, `PROFILE` and `DRY_RUN`.
+
+State is `~/.local/state/dotfiles/migrations`, one `<id> <applied|baseline|skipped> <time>` line per event; the last
+line for an id wins, an id without one is pending. A machine whose `~/.config` does not link into the dotfiles yet (a
+new install) records every existing migration as `baseline` without running it. A failed migration stays pending,
+stops the ones after it and makes install.sh exit 3; the stages are not affected.
+
+```bash
+install/migrate.sh              # run the pending ones
+install/migrate.sh --status     # every migration and its state; no root, writes nothing
+install/migrate.sh --dry-run    # what they would do
+install/migrate.sh --skip ID    # record one that cannot work on this machine as skipped
+install/migrate.sh --rearm ID   # forget ID's state so it runs again (after a rollback)
+install/migrate.sh --baseline   # record every pending one as baseline without running it
+install/migrate.sh --new SLUG   # an empty migration named for the current time
+```
+
+Never edit a migration that has been pushed, another machine may have run it already: write a new one. When something
+a migration removes is added back, delete that migration. A machine whose configs were copied instead of linked looks
+new and gets everything as baseline; delete the state file after its first run so the next one runs them.
+
+## Snapshots and recovery
+
+Only machines installed with bootstrap.sh have snapshots (root on the btrfs subvolume `@`, `/.snapshots` on
+`@snapshots`, snapper). The desktop is ext4 and has none: there every command below says so and changes nothing.
+
+- snap-pac takes a pre and post snapshot around every pacman transaction; `dots-update` takes one important pair
+  around the whole update, labelled `dots=pre-update` with the dotfiles commit. snapper keeps 10 numbered and 5
+  important snapshots, no timeline.
+- grub-btrfs lists them in GRUB's snapshots submenu, and grub-btrfs-overlayfs boots the read-only ones with a writable
+  overlay.
+- A pacman hook keeps the outgoing kernel and initramfs on the ESP as `vmlinuz-<pkgbase>.old` and
+  `initramfs-<pkgbase>.img.old`, so a snapshot from before a kernel upgrade still boots a kernel it has the modules for;
+  vfat in the initramfs keeps `/boot` mountable if one boots with a mismatched kernel anyway. The `.old` entry in GRUB's
+  advanced menu is today's root with the old kernel, not a way back.
+- `/home` is never snapshotted or rolled back, and neither is `~/dotfiles` in it.
+
+```bash
+dots-snapshot status       # 0 available, 1 not available (says why), 2 booted into a snapshot
+dots-snapshot list
+dots-snapshot create "before trying X"
+dots-snapshot rollback N   # -n shows every step first
+dots-snapshot undo         # put back the root and kernel the last rollback replaced
+dots-snapshot cleanup      # delete the old roots and kernel backups rollbacks left
+```
+
+Three ways back, mildest first:
+
+1. **It boots, an update broke something**: `dots-snapshot list`, then `dots-snapshot rollback N` (without N: the
+   newest pre-update snapshot) and reboot.
+2. **It does not boot**: pick the pre-update snapshot in GRUB's snapshots submenu; once it is up,
+   `dots-snapshot rollback` makes the booted snapshot the system again, with its own kernel; reboot.
+3. **Nothing boots**: from the Arch ISO, open LUKS if used (`cryptsetup open /dev/<root partition> cryptroot`), mount
+   the partition that holds the dotfiles (or clone them), then
+   `bash <dotfiles>/bin/dots-snapshot rollback N --device /dev/mapper/cryptroot --esp /dev/<esp partition>`.
+
+A rollback prepares everything before it touches anything (a writable copy of the snapshot, the NetworkManager
+connections, Bluetooth pairings and Tailscale state carried over, the snapshot's own kernel and initramfs), then swaps
+the roots and the kernel files; the restored system runs from the next boot. The replaced root stays as
+`@broken-<time>` (what `dots-snapshot undo` puts back) until `dots-snapshot cleanup`. It prints the
+migrations applied after the snapshot (their work is undone in the system but still recorded as applied) with the
+`install/migrate.sh --rearm <id>` command for each, and the dotfiles commit the snapshot was taken at; nothing is
+checked out for you.
 
 ## After install
 
