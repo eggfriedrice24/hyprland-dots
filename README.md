@@ -32,7 +32,7 @@ anything, and `install/lint-colors.sh` reports colour literals that bypass the p
 
 | Machine | Hostname | Profile | Recognised by |
 | --- | --- | --- | --- |
-| Desktop: Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX, ASUS OLED on DP-1, HP in portrait on HDMI-A-1 | `t` | `desktop` | DMI vendor and board name |
+| Desktop: Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX, ASUS OLED on DP-1, HP in portrait on HDMI-A-1 | `t` | `desktop` | DMI vendor and product name |
 | ThinkPad, the existing laptop | `tt` | `thinkpad` | vendor `LENOVO` with a ThinkPad product version or family |
 | Framework Laptop 13 Pro (Intel Core Ultra X7 358H), arriving December 2026 | `tf` | `framework` | vendor `Framework`, product name `Laptop*` (a guess until it is here) |
 | any other laptop | | `laptop` | a `BAT*` battery |
