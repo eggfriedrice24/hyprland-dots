@@ -7,8 +7,9 @@
 #
 # The JSON text is the number of pending packages ("!" for only a reboot or relogin, "*" for only
 # commits or migrations), empty when there is nothing to do, so a module hides itself; class is one
-# of uptodate, pending, relogin, reboot or unknown, plus failed when the last run did not end cleanly. A reboot or relogin flag counts only in the boot or Hyprland
-# session it was raised in, so a stale flag disappears without rerunning anything.
+# of uptodate, pending, relogin, reboot or unknown, plus failed when the last run did not end
+# cleanly. A reboot or relogin flag counts only in the boot or Hyprland session it was raised in, so
+# a stale flag disappears without rerunning anything.
 
 [[ -f /etc/arch-release ]] || exit 0
 
@@ -18,12 +19,7 @@ updater="$dotfiles/bin/dots-update"
 status_file="${DOTS_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles}/update/status"
 
 if [[ "${1:-}" == up ]]; then
-    if [[ -x "$updater" ]]; then
-        exec ghostty --title=dots-update --wait-after-command=true -e "$updater"
-    fi
-    # a checkout from before dots-update existed
-    helper="$(command -v yay || command -v paru)" || helper="sudo pacman"
-    exec ghostty --title=dots-update --wait-after-command=true -e sh -c "$helper -Syu"
+    exec ghostty --title=dots-update --wait-after-command=true -e "$updater"
 fi
 if [[ "${1:-}" == check && -x "$updater" ]]; then
     "$updater" --check >/dev/null 2>&1 || true
