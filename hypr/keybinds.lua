@@ -58,7 +58,17 @@ hl.bind("SUPER + equal", hl.dsp.exec_cmd([[killall rofi || rofi -show calc -modi
 
 -- Window management
 hl.bind("SUPER + Q", hl.dsp.window.close())
-hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd([[sh -c 'info=$(hyprctl activewindow -j); if echo "$info" | jq -r ".class" | grep -qi steam; then steam -shutdown; else kill -9 $(echo "$info" | jq ".pid"); fi']]))
+-- force-kill the focused window. Only the Steam client itself (class exactly "steam", games are
+-- steam_app_*) gets a clean `steam -shutdown`, since killing it leaves Steam half running
+hl.bind("SUPER + SHIFT + Q", function()
+  local w = hl.get_active_window()
+  if w == nil then return end
+  if w.class == "steam" then
+    hl.exec_cmd("steam -shutdown")
+  else
+    hl.dispatch(hl.dsp.window.kill())
+  end
+end)
 hl.bind("SUPER + SHIFT + Escape", hl.dsp.exit())
 hl.bind("SUPER + F", hl.dsp.window.fullscreen())
 hl.bind("SUPER + Space", hl.dsp.window.float())
