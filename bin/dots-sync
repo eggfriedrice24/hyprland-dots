@@ -8,6 +8,8 @@
 #     -y, --yes               do not ask before copying
 #     --only claude|projects  one of the two parts
 #     --sessions              Claude transcripts and prompt history too (off: they are large)
+#     --root DIR              carry these project roots instead of sync.conf's (repeatable)
+#     --claude DIR            carry these Claude config dirs instead of sync.conf's (repeatable)
 #     --skip PATH             leave PATH out this time (repeatable; sync.conf skip lines are permanent)
 #   dots-sync --pair HOST     let this machine log in to HOST with its SSH key (once per pair)
 #
@@ -46,7 +48,7 @@ argerr() {
 }
 need() { [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || argerr "$1 needs a value"; }
 
-DIRECTION="" HOST="" DRY=0 YES=0 ONLY="" SESSIONS=0 PAIR="" CLI_SKIP=()
+DIRECTION="" HOST="" DRY=0 YES=0 ONLY="" SESSIONS=0 PAIR="" CLI_SKIP=() CLI_ROOT=() CLI_CLAUDE=()
 while (($#)); do
     case "$1" in
         --from | --to)
@@ -69,6 +71,16 @@ while (($#)); do
             shift
             ;;
         --sessions) SESSIONS=1 ;;
+        --root)
+            need "$@"
+            CLI_ROOT+=("$2")
+            shift
+            ;;
+        --claude)
+            need "$@"
+            CLI_CLAUDE+=("$2")
+            shift
+            ;;
         --skip)
             need "$@"
             CLI_SKIP+=("$2")
@@ -167,18 +179,29 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         skip) SKIP+=("$value") ;;
     esac
 done <"$CONF"
-for a in "${ROOTS[@]}" "${CLAUDE_DIRS[@]}"; do
-    for b in "${ROOTS[@]}"; do
-        [[ "$a" != "$b"/* ]] || die "sync.conf: $a lies inside the root $b"
-    done
-done
-# --skip for this run only, on top of sync.conf's skip lines
-for value in "${CLI_SKIP[@]}"; do
+# a path given on the command line, in the forms sync.conf takes (p/x, ~/p/x, $HOME/p/x, trailing /)
+cli_path() {
+    local flag="$1" value="$2"
     value="${value%/}"
     value="${value#\~/}"
     value="${value#"$HOME"/}"
-    safe_rel "$value" || die "--skip: not a path under your home: $value"
-    SKIP+=("$value")
+    safe_rel "$value" || die "$flag: not a path under your home: $2"
+    printf '%s' "$value"
+}
+# --root and --claude replace sync.conf's lists for this run; --skip adds to its skip lines
+if ((${#CLI_ROOT[@]})); then
+    ROOTS=()
+    for value in "${CLI_ROOT[@]}"; do ROOTS+=("$(cli_path --root "$value")"); done
+fi
+if ((${#CLI_CLAUDE[@]})); then
+    CLAUDE_DIRS=()
+    for value in "${CLI_CLAUDE[@]}"; do CLAUDE_DIRS+=("$(cli_path --claude "$value")"); done
+fi
+for value in "${CLI_SKIP[@]}"; do SKIP+=("$(cli_path --skip "$value")"); done
+for a in "${ROOTS[@]}" "${CLAUDE_DIRS[@]}"; do
+    for b in "${ROOTS[@]}"; do
+        [[ "$a" != "$b"/* ]] || die "$a lies inside the root $b"
+    done
 done
 [[ "$ONLY" == projects ]] && CLAUDE_DIRS=()
 [[ "$ONLY" == claude ]] && ROOTS=()
@@ -1059,11 +1082,12 @@ if [[ "$replaced" =~ ^[0-9]+$ ]] && ((replaced > 0)); then
 fi
 for d in "${CLAUDE_SRC[@]}"; do
     [[ "${DST_LOGIN[$d]:-nologin}" == login ]] && continue
-    case "$d" in
-        .claude) info "Log in to Claude on $DST_NAME: claude" ;;
-        .claude-work) info "Log in to the work account on $DST_NAME: claudew" ;;
-        *) info "Log in on $DST_NAME with CLAUDE_CONFIG_DIR=~/$d claude" ;;
-    esac
+    # ~/.claude is Claude Code's default; any other dir is a CLAUDE_CONFIG_DIR (an alias, often)
+    if [[ "$d" == .claude ]]; then
+        info "Log in to Claude on $DST_NAME: claude"
+    else
+        info "Log in to the ~/$d account on $DST_NAME: CLAUDE_CONFIG_DIR=~/$d claude (or your alias for it)"
+    fi
 done
 if ((${#NEW_REPOS[@]})); then
     info "New repos come without build output: install their dependencies when you open them (pnpm i, cargo build, ...)"
