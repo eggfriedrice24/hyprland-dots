@@ -8,6 +8,7 @@
 #     -y, --yes               do not ask before copying
 #     --only claude|projects  one of the two parts
 #     --sessions              Claude transcripts and prompt history too (off: they are large)
+#     --skip PATH             leave PATH out this time (repeatable; sync.conf skip lines are permanent)
 #   dots-sync --pair HOST     let this machine log in to HOST with its SSH key (once per pair)
 #
 # What it carries is listed in sync.conf (dotfiles root). Nothing is ever deleted on the receiving
@@ -45,7 +46,7 @@ argerr() {
 }
 need() { [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || argerr "$1 needs a value"; }
 
-DIRECTION="" HOST="" DRY=0 YES=0 ONLY="" SESSIONS=0 PAIR=""
+DIRECTION="" HOST="" DRY=0 YES=0 ONLY="" SESSIONS=0 PAIR="" CLI_SKIP=()
 while (($#)); do
     case "$1" in
         --from | --to)
@@ -68,6 +69,11 @@ while (($#)); do
             shift
             ;;
         --sessions) SESSIONS=1 ;;
+        --skip)
+            need "$@"
+            CLI_SKIP+=("$2")
+            shift
+            ;;
         -h | --help) usage 0 ;;
         *) argerr "unknown option: $1 (dots-sync --help)" ;;
     esac
@@ -165,6 +171,14 @@ for a in "${ROOTS[@]}" "${CLAUDE_DIRS[@]}"; do
     for b in "${ROOTS[@]}"; do
         [[ "$a" != "$b"/* ]] || die "sync.conf: $a lies inside the root $b"
     done
+done
+# --skip for this run only, on top of sync.conf's skip lines
+for value in "${CLI_SKIP[@]}"; do
+    value="${value%/}"
+    value="${value#\~/}"
+    value="${value#"$HOME"/}"
+    safe_rel "$value" || die "--skip: not a path under your home: $value"
+    SKIP+=("$value")
 done
 [[ "$ONLY" == projects ]] && CLAUDE_DIRS=()
 [[ "$ONLY" == claude ]] && ROOTS=()

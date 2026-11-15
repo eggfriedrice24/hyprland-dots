@@ -240,7 +240,8 @@ moves is listed in `sync.conf`:
   the `.env`-style files move, and the run lists the repos whose commits or uncommitted work differ so you push or
   pull. A new repo is assembled under a temporary name and moved into place only when complete (an interrupted run
   resumes it). Folders that are not repos are copied minus `node_modules` and the like, and a repo inside such a folder
-  is planned as a repo of its own. `skip` lines leave entries out.
+  is planned as a repo of its own. `skip` lines in `sync.conf` leave entries out for good, `--skip PATH` (repeatable)
+  for one run.
 
 Syncing from a machine lets it run code on this one: its `settings.json` (hooks, status line, `env`, permissions),
 skills, agents, commands, plugins, project memory and MCP servers become this machine's Claude setup, and a new repo
