@@ -25,6 +25,7 @@ declare -A symlinks=(
     [".wallpapers"]="$HOME/.wallpapers"
     ["fonts/Cartograph"]="$HOME/.local/share/fonts/Cartograph"
     ["fonts/Nunito"]="$HOME/.local/share/fonts/Nunito"
+    ["fonts/AtkinsonHyperlegibleNext"]="$HOME/.local/share/fonts/AtkinsonHyperlegibleNext"
 )
 
 run mkdir -p "$HOME/.config"
