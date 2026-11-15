@@ -647,7 +647,8 @@ main() {
         reexec_if_changed
     fi
     PHASE=verify
-    if ((DO_CONVERGE)); then verify_theme; fi
+    # with --no-pull a missing theme repo is left to stage 2, which clones and verifies it
+    if ((DO_CONVERGE)) && { ((DO_PULL)) || [[ -d "$THEME_DIR/.git" ]]; }; then verify_theme; fi
     PHASE=snapshot
     MIGRATIONS_BEFORE="$(applied_migrations | paste -sd' ')"
     snapshot_pre
