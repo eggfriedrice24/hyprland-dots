@@ -1,0 +1,15 @@
+# Machine identity -> profile. Read by install/machine.sh and hypr/machine.lua.
+#
+#   profile|sys_vendor|product_name|product_version|product_family
+#
+# Fields are the files of the same name in /sys/class/dmi/id, compared literally after trimming
+# surrounding whitespace; a trailing * makes that field a prefix match, and an empty or omitted
+# field matches anything. First match wins.
+# A machine that matches nothing is "laptop" when it has a BAT* battery, else "generic".
+desktop|Gigabyte Technology Co., Ltd.|B650 AORUS ELITE AX V2
+# ThinkPad: product_name is Lenovo's machine type code, the model name is in product_version or
+# product_family. Tighten with the real strings once they are read on the machine (machines/thinkpad/notes).
+thinkpad|LENOVO||ThinkPad*
+thinkpad|LENOVO|||ThinkPad*
+# Framework: product_name is a guess until the machine arrives (machines/framework/ARRIVAL.md)
+framework|Framework|Laptop*
