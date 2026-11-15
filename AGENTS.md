@@ -47,7 +47,7 @@ All major components use a source/import pattern to split configs into logical m
 **Hyprland** - Lua config (0.55+ format), main config at `hypr/hyprland.lua` requires:
 
 - `startup.lua` - Autostart (environment for the portals, polkit agent, pipewire restart, dunst, cliphist text watcher,
-  awww, waybar logging to `~/.local/state/waybar.log`, the battery watchers, hypridle with the profile's config)
+  awww, waybar logging to `~/.local/state/waybar.log`, the battery watcher, hypridle with the profile's config)
 - `env.lua` - Environment variables
 - `windowrule.lua` - Window and layer rules
 - `keybinds.lua` - Keyboard shortcuts
@@ -316,6 +316,8 @@ Hyprland utility scripts live in `hypr/scripts/`:
 - `idle-suspend` (suspends only on battery; called by `machines/laptop/hypridle.conf`)
 - `screensht`, `screenrecord` and `colorpicker`; `clipboard` (the cliphist picker on SUPER+V)
 - `gamemode.sh` (animations, blur, gaps and rounding off and back, run by hand)
+- `font-picker` (SUPER+SHIFT+F: sets font.ui in the theme's typography.lua and applies it live; `--fetch` is run by
+  stage 9)
 - `systemupdate.sh` (waybar JSON from the dots-update status file; `up` opens dots-update in a terminal)
 
 When creating new scripts, place them in this directory and make them executable. Commands meant for a shell go in
