@@ -1,0 +1,17 @@
+#! /bin/sh
+set -e
+# eggfriedrice: GRUB's console (c) and entry editor (e) paint their text cells black over the
+# theme. background_color gives them the theme's background instead; the colour is read from the
+# installed theme, so the palette stays the theme's only source. Runs after 00_header, which sets
+# up gfxterm and the theme; prints nothing when the theme is not installed.
+# Installed by the dotfiles (install/stages/06-system.sh) from install/etc/grub.d.
+
+theme=/boot/grub/themes/eggfriedrice/theme.txt
+[ -f "$theme" ] || exit 0
+color="$(sed -n 's/^desktop-color: *"\(#[0-9a-fA-F]\{6\}\)".*/\1/p' "$theme")"
+[ -n "$color" ] || exit 0
+
+cat <<EOF
+insmod gfxterm_background
+background_color "$color"
+EOF
