@@ -63,11 +63,15 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			vim.diagnostic.open_float,
 			vim.tbl_extend("force", opts, { desc = "Show diagnostic" })
 		)
+		-- on_jump, not float: jump's float option is deprecated since 0.12
+		local function float_on_jump(_, jump_bufnr)
+			vim.diagnostic.open_float({ bufnr = jump_bufnr, scope = "cursor", focus = false })
+		end
 		vim.keymap.set("n", "]d", function()
-			vim.diagnostic.jump({ count = 1, float = true })
+			vim.diagnostic.jump({ count = 1, on_jump = float_on_jump })
 		end, vim.tbl_extend("force", opts, { desc = "Next diagnostic" }))
 		vim.keymap.set("n", "[d", function()
-			vim.diagnostic.jump({ count = -1, float = true })
+			vim.diagnostic.jump({ count = -1, on_jump = float_on_jump })
 		end, vim.tbl_extend("force", opts, { desc = "Previous diagnostic" }))
 		vim.keymap.set(
 			"n",
