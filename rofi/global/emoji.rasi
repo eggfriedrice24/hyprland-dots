@@ -10,7 +10,6 @@ configuration {
     show-icons: false;
     me-select-entry: "";
     me-accept-entry: "MousePrimary";
-    emoji-font: "Noto Color Emoji";
 }
 
 entry {
