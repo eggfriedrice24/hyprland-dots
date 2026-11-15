@@ -7,3 +7,4 @@ t3code-nightly-bin
 localsend-bin
 rune-notes-bin
 frameit-bin
+vercel # Vercel CLI (vercel, vc) from the npm release; updated by up like any AUR package
