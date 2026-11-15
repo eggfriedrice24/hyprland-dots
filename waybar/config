@@ -11,7 +11,8 @@
     "hyprland/window"
   ],
   "modules-center": [
-    "clock"
+    "clock",
+    "clock#date"
   ],
   "modules-right": [
     "tray",
@@ -44,13 +45,23 @@
     }
   },
   "clock": {
-    "_comment": "span colors below mirror the eggfriedrice palette (comment #8695b7, today #ffc940); Pango markup cannot reference the GTK css names",
-    "format": "{:%H:%M <span color='#8695b7'>· %a, %b %d</span>}",
+    "_comment": "time and date are two modules so style.css can colour the date from the palette; Pango markup cannot reference the GTK css names, so today in the calendar is marked by weight and underline instead of a colour",
+    "format": "{:%H:%M}",
     "tooltip-format": "<tt>{calendar}</tt>",
     "calendar": {
       "mode": "month",
       "format": {
-        "today": "<span color='#ffc940'><b>{}</b></span>"
+        "today": "<b><u>{}</u></b>"
+      }
+    }
+  },
+  "clock#date": {
+    "format": "· {:%a, %b %d}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "mode": "month",
+      "format": {
+        "today": "<b><u>{}</u></b>"
       }
     }
   },
