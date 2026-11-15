@@ -165,7 +165,11 @@ ask_password USER_PASS "Password for $USERNAME"
 ask TIMEZONE "Timezone" Europe/Paris
 [[ -f "/usr/share/zoneinfo/$TIMEZONE" ]] || die "Unknown timezone: $TIMEZONE"
 ask LOCALE "Locale" en_US.UTF-8
+# checked against the ISO's own locale.gen and keymaps (the new system ships the same), before the wipe
+grep -qE "^#?${LOCALE//./\\.} " /etc/locale.gen || die "Unknown locale: $LOCALE (see /etc/locale.gen)"
 ask KEYMAP "Console keymap" us
+[[ -n "$(find /usr/share/kbd/keymaps -name "$KEYMAP.map.gz" -print -quit)" ]] ||
+    die "Unknown keymap: $KEYMAP (localectl list-keymaps lists them)"
 ask RUN_DOTFILES "Run the dotfiles installer inside the new system now? [y/n]" y
 PULL_KEPT=n
 if [[ "$HOME_MODE" == k ]]; then
