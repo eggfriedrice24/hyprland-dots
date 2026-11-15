@@ -11,6 +11,33 @@ else
     run sudo sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
 fi
 
+# Packages the lists replace through a conflict. `pacman -S --noconfirm` answers No to "Remove rust?",
+# so the install would fail halfway; stop before anything changes and print the command to run.
+# Exact names only: `pacman -Qq rust` also answers for rustup, which provides rust.
+installed_exact() {
+    local names
+    names="$(pacman -Qq "$1" 2>/dev/null)" || return 1
+    [[ $'\n'"$names"$'\n' == *$'\n'"$1"$'\n'* ]]
+}
+conflicting=()
+replacements=()
+for pair in rust:rustup jack2:pipewire-jack pulseaudio:pipewire-pulse; do
+    if installed_exact "${pair%%:*}"; then
+        conflicting+=("${pair%%:*}")
+        replacements+=("${pair##*:}")
+    fi
+done
+if (( ${#conflicting[@]} )); then
+    conflict_cmd="sudo pacman -S ${replacements[*]}"
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        warn "${conflicting[*]} conflict with ${replacements[*]}; a real run stops here until you run: $conflict_cmd"
+    else
+        error "${conflicting[*]} conflict with ${replacements[*]} and --noconfirm will not remove them."
+        error "Run this, answer y to each removal, then rerun the installer: $conflict_cmd"
+        return 1
+    fi
+fi
+
 # Full upgrade first: installing on top of a stale database is a partial upgrade.
 # The keyring goes first so packages signed by newly added packager keys verify.
 info "Refreshing package database and archlinux-keyring..."
