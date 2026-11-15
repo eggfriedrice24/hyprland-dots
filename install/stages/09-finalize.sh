@@ -37,7 +37,10 @@ done
 # Hyprland scripts executable (git tracks the mode; this covers copies made without it)
 scripts_dir="${DOTFILES_DIR}/hypr/scripts"
 if [[ -d "$scripts_dir" ]]; then
-    run chmod +x "$scripts_dir"/*
+    mapfile -d '' not_executable < <(find "$scripts_dir" -maxdepth 1 -type f ! -perm -u+x -print0)
+    if (( ${#not_executable[@]} )); then
+        run chmod +x "${not_executable[@]}"
+    fi
     success "Hyprland scripts are executable"
 fi
 
