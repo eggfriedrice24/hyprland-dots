@@ -59,6 +59,34 @@ else
     warn "fnm not found, no Node version installed"
 fi
 
+# Neovim: plugins at the commits in the tracked lazy-lock.json, then the Mason tools, both headless
+# and only on a machine that has neither yet (later additions install on the next interactive start).
+# Each run ends with a check that exits 1 when something is still missing, since a failed clone or
+# download leaves nvim's own exit status at 0. Treesitter parsers still build on the first real start.
+if has_cmd nvim neovim; then
+    nvim_data="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+    nvim_new=0
+    if [[ -d "$nvim_data/lazy" ]]; then
+        success "Neovim plugins installed ($nvim_data/lazy)"
+    else
+        nvim_new=1
+        info "Installing Neovim plugins from lazy-lock.json (headless)..."
+        try "Neovim plugins (start nvim and run :Lazy restore)" \
+            timeout 900 nvim --headless "+Lazy! restore" \
+            "+lua if vim.iter(require('lazy').plugins()):any(function(p) return not p._.installed end) then vim.cmd.cquit() end" \
+            +qa </dev/null
+    fi
+    if (( ! nvim_new )) && [[ -n "$(ls -A "$nvim_data/mason/packages" 2>/dev/null)" ]]; then
+        success "Mason tools installed ($nvim_data/mason/packages)"
+    else
+        info "Installing Mason tools (headless)..."
+        try "Mason tools (start nvim and run :MasonToolsInstallSync)" \
+            timeout 1200 nvim --headless +MasonToolsInstallSync \
+            "+lua local r = require('mason-registry'); local o = require('lazy.core.plugin').values(require('lazy.core.config').plugins['mason-tool-installer.nvim'], 'opts', false); if vim.iter(o.ensure_installed):any(function(n) return not r.is_installed(type(n) == 'table' and n[1] or n) end) then vim.cmd.cquit() end" \
+            +qa </dev/null
+    fi
+fi
+
 # Claude Code (installs into ~/.local/bin)
 if command -v claude &>/dev/null; then
     success "Claude Code already installed: $(claude --version 2>/dev/null)"
@@ -121,7 +149,6 @@ if [[ "${QUIET:-0}" != "1" ]]; then
     echo "  - pair Bluetooth devices with bluetoothctl"
     echo "  - default apps: xdg-mime default zen.desktop x-scheme-handler/http (full list in README.md)"
     echo "  - fill in opencode/google-workspace.env; paste the Slack theme from ~/p/eggfriedrice.nvim/extras/slack"
-    echo "  - Neovim: start nvim once, then :Lazy restore to pin plugins to lazy-lock.json"
 
     # Machine profile notes (machines/<layer>/notes): every line that is not a comment is a manual step
     mapfile -t note_files < <(profile_files notes)
