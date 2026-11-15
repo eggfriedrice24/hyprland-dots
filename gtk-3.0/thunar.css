@@ -2,12 +2,13 @@
    leaks into other GTK apps. One translucent surface for the whole window (Hyprland blurs
    behind it; GTK3 drops its opaque region when the background has alpha), every pane
    transparent on top of it, so the window reads as a single panel like the rofi launcher.
-   Colors are the named colors from eggfriedrice-adw.css. */
+   Colors are the named colors from eggfriedrice-adw.css. Text is GTK's own font-name
+   setting (the theme's ui font, set by install/stages/06-system.sh), so nothing here names
+   a family. */
 
 .thunar.background {
   /* same opacity as ghostty's background-opacity (ghostty/appearance), keep them in step */
   background-color: alpha(@window_bg_color, 0.86);
-  font-family: "Cartograph CF";
 }
 
 .thunar menubar,
@@ -69,6 +70,8 @@
   background-color: alpha(@bg_dark, 0.6);
   box-shadow: none;
   color: @window_fg_color;
+  /* md, the prominent size of the typography scale (GTK3 CSS has no variables to read it from) */
+  font-size: 11pt;
 }
 
 .thunar toolbar entry:focus {
