@@ -136,7 +136,12 @@ case "$HOME_MODE" in
 esac
 
 echo
-ask HOSTNAME_ "Hostname" t
+# no default: every machine gets its own name (t is the desktop, tt the ThinkPad, tf the Framework)
+while :; do
+    ask_required HOSTNAME_ "Hostname (t desktop, tt thinkpad, tf framework)"
+    [[ "$HOSTNAME_" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] && break
+    warn "Use lowercase letters, digits and inner hyphens, at most 63 characters"
+done
 ask USERNAME "User name" eggfriedrice
 [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "Invalid user name: $USERNAME"
 ask_password USER_PASS "Password for $USERNAME"
