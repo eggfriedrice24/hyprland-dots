@@ -46,7 +46,8 @@ hl.bind("SUPER + T", hl.dsp.exec_cmd(browser))
 hl.bind("SUPER + B", hl.dsp.exec_cmd(browserP))
 hl.bind("SUPER + E", hl.dsp.exec_cmd(files))
 hl.bind("SUPER + D", hl.dsp.exec_cmd("killall rofi || rofi -show drun -theme ~/.config/rofi/config.rasi"))
-hl.bind("SUPER + period", hl.dsp.exec_cmd([[killall rofi || rofi -show emoji -emoji-format "{emoji}" -modi emoji -theme ~/.config/rofi/global/emoji]]))
+-- copy mode: the default insert mode needs wtype, which is not installed, so Enter only copies
+hl.bind("SUPER + period", hl.dsp.exec_cmd([[killall rofi || rofi -show emoji -emoji-mode copy -emoji-format "{emoji}" -modi emoji -theme ~/.config/rofi/global/emoji]]))
 -- rofi-calc: live qalc result under the input, Enter copies it and closes. With history on, Enter only
 -- saves to history and copying needs a second Enter on the history row, so history is off. rofi-calc
 -- does not guard an empty result on this path, hence the test -n (else Enter on nothing clears the clipboard);
