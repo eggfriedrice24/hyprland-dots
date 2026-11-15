@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Clipboard history picker over cliphist (hypr/startup.lua stores text only).
+#   Enter                  copy the entry back to the clipboard
+#   Shift+Delete           remove the entry and reopen the list
+#   Control+Shift+Delete   wipe the whole history, after a confirm whose first row is Cancel
+# Bound to SUPER+V; the theme is the launcher's (rofi/global/clipboard.rasi).
+set -u
+
+theme="$HOME/.config/rofi/global/clipboard"
+notifycmd=(notify-send -h string:x-canonical-private-synchronous:clipboard -u low)
+wipe_row="Wipe the clipboard history"
+
+for cmd in cliphist rofi wl-copy; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        "${notifycmd[@]}" "Clipboard" "$cmd is not installed"
+        exit 1
+    fi
+done
+
+confirm_wipe() {
+    local answer
+    answer="$(printf 'Cancel\n%s\n' "$wipe_row" |
+        rofi -dmenu -i -p "" -no-custom -theme "$theme" \
+            -theme-str 'entry { placeholder: "Wipe every entry?"; } mainbox { children: [ inputbar, listview ]; }')"
+    [[ "$answer" == "$wipe_row" ]]
+}
+
+while :; do
+    entries="$(cliphist list)"
+    if [[ -z "$entries" ]]; then
+        "${notifycmd[@]}" "Clipboard" "The history is empty"
+        exit 0
+    fi
+
+    # rofi's own Shift+Delete (delete-entry) does nothing in dmenu mode, so the key is freed for custom-1.
+    # Exit status 10 is kb-custom-1, 11 is kb-custom-2; the selected line is printed for both.
+    selection="$(printf '%s\n' "$entries" |
+        rofi -dmenu -i -p "" -no-custom -display-columns 2 \
+            -kb-delete-entry "" -kb-custom-1 "Shift+Delete" -kb-custom-2 "Control+Shift+Delete" \
+            -mesg "Enter copies, Shift+Del removes, Ctrl+Shift+Del wipes the history" \
+            -theme "$theme")"
+    status=$?
+
+    case $status in
+        0)
+            [[ -n "$selection" ]] && printf '%s\n' "$selection" | cliphist decode | wl-copy
+            exit 0
+            ;;
+        10)
+            [[ -n "$selection" ]] && printf '%s\n' "$selection" | cliphist delete
+            ;;
+        11)
+            if confirm_wipe; then
+                cliphist wipe
+                "${notifycmd[@]}" "Clipboard" "History wiped"
+            fi
+            exit 0
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+done

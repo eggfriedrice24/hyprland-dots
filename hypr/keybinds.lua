@@ -54,6 +54,8 @@ hl.bind("SUPER + period", hl.dsp.exec_cmd([[killall rofi || rofi -show emoji -em
 -- does not guard an empty result on this path, hence the test -n (else Enter on nothing clears the clipboard);
 -- not `[ ]`, rofi strips square-bracket blocks from commands as optional sections
 hl.bind("SUPER + equal", hl.dsp.exec_cmd([[killall rofi || rofi -show calc -modi calc -no-show-match -no-sort -terse -no-history -no-persist-history -hint-result "= " -hint-welcome "Enter copies the result" -calc-command "test -n '{result}' && printf %s '{result}' | wl-copy" -theme ~/.config/rofi/global/calc]]))
+-- clipboard history (text only): Enter copies, Shift+Delete removes an entry, Ctrl+Shift+Delete wipes it all
+hl.bind("SUPER + V", hl.dsp.exec_cmd("killall rofi || " .. scriptsDir .. "/clipboard"))
 -- "WB" is not a valid key name, these binds never triggered in the old config either
 -- hl.bind("SUPER + SHIFT + WB", hl.dsp.exec_cmd("killall -SIGUSR2 waybar")) -- Reload waybar
 -- hl.bind("SUPER + WB", hl.dsp.exec_cmd("killall -SIGUSR1 waybar")) -- Hide waybar

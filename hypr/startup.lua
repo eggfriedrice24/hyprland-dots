@@ -16,8 +16,8 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("/usr/lib/polkit-kde-authentication-agent-1") -- authentication dialogue for GUI apps
   hl.exec_cmd("systemctl --user restart pipewire") -- Restart pipewire to avoid bugs
   hl.exec_cmd("dunst") -- start notification demon
-  hl.exec_cmd("wl-paste --type text --watch cliphist store") -- clipboard store text data
-  hl.exec_cmd("wl-paste --type image --watch cliphist store") -- clipboard store image data
+  -- clipboard history for the SUPER+V picker; text only, stored images grew the db past 100 MB
+  hl.exec_cmd("wl-paste --type text --watch cliphist store")
   hl.exec_cmd("awww-daemon")
   hl.exec_cmd("sleep 1 && awww img ~/.wallpapers/wp.jpg --transition-type none")
   -- one session per log: the previous session's log moves to waybar.log.1 (kept, not truncated,

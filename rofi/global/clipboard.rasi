@@ -1,0 +1,34 @@
+// the launcher's panel, search bar and colours for the clipboard history (hypr/scripts/clipboard):
+// one line per entry, newest first and listed before typing, with the key hints in the message box
+@import "../config.rasi"
+
+configuration {
+    // one line per entry; the launcher's eh: 2 is for its name + comment rows
+    eh: 1;
+    show-icons: false;
+    // keep cliphist's newest-first order while filtering
+    matching: "normal";
+    sort: false;
+}
+
+mainbox {
+    children: [ inputbar, listview, message ];
+}
+
+// nf-fa-clipboard
+textbox-search {
+    str: "";
+}
+
+entry {
+    placeholder: "Search clipboard";
+}
+
+listview {
+    lines: 8;
+    require-input: false;
+}
+
+element {
+    children: [ element-text ];
+}
