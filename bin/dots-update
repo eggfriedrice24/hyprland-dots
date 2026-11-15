@@ -566,7 +566,12 @@ report() {
         for line in ${restart[@]+"${restart[@]}"}; do printf ' %-10s %s\n' restart "$line"; done
         for line in ${relogin[@]+"${relogin[@]}"}; do printf ' %-10s %s\n' RELOGIN "$line"; done
         for line in ${reboot[@]+"${reboot[@]}"}; do printf ' %-10s %s\n' REBOOT "$line"; done
-        if ((${#reboot[@]} + ${#relogin[@]} == 0)); then printf ' %-10s no reboot or relogin needed\n' ""; fi
+        # a dry run has no notes file: install.sh and the migrations print theirs as "would need" lines
+        if ((${#reboot[@]} + ${#relogin[@]} == 0 && DRY_RUN)); then
+            printf ' %-10s no package needs a reboot or relogin; install.sh may, see its "would need" lines above\n' ""
+        elif ((${#reboot[@]} + ${#relogin[@]} == 0)); then
+            printf ' %-10s no reboot or relogin needed\n' ""
+        fi
         if [[ -n "${LOG_FILE:-}" ]]; then printf ' %-10s %s\n' log "${LOG_FILE/#$HOME/\~}"; fi
     } | tee -a "${LOG_FILE:-/dev/null}"
     if [[ -n "${LOG_FILE:-}" && -n "$changes" ]]; then printf '%s\n' "--- packages" "$changes" >>"$LOG_FILE"; fi
