@@ -11,9 +11,12 @@ else
     run sudo sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
 fi
 
-# Full upgrade first: installing on top of a stale database is a partial upgrade
-info "Refreshing package database and upgrading the system..."
-run sudo pacman -Syu --noconfirm
+# Full upgrade first: installing on top of a stale database is a partial upgrade.
+# The keyring goes first so packages signed by newly added packager keys verify.
+info "Refreshing package database and archlinux-keyring..."
+run sudo pacman -Sy --needed --noconfirm archlinux-keyring
+info "Upgrading the system..."
+run sudo pacman -Su --noconfirm
 
 # Hardware-specific packages: CPU microcode and Vulkan driver by detected vendor.
 # Installed before apps so steam's vulkan-driver dependency resolves to the right provider.
