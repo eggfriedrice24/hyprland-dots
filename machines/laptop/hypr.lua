@@ -14,4 +14,26 @@ return {
 		-- the idle config turns the display off; a key press wakes it, not only the mouse
 		misc = { key_press_enables_dpms = true },
 	},
+
+	setup = function()
+		-- Lid closed with no other screen: lock and turn the display off. On external power the
+		-- machine keeps running, reachable over tailscale like a small server (logind ignores the
+		-- lid there: etc/systemd/logind.conf.d/10-lid.conf); on battery logind suspends it as before.
+		-- With another screen connected nothing happens here: a profile's dock handling (the
+		-- Framework's) turns the panel off instead and the session stays unlocked.
+		-- locked: the lid still works while hyprlock is up.
+		local lid = "Lid Switch" -- the switch in `hyprctl devices` (ThinkPad and Framework alike)
+		hl.bind("switch:on:" .. lid, function()
+			for _, m in ipairs(hl.get_monitors()) do
+				if m.name ~= "eDP-1" and m.enabled ~= false then
+					return
+				end
+			end
+			hl.exec_cmd("loginctl lock-session")
+			hl.dispatch(hl.dsp.dpms({ action = "off" }))
+		end, { locked = true })
+		hl.bind("switch:off:" .. lid, function()
+			hl.dispatch(hl.dsp.dpms({ action = "on" }))
+		end, { locked = true })
+	end,
 }
