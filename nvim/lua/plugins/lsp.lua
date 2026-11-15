@@ -37,7 +37,6 @@ return {
 				"gofumpt",
 				"goimports",
 				"google-java-format",
-				"rustfmt",
 				"shfmt",
 
 				-- Linters
