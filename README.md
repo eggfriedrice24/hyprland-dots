@@ -198,8 +198,7 @@ up --prune      # afterwards, pick packages the dotfiles do not list and remove 
 `--no-pull`, `--no-packages`, `--no-converge` and `--no-snapshot` leave a phase out. Exit status: 0 done, 1 stopped, 2
 done with warnings, 130 interrupted. Logs are in `~/.local/state/dotfiles/update/log/` (the newest linked as
 `last.log`), the status file is `~/.local/state/dotfiles/update/status`. On battery below 30 percent it asks first.
-Without a terminal, `hypr/scripts/systemupdate.sh up` opens it in a Ghostty window that stays open; no bind or bar
-module runs it, and nothing in the bar shows update status.
+Without a terminal, `hypr/scripts/systemupdate.sh up` opens it in a Ghostty window that stays open.
 
 ## Pruning
 

@@ -55,7 +55,7 @@ Usage: dots-update [options] [-- install.sh options]
   -h, --help
 Anything after -- goes to install.sh, for example: dots-update -- --profile framework
 Exit status: 0 done, 1 stopped on an error, 2 done with warnings (see the summary), 130 interrupted.
-Logs: ${STATE_DIR/#$HOME/\~}/log/, newest linked as last.log; state for bars and menus in status.
+Logs: ${STATE_DIR/#$HOME/\~}/log/, newest linked as last.log; state (pending updates, reboot) in status.
 From a bar, menu or keybind (no terminal): $LAUNCHER
 EOF
     exit "${1:-0}"
@@ -171,8 +171,7 @@ status_set() { # status_set key=value...: rewrite the given keys, keep the rest
     mv "$tmp" "$STATE_DIR/status"
 }
 # A reboot or relogin flagged by an earlier run stays pending until the boot or the Hyprland
-# session changes. The flag carries the id it was raised in, so a reader of the status file (a bar)
-# can tell a stale flag without running anything.
+# session changes. The flag carries the id it was raised in, so a later run can tell a stale flag.
 reboot_pending() { kernel_stale || [[ "$(status_get reboot)" == 1 && "$(status_get reboot_boot_id)" == "$(boot_id)" ]]; }
 relogin_pending() {
     hyprland_stale && return 0
@@ -194,7 +193,7 @@ behind_count() { # commits the checkout is behind its upstream, "?" when unknown
 do_check() {
     local official=0 aur=0 helper dots theme pending reboot=0 relogin=0 last
     local -a keys=()
-    # bars and menus may run without the session's agent; the fetch must not hang on a passphrase
+    # a shell without the session's agent (ssh, a TTY) must not hang the fetch on a passphrase
     if [[ -z "${SSH_AUTH_SOCK:-}" && -r "$HOME/.keychain/$(uname -n)-sh" ]]; then
         # shellcheck source=/dev/null
         source "$HOME/.keychain/$(uname -n)-sh" >/dev/null

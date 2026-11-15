@@ -325,8 +325,7 @@ Hyprland utility scripts live in `hypr/scripts/`:
 - `gamemode.sh` (animations, blur, gaps and rounding off and back, run by hand)
 - `font-picker` (SUPER+SHIFT+F: sets font.ui in the theme's typography.lua and applies it live; `--fetch` is run by
   stage 9)
-- `systemupdate.sh` (`up` opens dots-update in a Ghostty window, the launcher dots-update's messages point to; no bind
-  or bar module runs it)
+- `systemupdate.sh` (`up` opens dots-update in a Ghostty window, the launcher dots-update's messages point to)
 
 When creating new scripts, place them in this directory and make them executable. Commands meant for a shell go in
 `bin/` instead, which stage 3 links into `~/.local/bin`.
