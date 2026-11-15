@@ -42,13 +42,14 @@ zinit light zsh-users/zsh-completions
 compinit -d "$_zcompdump"
 unset _zcompdump
 
-# Plugins
+# Plugins (fzf-tab first: it must load after compinit but before the plugins
+# that wrap widgets, fast-syntax-highlighting and zsh-autosuggestions)
 zinit light-mode for \
+  Aloxaf/fzf-tab \
   hlissner/zsh-autopair \
   zdharma-continuum/fast-syntax-highlighting \
   MichaelAquilina/zsh-you-should-use \
-  zsh-users/zsh-autosuggestions \
-  Aloxaf/fzf-tab
+  zsh-users/zsh-autosuggestions
 
 
 zinit ice wait'3' lucid atload'bindkey "^[[A" history-substring-search-up; bindkey "^[[B" history-substring-search-down'
