@@ -195,13 +195,9 @@ do_check() {
     local official=0 aur=0 helper dots theme pending reboot=0 relogin=0 last
     local -a keys=()
     # bars and menus may run without the session's agent; the fetch must not hang on a passphrase
-    if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
-        if [[ -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/ssh-agent.socket" ]]; then
-            export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-/run/user/$UID}/ssh-agent.socket"
-        elif [[ -r "$HOME/.keychain/$(uname -n)-sh" ]]; then # machines still on keychain
-            # shellcheck source=/dev/null
-            source "$HOME/.keychain/$(uname -n)-sh" >/dev/null
-        fi
+    if [[ -z "${SSH_AUTH_SOCK:-}" && -r "$HOME/.keychain/$(uname -n)-sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$HOME/.keychain/$(uname -n)-sh" >/dev/null
     fi
     # checkupdates syncs a private copy of the databases, so the counts are fresh without root
     if command -v checkupdates &>/dev/null; then
