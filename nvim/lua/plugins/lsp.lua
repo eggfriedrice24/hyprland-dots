@@ -7,10 +7,19 @@ return {
 		opts = {},
 	},
 
-	-- Auto-install Mason tools
+	-- Auto-install Mason tools. Loaded at startup so its VimEnter check also
+	-- runs when nvim opens without a file; the commands serve headless runs
+	-- such as `nvim --headless +MasonToolsInstallSync +qa`.
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
-		event = { "BufReadPre", "BufNewFile" },
+		lazy = false,
+		cmd = {
+			"MasonToolsInstall",
+			"MasonToolsInstallSync",
+			"MasonToolsUpdate",
+			"MasonToolsUpdateSync",
+			"MasonToolsClean",
+		},
 		dependencies = { "williamboman/mason.nvim" },
 		opts = {
 			ensure_installed = {
