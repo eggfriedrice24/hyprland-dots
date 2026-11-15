@@ -14,10 +14,10 @@
 #                         are kept, so a rerun only fetches what is missing. Stage 9 of the installer runs it.
 #   font-picker FAMILY    apply FAMILY without the menu
 #
-# Where each candidate comes from: Nunito ships in the dotfiles (fonts/Nunito), Inter is the inter-font
-# package; the rest have no package with a Medium (Figtree, Lexend and Google Sans Flex none at all,
-# M PLUS Rounded 1c only a 2015 AUR build or the 319 MiB ttf-mplus-nerd, Atkinson Hyperlegible Next
-# only the AUR), so they come from Google Fonts.
+# Where each candidate comes from: Atkinson Hyperlegible Next (the theme's ui font) and Nunito ship in
+# the dotfiles (fonts/), so the ui font is there before any download; Inter is the inter-font package;
+# the rest have no package with a Medium (Figtree, Lexend and Google Sans Flex none at all, M PLUS
+# Rounded 1c only a 2015 AUR build or the 319 MiB ttf-mplus-nerd), so they come from Google Fonts.
 set -euo pipefail
 
 THEME_DIR="${THEME_DIR:-$HOME/p/eggfriedrice.nvim}"
@@ -34,7 +34,7 @@ CANDIDATES=(
     "Figtree|figtree/Figtree[wght].ttf"
     "Rubik|rubik/Rubik[wght].ttf"
     "Lexend|lexend/Lexend[wght].ttf"
-    "Atkinson Hyperlegible Next|atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext[wght].ttf"
+    "Atkinson Hyperlegible Next|"
 )
 
 notify() { notify-send -a font-picker -h string:x-canonical-private-synchronous:font-picker "$@" 2>/dev/null || true; }
