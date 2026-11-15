@@ -35,7 +35,7 @@ for src_name in "${link_names[@]}"; do
     link_path "${DOTFILES_DIR}/${src_name}" "${symlinks[$src_name]}"
 done
 
-# Commands (dots-update, dots-snapshot): every executable in bin/ goes on PATH through ~/.local/bin,
+# Commands in bin/ (dots-update, dots-snapshot, dots-prune): every executable in bin/ goes on PATH through ~/.local/bin,
 # a real directory other tools install into too, so the files are linked one by one
 for cmd in "${DOTFILES_DIR}"/bin/*; do
     [[ -f "$cmd" && -x "$cmd" ]] || continue

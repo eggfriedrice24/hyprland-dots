@@ -81,7 +81,7 @@ if [[ "$PRINT_PROFILE" -eq 1 ]]; then
 fi
 mapfile -t PROFILE_LAYERS < <(profile_layers "$PROFILE")
 
-# tools installed by the stages themselves (claude, uv tools) land here
+# tools installed by the stages themselves (claude) and the bin/ commands land here
 export PATH="$HOME/.local/bin:$PATH"
 export DOTFILES_DIR DRY_RUN PROFILE PROFILE_SOURCE NO_UPGRADE QUIET
 
