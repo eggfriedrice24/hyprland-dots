@@ -1,7 +1,10 @@
 # Typography
 font-family = Cartograph CF
 font-family-bold = Cartograph CF Bold
-font-family-italic = Cartograph CF Italic
-font-family-bold-italic = Cartograph CF Bold Italic
+# fontconfig files the italics under the regular families with an italic style
+font-family-italic = Cartograph CF
+font-style-italic = Italic
+font-family-bold-italic = Cartograph CF Bold
+font-style-bold-italic = Bold Italic
 font-size = 13
 adjust-cell-height = 20%
