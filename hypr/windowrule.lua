@@ -3,6 +3,8 @@
 -- Layer effects
 -- no_anim: hyprland animates layer size changes by scaling the old buffer, which stretches rofi every time the result count changes
 hl.layer_rule({ match = { namespace = "^(rofi)$" }, blur = true, ignore_alpha = 0.20, no_anim = true })
+-- the bar is simply there at login, without the layer slide and fade
+hl.layer_rule({ match = { namespace = "^(waybar)$" }, no_anim = true })
 -- blur dunst notifications - pairs best with a lower alpha on the dunstrc
 -- backgrounds (e.g. #0d111acc) so the blur has something to show through
 -- hl.layer_rule({ match = { namespace = "^(notifications)$" }, blur = true, ignore_alpha = 0.20 })
