@@ -51,8 +51,9 @@ All major components use a source/import pattern to split configs into logical m
 
 **Hyprland** - Lua config (0.55+ format), main config at `hypr/hyprland.lua` requires:
 
-- `startup.lua` - Autostart (environment for the portals, polkit agent, pipewire restart, dunst, cliphist text watcher,
-  awww, waybar logging to `~/.local/state/waybar.log`, the battery watcher, hypridle with the profile's config)
+- `startup.lua` - Autostart (polkit agent, dunst, cliphist text watcher, awww with the wallpaper once the daemon answers,
+  waybar at once (no start delay) logging to `~/.local/state/waybar.log`, the battery watcher, hypridle with the
+  profile's config; Hyprland itself hands the session environment to systemd, pipewire is socket-activated)
 - `env.lua` - Environment variables
 - `windowrule.lua` - Window and layer rules
 - `keybinds.lua` - Keyboard shortcuts
