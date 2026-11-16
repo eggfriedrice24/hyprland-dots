@@ -7,9 +7,16 @@ source "$ZDOTDIR/session.zsh"
 
 export GPG_TTY="${TTY:-$(tty)}"
 
-# SSH Agent (keychain reuses existing agent across terminals; the key is restored by hand, see README)
+# SSH Agent (keychain reuses existing agent across terminals; the key is restored by hand, see README).
+# keychain is a Python script (~60 ms a shell): source the agent file it wrote and only run it when
+# that agent is gone. The glob avoids naming the host; ~/.keychain is never synced between machines.
 if command -v keychain >/dev/null; then
-  eval "$(keychain --eval --quiet --noask efr)"
+  _kc=(~/.keychain/*-sh(N[1]))
+  [[ -n $_kc ]] && source $_kc >/dev/null
+  if [[ ! -S $SSH_AUTH_SOCK ]] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
+    eval "$(keychain --eval --quiet --noask efr)"
+  fi
+  unset _kc
 fi
 
 # FNM (Fast Node Manager) - auto-switch Node versions from .nvmrc. Versions live in
@@ -17,7 +24,7 @@ fi
 if command -v fnm >/dev/null; then
   # a nested shell inherits its parent's per-shell dir; drop it so only this shell's is on PATH
   path=(${path:#*/fnm_multishells/*})
-  eval "$(fnm env --use-on-cd)"
+  eval "$(fnm env --use-on-cd --shell zsh)" # --shell: no ps scan to guess it (~25 ms a shell)
 fi
 
 export SUDO_PROMPT="passwd: "
