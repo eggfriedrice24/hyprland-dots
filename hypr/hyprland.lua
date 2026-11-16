@@ -8,7 +8,7 @@ require("keybinds")
 -- colours so the rest of this config still applies when the repo is not cloned yet.
 local ok, efr = pcall(require, "eggfriedrice")
 if not ok then
-	efr = { border = "rgb(c9a747)", fg_gutter_ui = "rgb(586480)" }
+	efr = { alpha = { comment = "8695b7", fg_gutter = "46516c" } }
 end
 
 -- Monitors, devices and other per-machine values: machines/<profile>/hypr.lua, picked by machine.lua
@@ -46,12 +46,16 @@ hl.config({
 -- General
 hl.config({
 	general = {
-		gaps_in = 5,
-		gaps_out = 0,
-		border_size = 0,
+		-- from the "Hairline" design (Claude Design): an 8 px seam between windows, 10 px to the
+		-- screen edges, and a 1 px border. Focus is a cool slate line (comment at 70%), the same
+		-- family as the glass edge of rofi and the bar, so the yolk stays for the accents;
+		-- unfocused windows keep a fg_gutter hairline at 50% so shared tiling edges never merge
+		gaps_in = 4,
+		gaps_out = 10,
+		border_size = 1,
 		col = {
-			active_border = efr.border, -- gold accent border
-			inactive_border = efr.fg_gutter_ui, -- readable gray, inactive borders
+			active_border = "rgba(" .. efr.alpha.comment .. "b3)",
+			inactive_border = "rgba(" .. efr.alpha.fg_gutter .. "80)",
 		},
 		layout = "dwindle",
 		-- no_focus_fallback = false
