@@ -446,6 +446,7 @@ layouts.
 | SUPER+period | emoji picker, Enter copies |
 | SUPER+equal | calculator, Enter copies the result |
 | SUPER+SHIFT+F | UI font picker: each font drawn in itself; choosing one sets the theme's `font.ui` and applies it live (commit `typography.lua` in eggfriedrice.nvim to keep it) |
+| SUPER+SHIFT+W | wallpaper picker: `~/.wallpapers` as thumbnails; the pick fades in on every monitor and stays for the next login |
 | SUPER+V | clipboard history: Enter copies, Shift+Delete removes, Ctrl+Shift+Delete wipes |
 | **Capture** | |
 | Print | screenshot of the focused monitor, saved to `~/Pictures/Screenshots` and copied |
