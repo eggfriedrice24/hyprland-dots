@@ -9,7 +9,7 @@
 }
 
 window#waybar {
-  background: alpha(@bg, 0.7);
+  background: @panel; /* glass: the shared glass opacity (extras/gtk), blurred by a hyprland layer rule */
   color: @fg;
   border-bottom: 1px solid alpha(@fg_gutter, 0.5);
 }
