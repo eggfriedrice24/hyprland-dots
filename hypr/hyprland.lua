@@ -65,7 +65,7 @@ hl.config({
 		disable_hyprland_logo = true,
 		disable_splash_rendering = true,
 		mouse_move_enables_dpms = true,
-		animate_manual_resizes = true,
+		animate_manual_resizes = false, -- a resize follows the pointer instead of trailing it on a spring
 		mouse_move_focuses_monitor = true,
 		enable_swallow = true,
 		swallow_regex = "^(com\\.mitchellh\\.ghostty)$",
@@ -105,26 +105,74 @@ hl.config({
 	},
 })
 
--- Animations
+-- Animations: "fluid" - smooth glides with zero overshoot; a touch slower and with longer travel
+-- than crisp, but every motion is 90% done within about 190 ms, so nothing drags
+-- speed is in units of 100 ms of bezier time; springs ignore speed (their timing is pure physics),
+-- the parser still wants one, so springs carry speed = 1
 hl.config({ animations = { enabled = true } })
 
--- bezier curves
-hl.curve("wind", { type = "bezier", points = { { 0.05, 0.9 }, { 0.1, 1.05 } } })
-hl.curve("winIn", { type = "bezier", points = { { 0.1, 1.1 }, { 0.1, 1.1 } } })
-hl.curve("winOut", { type = "bezier", points = { { 0.3, -0.3 }, { 0, 1 } } })
-hl.curve("liner", { type = "bezier", points = { { 1, 1 }, { 1, 1 } } })
+-- curves
+-- quart: ease-out quart, softer start than quint (24% in the first 60 Hz frame at 250 ms)
+hl.curve("quart", { type = "bezier", points = { { 0.25, 1 }, { 0.5, 1 } } })
+-- smooth: ease-in-out sine, for fades that should melt rather than drop
+hl.curve("smooth", { type = "bezier", points = { { 0.37, 0 }, { 0.63, 1 } } })
+-- accel: ease-in for exits
+hl.curve("accel", { type = "bezier", points = { { 0.3, 0 }, { 1, 1 } } })
+-- glide: critically damped (zeta 1.0), 90% at 186 ms, no overshoot; long, soft landing
+hl.curve("glide", { type = "spring", mass = 1, stiffness = 440, damping = 42 })
+-- settle: zeta 0.95, 90% at 163 ms, no visible overshoot; tiling reflow, drags and resizes
+hl.curve("settle", { type = "spring", mass = 1, stiffness = 500, damping = 42.5 })
 
-hl.animation({ leaf = "windows", enabled = true, speed = 6, bezier = "wind", style = "slide" })
-hl.animation({ leaf = "windowsIn", enabled = true, speed = 4, bezier = "winIn", style = "slide" })
-hl.animation({ leaf = "windowsOut", enabled = true, speed = 5, bezier = "winOut", style = "slide" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 5, bezier = "wind", style = "slide" })
-hl.animation({ leaf = "border", enabled = true, speed = 1, bezier = "liner" })
-hl.animation({ leaf = "fade", enabled = true, speed = 10, bezier = "default" })
--- new windows and layers (notifications) are there at once: about 150 ms to near-opaque instead of
--- 500 ms; fade-out, workspace switch and dim keep the slower fade
-hl.animation({ leaf = "fadeIn", enabled = true, speed = 3, bezier = "default" })
-hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 3, bezier = "default" })
-hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "wind" })
+-- everything not set below (zoomFactor, any future leaf) gets 300 ms quart instead of 800 ms
+hl.animation({ leaf = "global", enabled = true, speed = 3, bezier = "quart" })
+
+-- windows: open grows from 88% while fading in, close eases down to 94% in 180 ms
+hl.animation({ leaf = "windows", enabled = true, speed = 1, spring = "glide", style = "popin 88%" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 1, spring = "glide", style = "popin 88%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.8, bezier = "accel", style = "popin 94%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 1, spring = "settle" })
+
+-- layers fade only (the wallpaper layer at startup); dunst gets its slide from a layer rule in
+-- windowrule.lua; rofi and waybar keep no_anim there
+hl.animation({ leaf = "layers", enabled = true, speed = 2.5, bezier = "quart", style = "fade" })
+hl.animation({ leaf = "layersIn", enabled = true, speed = 2.5, bezier = "quart", style = "fade" })
+hl.animation({ leaf = "layersOut", enabled = true, speed = 1.6, bezier = "accel", style = "fade" })
+
+-- fades: 250 ms quart parent; focus-driven fades share it
+hl.animation({ leaf = "fade", enabled = true, speed = 2.5, bezier = "quart" })
+hl.animation({ leaf = "fadeIn", enabled = true, speed = 2.2, bezier = "quart" })
+hl.animation({ leaf = "fadeOut", enabled = true, speed = 1.6, bezier = "smooth" })
+hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 2.5, bezier = "quart" })
+hl.animation({ leaf = "fadeShadow", enabled = true, speed = 2.5, bezier = "quart" })
+hl.animation({ leaf = "fadeGlow", enabled = true, speed = 2.5, bezier = "quart" })
+hl.animation({ leaf = "fadeDim", enabled = true, speed = 3, bezier = "quart" })
+hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 2.2, bezier = "quart" })
+hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 1.6, bezier = "smooth" })
+-- menus, dropdowns and tooltips (Zen, GTK): soft but still near-instant
+hl.animation({ leaf = "fadePopupsIn", enabled = true, speed = 1.2, bezier = "quart" })
+hl.animation({ leaf = "fadePopupsOut", enabled = true, speed = 0.9, bezier = "smooth" })
+hl.animation({ leaf = "fadeDpms", enabled = true, speed = 4, bezier = "smooth" })
+
+-- border colour on focus change; borderangle stays off (disabled by default, no looping gradient)
+hl.animation({ leaf = "border", enabled = true, speed = 3, bezier = "quart" })
+
+-- workspaces use a bezier, not a spring: every switch warps both workspaces before it starts
+-- (WorkspaceAnimationController), so a spring always starts from rest - slower off the mark,
+-- a long sub-pixel tail with both workspaces drawn, and a stall after a touchpad swipe
+-- a 20% slide under a crossfade; 350 ms quart, 90% at about 155 ms
+hl.animation({ leaf = "workspaces", enabled = true, speed = 3.5, bezier = "quart", style = "slidefade 20%" })
+-- the scratchpad (SUPER+A) rises from below and sinks back
+hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 3.5, bezier = "quart", style = "slidefadevert 20%" })
+hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 3.5, bezier = "quart", style = "slidefadevert 20%" })
+hl.animation({
+	leaf = "specialWorkspaceOut",
+	enabled = true,
+	speed = 1.8,
+	bezier = "accel",
+	style = "slidefadevert 20%",
+})
+
+hl.animation({ leaf = "monitorAdded", enabled = true, speed = 4, bezier = "quart" })
 
 -- Layouts
 hl.config({
