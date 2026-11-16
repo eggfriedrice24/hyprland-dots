@@ -5,6 +5,11 @@
 hl.layer_rule({ match = { namespace = "^(rofi)$" }, blur = true, ignore_alpha = 0.20, no_anim = true })
 -- the bar is simply there at login, without the layer slide and fade
 hl.layer_rule({ match = { namespace = "^(waybar)$" }, no_anim = true })
+-- slurp's selection overlay: no fade-out, or area screenshots and recordings catch it dimming
+-- (grimblast asks for this with `hyprctl keyword`, which the Lua config manager rejects)
+hl.layer_rule({ match = { namespace = "^(selection)$" }, no_anim = true })
+-- notifications (dunst, the volume and brightness OSD too) slide in from the right edge
+hl.layer_rule({ match = { namespace = "^(notifications)$" }, animation = "slide right" })
 -- blur dunst notifications - pairs best with a lower alpha on the dunstrc
 -- backgrounds (e.g. #0d111acc) so the blur has something to show through
 -- hl.layer_rule({ match = { namespace = "^(notifications)$" }, blur = true, ignore_alpha = 0.20 })
