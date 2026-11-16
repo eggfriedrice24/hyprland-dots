@@ -10,10 +10,11 @@ end
 
 -- hl.exec_cmd spawns async processes, no need for "& disown"
 hl.on("hyprland.start", function()
-	hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP") -- for XDPH
-	hl.exec_cmd("systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP") -- for XDPH
+	-- Hyprland 0.57 hands WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP and HYPRLAND_INSTANCE_SIGNATURE to
+	-- systemd and D-Bus itself before hyprland-session.target, so the portals need no import here.
+	-- pipewire is socket-activated (pipewire.socket); a restart here was its first start at login
+	-- and dropped every audio stream on a relogin.
 	hl.exec_cmd("/usr/lib/polkit-kde-authentication-agent-1") -- authentication dialogue for GUI apps
-	hl.exec_cmd("systemctl --user restart pipewire") -- Restart pipewire to avoid bugs
 	hl.exec_cmd("dunst") -- start notification demon
 	-- clipboard history for the SUPER+V picker; text only, stored images grew the db past 100 MB
 	hl.exec_cmd("wl-paste --type text --watch cliphist store")
