@@ -32,3 +32,4 @@ dmidecode
 gptfdisk
 parted
 os-prober
+blender
