@@ -47,15 +47,15 @@ hl.config({
 hl.config({
 	general = {
 		-- from the "Hairline" design (Claude Design): an 8 px seam between windows, 10 px to the
-		-- screen edges, and a 1 px border. Focus is a cool slate line (comment at 70%), the same
+		-- screen edges, and a 1 px border. Focus is a quiet slate line (comment at 45%), the same
 		-- family as the glass edge of rofi and the bar, so the yolk stays for the accents;
-		-- unfocused windows keep a fg_gutter hairline at 50% so shared tiling edges never merge
+		-- unfocused windows keep a fainter fg_gutter hairline (30%) so shared tiling edges never merge
 		gaps_in = 4,
 		gaps_out = 10,
 		border_size = 1,
 		col = {
-			active_border = "rgba(" .. efr.alpha.comment .. "b3)",
-			inactive_border = "rgba(" .. efr.alpha.fg_gutter .. "80)",
+			active_border = "rgba(" .. efr.alpha.comment .. "73)",
+			inactive_border = "rgba(" .. efr.alpha.fg_gutter .. "4d)",
 		},
 		layout = "dwindle",
 		-- no_focus_fallback = false
