@@ -19,12 +19,17 @@ hl.on("hyprland.start", function()
 	-- clipboard history for the SUPER+V picker; text only, stored images grew the db past 100 MB
 	hl.exec_cmd("wl-paste --type text --watch cliphist store")
 	hl.exec_cmd("awww-daemon")
-	hl.exec_cmd("sleep 1 && awww img ~/.wallpapers/wp.jpg --transition-type none")
+	-- the wallpaper as soon as the daemon answers (at most 5 s), not after a fixed second
+	hl.exec_cmd(
+		"timeout 5 sh -c 'until awww query >/dev/null 2>&1; do sleep 0.05; done';"
+			.. " awww img ~/.wallpapers/wp.jpg --transition-type none"
+	)
 	-- one session per log: the previous session's log moves to waybar.log.1 (kept, not truncated,
-	-- so a crash from the last session can still be read after a relogin)
+	-- so a crash from the last session can still be read after a relogin). No delay: the portal
+	-- reset that once needed waybar to wait 2 s is gone, and waybar is configured in about 0.1 s
 	hl.exec_cmd(
 		"mkdir -p ~/.local/state; mv -f ~/.local/state/waybar.log ~/.local/state/waybar.log.1 2>/dev/null;"
-			.. " sleep 2 && waybar >> ~/.local/state/waybar.log 2>&1"
+			.. " exec waybar >> ~/.local/state/waybar.log 2>&1"
 	)
 	start_watcher("battery-watcher.sh") -- laptop battery low notifications (sysfs); exits on machines without one
 	-- a machine profile can bring its own idle config (machines/<profile>/hypr.lua, field hypridle)
