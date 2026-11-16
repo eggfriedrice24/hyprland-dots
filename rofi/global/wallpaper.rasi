@@ -1,5 +1,5 @@
-// the launcher's panel, search bar and colours, with the list swapped for a grid of wallpaper
-// thumbnails (hypr/scripts/wallpaper-picker, SUPER+SHIFT+W)
+// wallpaper picker (hypr/scripts/wallpaper-picker, SUPER+SHIFT+W): the launcher's panel and colours,
+// nothing but a grid of square thumbnails. No search bar; typing still filters by name
 @import "../config.rasi"
 
 configuration {
@@ -9,19 +9,23 @@ configuration {
 }
 
 window {
-    width: 940px;
+    location: center;
+    anchor: center;
+    y-offset: 0;
+    width: 900px;
 }
 
-entry {
-    placeholder: "Search wallpapers";
+mainbox {
+    children: [ listview ];
 }
 
-// shown before typing and at a fixed size, so the window never resizes
+// all of them at once, at a fixed size, so the window never resizes
 listview {
-    columns: 3;
-    lines: 3;
-    padding: 10px;
-    spacing: 10px;
+    columns: 4;
+    lines: 2;
+    padding: 12px;
+    spacing: 12px;
+    border: 0px;
     fixed-height: true;
     fixed-columns: true;
     require-input: false;
@@ -29,33 +33,34 @@ listview {
 }
 
 element {
-    orientation: vertical;
-    padding: 8px;
-    spacing: 6px;
-    border: 1px;
+    padding: 4px;
+    border: 2px;
     border-color: transparent;
-    border-radius: 10px;
-    children: [ element-icon, element-text ];
+    border-radius: 12px;
+    children: [ element-icon ];
 }
 
-// the thumbnails are 480x270; rofi fits them into this square box by width
 element-icon {
-    size: 270px;
+    size: 196px;
+    border-radius: 8px;
     horizontal-align: 0.5;
 }
 
-element-text {
-    font: @font-ui-sm;
-    horizontal-align: 0.5;
-}
-
-// a raised tile and an accent edge, as in the emoji picker, so the photo is not tinted
+// no fill, so the photo keeps its colours: the tile is marked by the accent edge alone
+element normal.normal,
+element alternate.normal,
+element normal.active,
+element alternate.active,
 element selected.normal,
 element selected.active,
 element selected.urgent {
-    background-color: @selection;
+    background-color: transparent;
+}
+
+element selected.normal,
+element selected.active,
+element selected.urgent {
     border-color: @accent;
-    text-color: @foreground;
 }
 
 // the wallpaper on screen now

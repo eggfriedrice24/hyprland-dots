@@ -57,29 +57,28 @@ files=("$DIR"/*.{jpg,jpeg,png,webp,gif})
 shopt -u nocaseglob
 ((${#files[@]})) || { notify-send -a wallpaper-picker "No wallpapers in ~/.wallpapers"; exit 1; }
 
-# 16:9 thumbnails, centre crop like the desktop shows them
+# square thumbnails, centre crop: rofi draws an icon in a square box, so a wide one would leave
+# empty bands above and below it
 mkdir -p "$CACHE"
 for f in "${files[@]}"; do
-    t="$CACHE/$(basename "${f%.*}").png"
+    t="$CACHE/$(basename "${f%.*}")-sq.png"
     if [[ ! -f "$t" || "$f" -nt "$t" ]]; then
-        magick "${f}[0]" -thumbnail 480x270^ -gravity center -extent 480x270 "$t"
+        magick "${f}[0]" -thumbnail 360x360^ -gravity center -extent 360x360 "$t"
     fi
 done
 
 cur="$(current)"
 active=0
-rows=""
 for i in "${!files[@]}"; do
-    f="${files[$i]}"
-    name="$(basename "${f%.*}")"
-    [[ "$f" == "$cur" ]] && active=$i
-    label="${name//-/ }"
-    [[ "$f" == "$DEFAULT" ]] && label="main"
-    rows+="$label"$'\0icon\x1f'"$CACHE/$name.png"$'\n'
+    [[ "${files[$i]}" == "$cur" ]] && active=$i
 done
 
-choice="$(printf '%s' "$rows" |
-    rofi -dmenu -i -format i -show-icons -a "$active" -selected-row "$active" \
-        -theme ~/.config/rofi/global/wallpaper.rasi)" || exit 0
+# one row per wallpaper: its name (hidden by the theme, kept for typing to filter), then rofi's
+# "\0icon\x1f<path>" row option. printf writes the NUL; a bash string cannot hold one
+choice="$(for f in "${files[@]}"; do
+    name="$(basename "${f%.*}")"
+    printf '%s\0icon\x1f%s\n' "${name//-/ }" "$CACHE/$name-sq.png"
+done | rofi -dmenu -i -format i -show-icons -a "$active" -selected-row "$active" \
+    -theme ~/.config/rofi/global/wallpaper.rasi)" || exit 0
 [[ "$choice" =~ ^[0-9]+$ ]] || exit 0
 apply "${files[$choice]}"
