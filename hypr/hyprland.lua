@@ -114,11 +114,15 @@ hl.curve("winOut", { type = "bezier", points = { { 0.3, -0.3 }, { 0, 1 } } })
 hl.curve("liner", { type = "bezier", points = { { 1, 1 }, { 1, 1 } } })
 
 hl.animation({ leaf = "windows", enabled = true, speed = 6, bezier = "wind", style = "slide" })
-hl.animation({ leaf = "windowsIn", enabled = true, speed = 6, bezier = "winIn", style = "slide" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 4, bezier = "winIn", style = "slide" })
 hl.animation({ leaf = "windowsOut", enabled = true, speed = 5, bezier = "winOut", style = "slide" })
 hl.animation({ leaf = "windowsMove", enabled = true, speed = 5, bezier = "wind", style = "slide" })
 hl.animation({ leaf = "border", enabled = true, speed = 1, bezier = "liner" })
 hl.animation({ leaf = "fade", enabled = true, speed = 10, bezier = "default" })
+-- new windows and layers (notifications) are there at once: about 150 ms to near-opaque instead of
+-- 500 ms; fade-out, workspace switch and dim keep the slower fade
+hl.animation({ leaf = "fadeIn", enabled = true, speed = 3, bezier = "default" })
+hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 3, bezier = "default" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "wind" })
 
 -- Layouts
