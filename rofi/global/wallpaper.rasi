@@ -1,0 +1,65 @@
+// the launcher's panel, search bar and colours, with the list swapped for a grid of wallpaper
+// thumbnails (hypr/scripts/wallpaper-picker, SUPER+SHIFT+W)
+@import "../config.rasi"
+
+configuration {
+    show-icons: true;
+    me-select-entry: "";
+    me-accept-entry: "MousePrimary";
+}
+
+window {
+    width: 940px;
+}
+
+entry {
+    placeholder: "Search wallpapers";
+}
+
+// shown before typing and at a fixed size, so the window never resizes
+listview {
+    columns: 3;
+    lines: 3;
+    padding: 10px;
+    spacing: 10px;
+    fixed-height: true;
+    fixed-columns: true;
+    require-input: false;
+    dynamic: false;
+}
+
+element {
+    orientation: vertical;
+    padding: 8px;
+    spacing: 6px;
+    border: 1px;
+    border-color: transparent;
+    border-radius: 10px;
+    children: [ element-icon, element-text ];
+}
+
+// the thumbnails are 480x270; rofi fits them into this square box by width
+element-icon {
+    size: 270px;
+    horizontal-align: 0.5;
+}
+
+element-text {
+    font: @font-ui-sm;
+    horizontal-align: 0.5;
+}
+
+// a raised tile and an accent edge, as in the emoji picker, so the photo is not tinted
+element selected.normal,
+element selected.active,
+element selected.urgent {
+    background-color: @selection;
+    border-color: @accent;
+    text-color: @foreground;
+}
+
+// the wallpaper on screen now
+element normal.active,
+element alternate.active {
+    border-color: @panel-edge;
+}

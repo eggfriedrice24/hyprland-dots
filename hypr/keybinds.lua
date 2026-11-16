@@ -68,6 +68,8 @@ hl.bind(
 )
 -- UI font picker: each candidate drawn in itself; choosing one sets the theme's font.ui and applies it live
 hl.bind("SUPER + SHIFT + F", hl.dsp.exec_cmd("killall rofi || ~/.config/hypr/scripts/font-picker"))
+-- wallpaper picker: ~/.wallpapers as thumbnails; the pick is set with a short fade and kept for the next login
+hl.bind("SUPER + SHIFT + W", hl.dsp.exec_cmd("killall rofi || " .. scriptsDir .. "/wallpaper-picker"))
 -- clipboard history (text only): Enter copies, Shift+Delete removes an entry, Ctrl+Shift+Delete wipes it all
 hl.bind("SUPER + V", hl.dsp.exec_cmd("killall rofi || " .. scriptsDir .. "/clipboard"))
 

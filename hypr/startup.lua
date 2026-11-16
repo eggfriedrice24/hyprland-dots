@@ -19,11 +19,9 @@ hl.on("hyprland.start", function()
 	-- clipboard history for the SUPER+V picker; text only, stored images grew the db past 100 MB
 	hl.exec_cmd("wl-paste --type text --watch cliphist store")
 	hl.exec_cmd("awww-daemon")
-	-- the wallpaper as soon as the daemon answers (at most 5 s), not after a fixed second
-	hl.exec_cmd(
-		"timeout 5 sh -c 'until awww query >/dev/null 2>&1; do sleep 0.05; done';"
-			.. " awww img ~/.wallpapers/wp.jpg --transition-type none"
-	)
+	-- the wallpaper last picked with SUPER+SHIFT+W (~/.wallpapers/wp.jpg until then), as soon as the
+	-- daemon answers (the script waits at most 5 s)
+	hl.exec_cmd("~/.config/hypr/scripts/wallpaper-picker --restore")
 	-- one session per log: the previous session's log moves to waybar.log.1 (kept, not truncated,
 	-- so a crash from the last session can still be read after a relogin). No delay: the portal
 	-- reset that once needed waybar to wait 2 s is gone, and waybar is configured in about 0.1 s

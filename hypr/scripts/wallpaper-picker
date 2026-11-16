@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# Wallpaper picker: the wallpapers in ~/.wallpapers as a rofi grid of thumbnails (SUPER+SHIFT+W).
+# The pick is set on every monitor with awww and remembered, so the next login starts with it.
+#
+#   wallpaper-picker             pick with rofi
+#   wallpaper-picker FILE        set FILE without the menu
+#   wallpaper-picker --restore   set the remembered wallpaper (startup.lua at login); waits for
+#                                awww-daemon to answer, at most 5 s
+#
+# Remembered in $XDG_STATE_HOME/dotfiles/wallpaper (one path); ~/.wallpapers/wp.jpg until a first pick.
+# Thumbnails are cached in $XDG_CACHE_HOME/wallpaper-picker and remade when a wallpaper is newer.
+set -euo pipefail
+
+DIR="$HOME/.wallpapers"
+DEFAULT="$DIR/wp.jpg"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/wallpaper"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wallpaper-picker"
+
+current() {
+    local f=""
+    [[ -r "$STATE" ]] && f="$(<"$STATE")"
+    if [[ -n "$f" && -f "$f" ]]; then printf '%s\n' "$f"; else printf '%s\n' "$DEFAULT"; fi
+}
+
+# set FILE on every output; a short fade when picked, none at login
+apply() {
+    local file="$1" how="${2:-fade}"
+    if [[ "$how" == none ]]; then
+        awww img "$file" --transition-type none
+    else
+        awww img "$file" --transition-type fade --transition-duration 0.7 --transition-fps 120
+    fi
+    mkdir -p "${STATE%/*}"
+    printf '%s\n' "$file" >"$STATE"
+}
+
+case "${1:-}" in
+    --restore)
+        timeout 5 sh -c 'until awww query >/dev/null 2>&1; do sleep 0.05; done' || true
+        apply "$(current)" none
+        exit 0
+        ;;
+    -h | --help)
+        sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0
+        ;;
+    "") ;;
+    *)
+        [[ -f "$1" ]] || { echo "wallpaper-picker: no such file: $1" >&2; exit 1; }
+        apply "$(realpath -s "$1")"
+        exit 0
+        ;;
+esac
+
+shopt -s nullglob nocaseglob
+files=("$DIR"/*.{jpg,jpeg,png,webp,gif})
+shopt -u nocaseglob
+((${#files[@]})) || { notify-send -a wallpaper-picker "No wallpapers in ~/.wallpapers"; exit 1; }
+
+# 16:9 thumbnails, centre crop like the desktop shows them
+mkdir -p "$CACHE"
+for f in "${files[@]}"; do
+    t="$CACHE/$(basename "${f%.*}").png"
+    if [[ ! -f "$t" || "$f" -nt "$t" ]]; then
+        magick "${f}[0]" -thumbnail 480x270^ -gravity center -extent 480x270 "$t"
+    fi
+done
+
+cur="$(current)"
+active=0
+rows=""
+for i in "${!files[@]}"; do
+    f="${files[$i]}"
+    name="$(basename "${f%.*}")"
+    [[ "$f" == "$cur" ]] && active=$i
+    label="${name//-/ }"
+    [[ "$f" == "$DEFAULT" ]] && label="main"
+    rows+="$label"$'\0icon\x1f'"$CACHE/$name.png"$'\n'
+done
+
+choice="$(printf '%s' "$rows" |
+    rofi -dmenu -i -format i -show-icons -a "$active" -selected-row "$active" \
+        -theme ~/.config/rofi/global/wallpaper.rasi)" || exit 0
+[[ "$choice" =~ ^[0-9]+$ ]] || exit 0
+apply "${files[$choice]}"
