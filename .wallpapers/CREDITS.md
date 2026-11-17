@@ -1,9 +1,11 @@
 # Wallpapers
 
-`wp.jpg` is the main wallpaper (`hypr/startup.lua` sets it at login). The rest were picked in the Claude Design
+`wp.jpg` is the default wallpaper until one is picked with SUPER+SHIFT+W. The rest were picked in the Claude Design
 "Hyprland window decoration directions" canvas: night and blue-hour scenes in the eggfriedrice palette.
 They come from Unsplash under the Unsplash License (free to use, no attribution required; credited here anyway),
-saved at 3840x2560 (3:2, centre crop): the 16:9 desktop shows the centre strip, the 3:2 Framework panel all of it.
+cropped from the photographers' originals to 3:2 (centre) and saved at quality 95, at most 3840x2560 and never
+upscaled: the 16:9 desktop shows the centre strip, the 3:2 Framework panel all of it. Patagonia is 3024x2016,
+the most its original allows.
 
 | File | Photographer | Unsplash |
 |---|---|---|
