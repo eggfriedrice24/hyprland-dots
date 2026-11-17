@@ -34,7 +34,7 @@ README.md documents all five.
 
 **Hyprland Auto-Start:** `zsh/.zprofile` sources `zsh/session.zsh` (PATH, XDG dirs, EDITOR, VISUAL, BROWSER,
 TERMINAL), hands those names to systemd and D-Bus activation, and execs Hyprland on a TTY1 login outside any graphical
-session. The ssh agent is keychain, started per interactive shell in `zsh/env.zsh`.
+session. The ssh agent is keychain (`zsh/env.zsh`): the first terminal after a boot asks for the efr passphrase.
 
 **Bootstrap Process:**
 

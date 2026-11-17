@@ -393,8 +393,10 @@ server already running keeps running until `dbdown` or a reboot); `install/migra
 Things that hold secrets or hardware state and are set up by hand:
 
 - **WiFi**: the ISO's connection is not carried over; `nmcli device wifi connect <ssid> --ask`
-- **SSH and git**: restore `~/.ssh` (keys and `config`; keychain in `zsh/env.zsh` starts one agent shared by all
-  terminals) and `~/.gitconfig`, then `gh auth login`
+- **SSH and git**: restore `~/.ssh` (keys and `config`) and `~/.gitconfig`, then `gh auth login`. keychain in
+  `zsh/env.zsh` keeps one agent for all terminals; the first terminal after a boot asks for the `efr` passphrase.
+  Other keys go into the agent on first use with `AddKeysToAgent yes` on their `Host` entries, and every entry needs
+  `IdentitiesOnly yes`, or ssh offers every loaded key and GitHub signs in as the first account it recognises
 - **Tailscale**: `sudo tailscale up`
 - **Bluetooth**: pair and trust devices with `bluetoothctl`
 - **WiFi on the desktop**: pin the connection to the AP's BSSID and the 5 GHz band to avoid rtw89 stalls:
