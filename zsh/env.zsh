@@ -7,14 +7,21 @@ source "$ZDOTDIR/session.zsh"
 
 export GPG_TTY="${TTY:-$(tty)}"
 
-# SSH Agent (keychain reuses existing agent across terminals; the key is restored by hand, see README).
-# keychain is a Python script (~60 ms a shell): source the agent file it wrote and only run it when
-# that agent is gone. The glob avoids naming the host; ~/.keychain is never synced between machines.
+# SSH Agent: keychain keeps one agent for every terminal. The first terminal after a boot (an empty
+# agent) asks for the efr passphrase once; the other keys are added on first use by AddKeysToAgent in
+# ~/.ssh/config. keychain is a Python script (~60 ms a shell), so it only runs while the agent is gone
+# or empty; otherwise the agent file it wrote is just sourced. Without a terminal (scripts, zsh -ic)
+# it never asks. The glob avoids naming the host; ~/.keychain is never synced between machines.
 if command -v keychain >/dev/null; then
   _kc=(~/.keychain/*-sh(N[1]))
   [[ -n $_kc ]] && source $_kc >/dev/null
-  if [[ ! -S $SSH_AUTH_SOCK ]] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
-    eval "$(keychain --eval --quiet --noask efr)"
+  ssh-add -l >/dev/null 2>&1 # 0 keys loaded, 1 agent empty, 2 no agent
+  if (( $? != 0 )); then
+    if [[ -t 0 && -t 1 ]]; then
+      eval "$(keychain --eval --quiet efr)"
+    else
+      eval "$(keychain --eval --quiet --noask efr)"
+    fi
   fi
   unset _kc
 fi
