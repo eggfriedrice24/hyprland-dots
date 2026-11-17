@@ -24,6 +24,7 @@ hl.window_rule({ match = { class = "^(steam)$" }, opacity = "0.80 0.80" })
 -- thunar: translucent through gtk-3.0/thunar.css instead, so text and icons stay opaque
 hl.window_rule({ match = { class = "^(discord)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(slack)$" }, opacity = "0.80 0.80" })
+hl.window_rule({ match = { class = "^(signal)$" }, opacity = "0.80 0.80" })
 hl.window_rule({ match = { class = "^(org.kde.polkit-kde-authentication-agent-1)$" }, opacity = "0.80 0.70" })
 
 -- Position
