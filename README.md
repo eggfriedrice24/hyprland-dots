@@ -33,7 +33,7 @@ anything, and `install/lint-colors.sh` reports colour literals that bypass the p
 
 | Machine | Hostname | Profile | Recognised by |
 | --- | --- | --- | --- |
-| Desktop: Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX, ASUS OLED on DP-1, HP in portrait on HDMI-A-1 | `t` | `desktop` | DMI vendor and product name |
+| Desktop: Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX, ASUS OLED on DP-1, HP in landscape on HDMI-A-1 | `t` | `desktop` | DMI vendor and product name |
 | ThinkPad, the existing laptop | `tt` | `thinkpad` | vendor `LENOVO` with a ThinkPad product version or family |
 | Framework Laptop 13 Pro (Intel Core Ultra X7 358H), arriving December 2026 | `tf` | `framework` | vendor `Framework`, product name `Laptop*` (a guess until it is here) |
 | any other laptop | | `laptop` | a `BAT*` battery |
@@ -156,7 +156,7 @@ tests.
 
 What each profile carries today:
 
-- **desktop** - DP-1 at 2560x1440@240 and 10 bpc, the HP in portrait (SUPER+O flips it), Razer mouse sensitivity,
+- **desktop** - DP-1 at 2560x1440@240 and 10 bpc, the HP in landscape (SUPER+O flips it), Razer mouse sensitivity,
   `it87-dkms-git`, rtw89 and btusb module options, `video=DP-1:2560x1440@240` on the kernel command line (keep it in sync
   with the DP-1 rule), Bluetooth FastConnectable, the WiFi BSSID note
 - **laptop** - eDP-1 at scale 1 plus a rule for anything plugged in, `sof-firmware`, a key-only sshd drop-in, the idle

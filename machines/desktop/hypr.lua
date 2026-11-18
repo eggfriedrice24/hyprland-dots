@@ -1,5 +1,5 @@
 -- Desktop (hostname t): Gigabyte B650 AORUS ELITE AX V2, RX 7900 XTX
--- ASUS XG27AQDMGR (OLED, 1440p240) on DP-1, HP P27q G4 on HDMI-A-1 in portrait.
+-- ASUS XG27AQDMGR (OLED, 1440p240) on DP-1, HP P27q G4 on HDMI-A-1 in landscape (SUPER+O pivots to portrait).
 -- DP-1 is also named by the kernel command line in machines/desktop/grub: keep the two in sync.
 
 local notifycmd = "notify-send -h string:x-canonical-private-synchronous:hypr-cfg -u low"
@@ -13,7 +13,7 @@ return {
 	monitors = {
 		-- 10bpc matches the boot console's link config, avoids a second DP retrain at login
 		{ output = "DP-1", mode = "2560x1440@240", position = "0x0", scale = 1, bitdepth = 10 },
-		hp_portrait,
+		hp_landscape,
 	},
 
 	config = {
