@@ -12,6 +12,9 @@
 
 add_newline = true
 palette = "eggfriedrice"
+# the first prompt after a boot reads the directory cold while the session is still starting; the
+# default 30 ms ran out there and printed a warning. A warm scan of ~ takes about a millisecond.
+scan_timeout = 200
 
 format = """\
 $username\
