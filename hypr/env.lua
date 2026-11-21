@@ -13,3 +13,7 @@ hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
 hl.env("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
 hl.env("_JAVA_AWT_WM_NONREPARENTING", "1")
+
+-- Mesa shader cache: the 1 GiB default fills up after driver updates and evicts shaders
+-- games just compiled (Arc Raiders menu hitches, 2026-11). Shared by every Vulkan/GL game.
+hl.env("MESA_SHADER_CACHE_MAX_SIZE", "10G")
