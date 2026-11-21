@@ -5,6 +5,7 @@ stylua
 shfmt
 go
 rustup
+zig # its language server zls comes from Mason, which follows zig's releases (Arch's zls lags)
 jdk-openjdk
 python
 uv
