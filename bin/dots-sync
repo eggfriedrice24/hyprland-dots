@@ -269,6 +269,8 @@ SSH_MUX=(ssh "${SSH_OPTS[@]}" -o ControlMaster=auto -o "ControlPath=$CM" -o Cont
 # shellcheck disable=SC2329 # the EXIT trap calls it
 cleanup() {
     local rc=$?
+    # an interrupted copy leaves its progress line half drawn; nothing else is cleared
+    [[ -t 2 && "${PROGRESS:-0}" == 1 ]] && printf '\r\033[K' >&2
     if ((rc != 0)) && [[ -s "$TMP/failed" ]]; then
         warn "Stopped early; not copied completely: $(sort -u "$TMP/failed" | paste -sd' ')"
     fi
@@ -845,6 +847,57 @@ done
 RSH="ssh ${SSH_OPTS[*]} -o ControlMaster=auto -o ControlPath=$CM -o ControlPersist=300"
 RSYNC=(rsync -a --update --mkpath -s -e "$RSH")
 
+hsize() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "${1}B"; }
+
+# show_progress TOTAL: rsync's --info=progress2 stream on stdin (an update per file, each ending in
+# \r), drawn on stderr as one line rewritten in place, at most five times a second, and cleared at
+# the end. Percent and time left come from TOTAL, the bytes measured before the copy: rsync's own
+# total grows while -a is still listing files. A draw that fails stops the drawing, never the
+# reading, so rsync is never left blocked on a full pipe.
+show_progress() {
+    local total="$1" chunk b rate pct bps mult secs left of now last=0 drawn=1
+    local re='^ *([0-9,]+)B? +[0-9]+% +([^ ]+) ' speed='^([0-9]+)(\.([0-9]+))?([kMGT]?)B/s$'
+    of="$(hsize "$total")"
+    while IFS= read -r -d $'\r' chunk || [[ -n "$chunk" ]]; do
+        ((drawn)) || continue
+        [[ "$chunk" =~ $re ]] || continue
+        now="${EPOCHREALTIME/./}"
+        ((now - last >= 200000)) || continue
+        last="$now"
+        b="${BASH_REMATCH[1]//,/}" rate="${BASH_REMATCH[2]}" pct=0 left=""
+        if ((total > 0)); then
+            pct=$((b * 100 / total))
+            if ((pct > 99)); then pct=99; fi
+            # time left from rsync's current speed (decimal units, e.g. 42.0MB/s), rounded up so it
+            # never reads 0:00 early; none while the speed is still 0B/s
+            bps=0
+            if [[ "$rate" =~ $speed ]]; then
+                case "${BASH_REMATCH[4]}" in
+                    k) mult=1000 ;;
+                    M) mult=1000000 ;;
+                    G) mult=1000000000 ;;
+                    T) mult=1000000000000 ;;
+                    *) mult=1 ;;
+                esac
+                bps=$((10#${BASH_REMATCH[1]} * mult))
+                if [[ -n "${BASH_REMATCH[3]}" ]]; then
+                    bps=$((bps + 10#${BASH_REMATCH[3]} * mult / 10 ** ${#BASH_REMATCH[3]}))
+                fi
+            fi
+            if ((bps > 0 && b < total)); then
+                secs=$(((total - b + bps - 1) / bps))
+                if ((secs >= 3600)); then
+                    printf -v left '  %d:%02d:%02d left' $((secs / 3600)) $((secs % 3600 / 60)) $((secs % 60))
+                else
+                    printf -v left '  %d:%02d left' $((secs / 60)) $((secs % 60))
+                fi
+            fi
+        fi
+        printf '\r\033[K        %s of %s  %d%%  %s%s' "$(hsize "$b")" "$of" "$pct" "$rate" "$left" >&2 || drawn=0
+    done
+    if ((drawn)); then printf '\r\033[K' >&2 || true; fi
+}
+
 stage_of() { # where a new repo is assembled before it is moved into place
     local p="$1"
     if [[ "$p" == */* ]]; then printf '%s/.%s.dots-sync-partial' "${p%/*}" "${p##*/}"; else printf '.%s.dots-sync-partial' "$p"; fi
@@ -895,13 +948,26 @@ xfer() {
             args=("$SRC_P$p" "$DST_P$p.dots-sync-incoming")
             ;;
     esac
-    local out status=0
-    out="$(LC_ALL=C "${RSYNC[@]}" "${extra[@]}" --stats "${args[@]}" 2>"$TMP/rsync.err.$BASHPID")" || status=$?
+    local out status=0 r="$TMP/rsync.$BASHPID" # named here: $BASHPID differs inside the pipeline
+    if [[ "$how" == run && -t 2 && "$PROGRESS" == 1 ]]; then
+        # live progress on the terminal; the stats still reach the parser below through a file.
+        # The status goes through a file too: the pipeline's own ends with show_progress.
+        rm -f "$r.status" "$r.out" # a PID can repeat: never read an earlier item's files
+        {
+            rs=0 # this group is a subshell with errexit, so the failure is caught, not fatal
+            LC_ALL=C "${RSYNC[@]}" --info=progress2 --stats "${args[@]}" 2>"$r.err" || rs=$?
+            echo "$rs" >"$r.status"
+        } | tee -p "$r.out" | show_progress "$PROGRESS_BYTES" || true # -p: tee keeps the file going if the display ends
+        status="$(cat "$r.status" 2>/dev/null || echo 1)" # no status: the copy did not finish
+        out="$(tr '\r' '\n' <"$r.out" 2>/dev/null || true)"
+    else
+        out="$(LC_ALL=C "${RSYNC[@]}" "${extra[@]}" --stats "${args[@]}" 2>"$r.err")" || status=$?
+    fi
     if [[ " ${ok[*]} " != *" $status "* ]]; then
         if [[ "$how" == run ]]; then
             # the lines naming files, else rsync's own summary line
-            why="$(grep -v '^rsync error' "$TMP/rsync.err.$BASHPID" | head -n 3 | paste -sd' ')"
-            [[ -n "$why" ]] || why="$(tail -n 1 "$TMP/rsync.err.$BASHPID")"
+            why="$(grep -v '^rsync error' "$r.err" 2>/dev/null | head -n 3 | paste -sd' ')" || true
+            [[ -n "$why" ]] || why="$(tail -n 1 "$r.err" 2>/dev/null)" || true
             warn "$p: rsync failed ($status): $(scrub "$why")" >&2
         fi
         printf '%s\n' "$p" >>"$failfile"
@@ -955,10 +1021,9 @@ merge_history() {
     }
 }
 
-hsize() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "${1}B"; }
-
 info "Measuring what would move from $SRC_NAME to $DST_NAME..."
-declare -A SUM_FILES=() SUM_BYTES=()
+declare -A SUM_FILES=() SUM_BYTES=() MEASURED=()
+WORK_ITEMS=0
 : >"$TMP/sizes"
 : >"$TMP/newer"
 : >"$TMP/measure-failed"
@@ -975,7 +1040,11 @@ while IFS=$'\t' read -r kind p list; do
     esac
     SUM_FILES["$group"]=$((${SUM_FILES[$group]:-0} + files))
     SUM_BYTES["$group"]=$((${SUM_BYTES[$group]:-0} + bytes))
-    ((files > 0)) && printf '%s\t%s\t%s\n' "$bytes" "$files" "$p" >>"$TMP/sizes"
+    MEASURED["$kind $p"]="$files $bytes"
+    if ((files > 0)); then
+        WORK_ITEMS=$((WORK_ITEMS + 1))
+        printf '%s\t%s\t%s\n' "$bytes" "$files" "$p" >>"$TMP/sizes"
+    fi
 done <"$PLAN"
 
 echo
@@ -1051,9 +1120,24 @@ fi
 
 # root repo histories and new repos first, worktrees last (they need their main repo's .git)
 copied=0
+item=0
+PROGRESS=0 PROGRESS_BYTES=0 # run_item turns the live line on for items with something to copy
 run_item() {
-    local kind="$1" p="$2" list="$3" files=0
+    local kind="$1" p="$2" list="$3" files=0 mfiles mbytes noun label="$2"
+    # each item with something to copy gets a line, so a long copy is never a silent wait
+    read -r mfiles mbytes <<<"${MEASURED["$kind $p"]:-0 0}"
+    if ((mfiles > 0)); then
+        item=$((item + 1))
+        [[ "$p" == . ]] && label="$kind"
+        [[ "$kind" == gitdir ]] && label="$p/.git"
+        noun='files'
+        ((mfiles == 1)) && noun='file'
+        printf '  [%d/%d] %s, %s %s, %s\n' "$item" "$WORK_ITEMS" "$label" "$mfiles" "$noun" "$(hsize "$mbytes")" >&2
+    fi
+    PROGRESS=0 PROGRESS_BYTES="$mbytes"
+    ((mfiles > 0)) && PROGRESS=1
     read -r files _ < <(xfer "$kind" "$p" "$list" run)
+    PROGRESS=0 # the line is cleared: the exit trap has nothing to tidy
     copied=$((copied + files))
     case "$kind" in
         repo | worktree | gitdir)
