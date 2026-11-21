@@ -30,6 +30,7 @@ local parsers = {
 	"vim",
 	"vimdoc",
 	"yaml",
+	"zig",
 }
 
 return {

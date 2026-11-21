@@ -37,6 +37,7 @@ return {
 				"basedpyright",
 				"emmet-language-server",
 				"rust-analyzer",
+				"zls",
 
 				-- Formatters
 				"stylua",
@@ -289,6 +290,7 @@ return {
 				"lua_ls",
 				"basedpyright",
 				"rust_analyzer",
+				"zls",
 			})
 		end,
 	},

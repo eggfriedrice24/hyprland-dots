@@ -36,6 +36,7 @@ return {
 				handlebars = { "prettier" },
 				go = { "goimports", "gofumpt" },
 				rust = { "rustfmt" },
+				zig = { "zigfmt" },
 				sh = { "shfmt" },
 				bash = { "shfmt" },
 				zsh = { "shfmt" },
