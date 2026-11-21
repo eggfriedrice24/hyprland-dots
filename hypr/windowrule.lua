@@ -61,7 +61,10 @@ hl.window_rule({ match = { class = "^(tally-desktop)$" }, workspace = "8" })
 hl.window_rule({ match = { class = "^(com.stremio.Stremio|stremio)$" }, workspace = "9" })
 -- titled windows only, so dropdown menus open where they were clicked
 hl.window_rule({ match = { class = "^(steam)$", title = "^(.+)$" }, workspace = "10" })
-hl.window_rule({ match = { class = "^(steam_app_.*)$" }, workspace = "8" })
+-- games: steam_app_N under XWayland; with PROTON_ENABLE_WAYLAND=1 the class is the exe name
+-- (Arc Raiders is pioneergame.exe), so match any .exe too; native linux games by their own class
+-- (RDR2, GTA V, Saboteur, AION 2, Black Flag Resynced, Hogwarts run through proton: steam_app_N)
+hl.window_rule({ match = { class = "^(steam_app_.*|.*\\.exe|cs2)$" }, workspace = "8" })
 hl.window_rule({ match = { class = "^(steam_app_.*)$" }, fullscreen = true })
 
 -- Size
