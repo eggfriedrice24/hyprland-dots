@@ -22,6 +22,7 @@ declare -A symlinks=(
     ["frameit"]="$HOME/.config/frameit"
     ["pipewire"]="$HOME/.config/pipewire"
     ["wireplumber"]="$HOME/.config/wireplumber"
+    ["MangoHud"]="$HOME/.config/MangoHud"
     ["git"]="$HOME/.config/git"
     [".wallpapers"]="$HOME/.wallpapers"
     ["fonts/Cartograph"]="$HOME/.local/share/fonts/Cartograph"

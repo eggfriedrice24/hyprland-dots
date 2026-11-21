@@ -8,6 +8,8 @@ mpv
 discord
 signal-desktop
 steam
+mangohud
+lib32-mangohud
 obs-studio
 qbittorrent
 flatpak
