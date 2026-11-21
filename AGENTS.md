@@ -121,11 +121,13 @@ Key plugins:
 `MasonToolsInstallSync` headless); every name must exist in the Mason registry:
 
 **LSPs:** lua-language-server, gopls, json-lsp, typescript-language-server, astro-language-server, css-lsp,
-tailwindcss-language-server, html-lsp, yaml-language-server, jdtls, basedpyright, emmet-language-server, rust-analyzer
+tailwindcss-language-server, html-lsp, yaml-language-server, jdtls, basedpyright, emmet-language-server, rust-analyzer,
+zls
 **Formatters:** stylua, prettier, black, isort, gofumpt, goimports, google-java-format, shfmt **Linters:** eslint-lsp,
 selene, shellcheck, golangci-lint, markdownlint
 
-Not from Mason: rustfmt comes with rustup (Mason dropped it), oxfmt and oxlint are taken from a project's
+Not from Mason: rustfmt comes with rustup (Mason dropped it), zig fmt with zig (pacman; zls stays on Mason,
+which follows zig's releases while Arch's zls lags), oxfmt and oxlint are taken from a project's
 `node_modules` when present. Formatters are wired in `formatting.lua` (conform.nvim, format on save) and linters in
 the same file (nvim-lint: selene, golangcilint, markdownlint, shellcheck; zsh is not shellchecked).
 
@@ -188,6 +190,7 @@ The Neovim configuration supports these languages with LSP, formatting and linti
 - **Python** - basedpyright, isort, black
 - **Go** - gopls, goimports, gofumpt, golangci-lint
 - **Rust** - rust_analyzer, rustfmt (rustup)
+- **Zig** - zls, zig fmt
 - **Java** - jdtls, google-java-format
 - **Shell** - shfmt, shellcheck (sh and bash)
 - **JSON/YAML/Markdown** - jsonls, yamlls, prettier, markdownlint
