@@ -43,7 +43,11 @@ hl.window_rule({ match = { title = "^(branchdialog)$" }, float = true })
 hl.window_rule({ match = { title = "^(Confirm to replace files)$" }, float = true })
 hl.window_rule({ match = { title = "^(File Operation Progress)$" }, float = true })
 
-hl.window_rule({ match = { class = "^(steam)$" }, center = true })
+-- steam: only titled windows (dialogs, Settings); its dropdown menus are untitled windows, and
+-- centering them moves the picture while steam keeps taking clicks at the real spot
+hl.window_rule({ match = { class = "^(steam)$", title = "^(.+)$" }, center = true })
+-- the main window maps floating (hyprwm/Hyprland#12786), and every new window then opens behind it
+hl.window_rule({ match = { class = "^(steam)$", title = "^(Steam)$" }, tile = true })
 hl.window_rule({ match = { class = "^(discord)$" }, center = true })
 
 -- Workspace
@@ -55,7 +59,8 @@ hl.window_rule({ match = { class = "^(tally-desktop)$" }, workspace = "8" })
 -- the flatpak's app id is com.stremio.Stremio and its desktop file names the class stremio; the old
 -- all-lowercase com.stremio.stremio matched neither
 hl.window_rule({ match = { class = "^(com.stremio.Stremio|stremio)$" }, workspace = "9" })
-hl.window_rule({ match = { class = "^(steam)$" }, workspace = "10" })
+-- titled windows only, so dropdown menus open where they were clicked
+hl.window_rule({ match = { class = "^(steam)$", title = "^(.+)$" }, workspace = "10" })
 hl.window_rule({ match = { class = "^(steam_app_.*)$" }, workspace = "8" })
 hl.window_rule({ match = { class = "^(steam_app_.*)$" }, fullscreen = true })
 
