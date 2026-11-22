@@ -33,6 +33,9 @@ hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
 hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(micmute), { locked = true })
 
+-- Next audio output (skips HDMI and empty jacks), for a cable left in a jack that still senses a plug
+hl.bind("SUPER + SHIFT + H", hl.dsp.exec_cmd(scriptsDir .. "/audio-output"))
+
 -- Screenshot and recording: R records the focused monitor to ~/Videos/Recordings, V stops it
 hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd(screenrecord .. " screen"))
 hl.bind("SUPER + SHIFT + V", hl.dsp.exec_cmd(screenrecord .. " stop"))

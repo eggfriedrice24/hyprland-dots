@@ -450,6 +450,7 @@ layouts.
 | SUPER+SHIFT+F | UI font picker: each font drawn in itself; choosing one sets the theme's `font.ui` and applies it live (commit `typography.lua` in eggfriedrice.nvim to keep it) |
 | SUPER+SHIFT+W | wallpaper picker: `~/.wallpapers` as thumbnails; the pick fades in on every monitor and stays for the next login |
 | SUPER+V | clipboard history: Enter copies, Shift+Delete removes, Ctrl+Shift+Delete wipes |
+| SUPER+SHIFT+H | next audio output (skips HDMI and empty jacks), with a notification naming it |
 | **Capture** | |
 | Print | screenshot of the focused monitor, saved to `~/Pictures/Screenshots` and copied |
 | SUPER+SHIFT+S | screenshot of an area, saved and copied |

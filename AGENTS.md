@@ -328,6 +328,8 @@ Hyprland utility scripts live in `hypr/scripts/`:
 - `battery-watcher.sh` (laptop battery: notices at 25 and 10 percent, suspend at 5 while discharging), started by
   `startup.lua`; it exits at once on a machine without a battery
 - `brightnesscontrol.sh` (backlight or DDC/CI, serialized with flock) and `volumecontrol.sh`, both with an OSD
+- `audio-output` (SUPER+SHIFT+H: the next default sink, skipping HDMI and jacks that report nothing plugged, with a
+  notification; streams without a saved target follow the default through WirePlumber)
 - `idle-suspend` (suspends only on battery; called by `machines/laptop/hypridle.conf`)
 - `screensht`, `screenrecord` and `colorpicker`; `clipboard` (the cliphist picker on SUPER+V)
 - `gamemode.sh` (animations, blur, gaps and rounding off and back, run by hand)
