@@ -1,0 +1,56 @@
+#!/usr/bin/env sh
+# Switch the default audio output to the next one and say which it is.
+# Skips HDMI/DP outputs and sinks whose every jack reports nothing plugged in. Streams
+# without a saved target follow the new default (WirePlumber); one moved by hand in
+# pavucontrol stays where it was put.
+
+# Port for the label and icon: the active one if it is usable, else any usable one.
+# Sinks without ports (EasyEffects, loopbacks, null sinks) are kept.
+if ! sinks=$(pactl -f json list sinks | jq -r '
+    .[]
+    | .active_port as $active
+    | (.ports // []) as $ports
+    | (first($ports[] | select(.name == $active and .availability != "not available"))
+        // first($ports[] | select(.availability != "not available"))
+        // null) as $p
+    | select(($ports | length) == 0 or $p != null)
+    | select(($p.type // "") != "HDMI")
+    | [
+        .name,
+        (if .properties."device.bus" == "pci" and $p != null then $p.description
+         else (.description // .name) | sub(" (Analog|Digital) Stereo.*$"; "") end),
+        (if ($p.type // "") == "Headphones"
+            or (.properties."device.form_factor" // "" | test("^(headphone|headset)$"))
+         then "audio-headphones-symbolic" else "audio-speakers-symbolic" end)
+      ]
+    | @tsv'); then
+    sinks=""
+fi
+
+notify() {
+    notify-send -h string:x-canonical-private-synchronous:audio-output -u low -i "$1" "$2" "$3"
+}
+
+if [ -z "$sinks" ]; then
+    notify audio-volume-muted-symbolic "Audio output" "No outputs available"
+    exit 1
+fi
+
+current=$(pactl get-default-sink)
+next=$(printf '%s\n' "$sinks" | awk -F '\t' -v cur="$current" '
+    NR == 1 { first = $0 }
+    found { print; done = 1; exit }
+    $1 == cur { found = 1 }
+    END { if (!done) print first }')
+
+name=$(printf '%s' "$next" | cut -f 1)
+# dunst renders markup, so a name with & or < must be escaped
+label=$(printf '%s' "$next" | cut -f 2 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+icon=$(printf '%s' "$next" | cut -f 3)
+
+if pactl set-default-sink "$name"; then
+    notify "$icon" "Audio output" "$label"
+else
+    notify audio-volume-muted-symbolic "Audio output" "Could not switch to $label"
+    exit 1
+fi
