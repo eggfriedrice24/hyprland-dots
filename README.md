@@ -119,7 +119,7 @@ The stages in `install/stages/` run in order:
 7. **snapshots** - on the btrfs layout bootstrap.sh builds only: snapper retention, the pacman hook that keeps the
    outgoing kernel, vfat in the initramfs; one line and no change anywhere else
 8. **migrations** - the one-off changes in `install/migrations/` this machine has not run yet (see [Migrations](#migrations))
-9. **finalize** - the font picker's UI fonts from Google Fonts (`font-picker --fetch`, optional, needs the network),
+9. **finalize** - the font picker's UI fonts from Google Fonts and FiraGO's repository (`font-picker --fetch`, optional, needs the network),
    font cache, XDG user dirs, state dirs, Rust nightly, Node 22 via fnm, Neovim plugins and Mason tools (headless, on a
    machine that has none yet), Claude Code, seeds `opencode/google-workspace.env` from its example, Stremio flatpak,
    then a summary: failed optional steps, what needs a restart, relogin or reboot, the manual steps and the profile's
@@ -447,7 +447,7 @@ layouts.
 | SUPER+D | launcher (rofi) |
 | SUPER+period | emoji picker, Enter copies |
 | SUPER+equal | calculator, Enter copies the result |
-| SUPER+SHIFT+F | UI font picker: each font drawn in itself; choosing one sets the theme's `font.ui` and applies it live (commit `typography.lua` in eggfriedrice.nvim to keep it) |
+| SUPER+SHIFT+F | UI font picker: each font drawn in itself; choosing one sets the theme's `font.ui` and applies it live (commit `typography.lua` in eggfriedrice.nvim to keep it). Georgian letters stay in FiraGO whatever the pick |
 | SUPER+SHIFT+W | wallpaper picker: `~/.wallpapers` as thumbnails; the pick fades in on every monitor and stays for the next login |
 | SUPER+V | clipboard history: Enter copies, Shift+Delete removes, Ctrl+Shift+Delete wipes |
 | SUPER+SHIFT+H | next audio output (skips HDMI and empty jacks), with a notification naming it |
@@ -525,6 +525,7 @@ dotfiles/
 ├── starship/            # prompt
 ├── gtk-3.0/ gtk-4.0/    # GTK colours and Thunar
 ├── git/                 # global gitignore (~/.config/git)
+├── fontconfig/          # Georgian letters in FiraGO behind every UI font, linked into ~/.config/fontconfig/conf.d
 ├── rofi/ dunst/ bat/ btop/ eza/ frameit/ opencode/ pipewire/ wireplumber/
 ├── .wallpapers/         # linked to ~/.wallpapers
 └── fonts/               # Cartograph CF, Atkinson Hyperlegible Next and Nunito, linked into ~/.local/share/fonts

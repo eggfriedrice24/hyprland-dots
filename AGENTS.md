@@ -284,7 +284,13 @@ The `.gitignore` excludes:
   Cartograph CF (terminal, tracked in `fonts/`), JetBrainsMono Nerd Font (icons), Noto Color Emoji. The font picker's
   other UI candidates: Nunito (tracked in `fonts/`, Arch's ttf-nunito has no Medium), Inter (inter-font) and, from
   Google Fonts into `~/.local/share/fonts/eggfriedrice` by `hypr/scripts/font-picker --fetch` in stage 9, M PLUS
-  Rounded 1c, Google Sans Flex, Figtree, Rubik and Lexend
+  Rounded 1c, Google Sans Flex, Figtree, Rubik and Lexend. Georgian: no UI font has it, so
+  `fontconfig/60-eggfriedrice-georgian.conf` (linked into `~/.config/fontconfig/conf.d` by stage 3) sends Georgian
+  letters, and only them, to FiraGO (Medium in the UI, Regular in Chromium apps; Regular, Medium, SemiBold and Bold
+  are fetched), GTK and Chromium apps and generic sans-serif, serif and Helvetica requests alike; English, digits and
+  punctuation stay in the font the app asked for. It hides Noto Sans and Serif Georgian, whose noto-fonts rules
+  would otherwise win generic requests. FiraGO comes from bBox Type's repository by the same `--fetch`; a
+  Georgian-only font loses Chromium's character lookups, hence FiraGO
 - **Additional tools:** waybar, dunst, rofi, awww, cliphist, hypridle, hyprlock, polkit-kde-agent, pipewire, Thunar
 
 ## Code Modification Guidelines
