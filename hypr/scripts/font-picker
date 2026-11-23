@@ -9,23 +9,28 @@
 #      rofi takes it on its next start, hyprlock on the next lock, Ghostty tabs in new windows
 #
 #   font-picker           pick a font
-#   font-picker --fetch   download the candidates that have no usable Arch package from Google Fonts
-#                         (their upstream) into ~/.local/share/fonts/eggfriedrice; files already there
-#                         are kept, so a rerun only fetches what is missing. Stage 9 of the installer runs it.
+#   font-picker --fetch   download the candidates that have no usable Arch package from their upstream
+#                         into ~/.local/share/fonts/eggfriedrice; files already there are kept, so a
+#                         rerun only fetches what is missing. Stage 9 of the installer runs it.
 #   font-picker FAMILY    apply FAMILY without the menu
 #
 # Where each candidate comes from: Atkinson Hyperlegible Next (the theme's ui font) and Nunito ship in
 # the dotfiles (fonts/), so the ui font is there before any download; Inter is the inter-font package;
 # the rest have no package with a Medium (Figtree, Lexend and Google Sans Flex none at all, M PLUS
 # Rounded 1c only a 2015 AUR build or the 319 MiB ttf-mplus-nerd), so they come from Google Fonts.
+# Georgian is none of the picker's business: no UI font has it, and fontconfig/60-eggfriedrice-georgian.conf
+# sends Georgian letters, and only them, to FiraGO, whatever the UI font. --fetch brings FiraGO too
+# (Regular, Medium, SemiBold, Bold), from bBox Type's repository (the AUR only repacks the same release).
 set -euo pipefail
 
 THEME_DIR="${THEME_DIR:-$HOME/p/eggfriedrice.nvim}"
 TYPO="$THEME_DIR/lua/eggfriedrice/typography.lua"
 FONT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/eggfriedrice"
 GF=https://raw.githubusercontent.com/google/fonts/main/ofl
+FIRAGO=https://raw.githubusercontent.com/bBoxType/FiraGO/master/Fonts/FiraGO_TTF_1001/Roman
 
-# family as fontconfig names it | Google Fonts files for --fetch (empty: shipped or packaged)
+# family as fontconfig names it | files for --fetch: a path under Google Fonts' ofl/ or a full URL
+# (empty: shipped or packaged)
 CANDIDATES=(
     "Nunito|"
     "Rounded Mplus 1c|mplusrounded1c/MPLUSRounded1c-Regular.ttf mplusrounded1c/MPLUSRounded1c-Medium.ttf mplusrounded1c/MPLUSRounded1c-Bold.ttf"
@@ -36,19 +41,25 @@ CANDIDATES=(
     "Lexend|lexend/Lexend[wght].ttf"
     "Atkinson Hyperlegible Next|"
 )
+# fetched with the candidates but never offered: the Georgian font (see the top)
+EXTRA_FETCH=(
+    "FiraGO|$FIRAGO/FiraGO-Regular.ttf $FIRAGO/FiraGO-Medium.ttf $FIRAGO/FiraGO-SemiBold.ttf $FIRAGO/FiraGO-Bold.ttf"
+)
 
 notify() { notify-send -a font-picker -h string:x-canonical-private-synchronous:font-picker "$@" 2>/dev/null || true; }
 
 fetch() {
     mkdir -p "$FONT_DIR"
     local entry family files file url fetched=0 failed=0
-    for entry in "${CANDIDATES[@]}"; do
+    for entry in "${CANDIDATES[@]}" "${EXTRA_FETCH[@]}"; do
         family="${entry%%|*}"
         files="${entry#*|}"
         [[ -n "$files" ]] || continue
         for file in $files; do
             [[ -s "$FONT_DIR/${file##*/}" ]] && continue
-            url="$GF/${file//[/%5B}"
+            url="$file"
+            [[ "$url" == https://* ]] || url="$GF/$file"
+            url="${url//[/%5B}"
             url="${url//]/%5D}"
             url="${url//,/%2C}"
             echo "fetching $family: ${file##*/}"

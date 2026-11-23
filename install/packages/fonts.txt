@@ -2,8 +2,10 @@
 # Hyperlegible Next, the ui font of the theme's typography tokens (only the AUR packages it), and Nunito,
 # the previous one. Both ui fonts are the variable fonts from Google Fonts: Arch's ttf-nunito is the
 # old static set without a Medium weight, and the tokens ask for Medium.
-# The other font-picker candidates: Inter is packaged (below); the rest come from Google Fonts in
-# stage 9 (hypr/scripts/font-picker --fetch) because no package of theirs has a Medium.
+# The other font-picker candidates: Inter is packaged (below); the rest come from Google Fonts in stage 9
+# (hypr/scripts/font-picker --fetch), because no package of theirs has a Medium. The same step brings
+# FiraGO, the font for Georgian letters (fontconfig/60-eggfriedrice-georgian.conf), from its own repository
+# (the AUR only repacks the same release).
 inter-font
 ttf-jetbrains-mono-nerd
 ttf-nerd-fonts-symbols-mono

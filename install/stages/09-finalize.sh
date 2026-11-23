@@ -4,9 +4,11 @@
 info "=== Stage 9: Finalize ==="
 
 # The UI fonts the font picker (SUPER+SHIFT+F) offers that have no usable Arch package come from
-# Google Fonts into ~/.local/share/fonts/eggfriedrice; only missing files are fetched, so a rerun
-# with all of them present is offline and quick. Optional: without network the picker lists fewer.
-try "UI fonts for the font picker (Google Fonts)" "${DOTFILES_DIR}/hypr/scripts/font-picker" --fetch
+# Google Fonts into ~/.local/share/fonts/eggfriedrice, and FiraGO, the font fontconfig/ sends Georgian
+# letters to, from bBox Type's repository; only missing files are fetched, so a rerun with all of them
+# present is offline and quick. Optional: without network the picker lists fewer, and Georgian falls
+# back to whatever other Georgian font is installed.
+try "picker UI fonts (Google Fonts) and FiraGO for Georgian" "${DOTFILES_DIR}/hypr/scripts/font-picker" --fetch
 
 # Cartograph CF is linked into ~/.local/share/fonts in stage 3; make fontconfig see it
 if fc-match 'Cartograph CF' 2>/dev/null | grep 'Cartograph' >/dev/null; then
