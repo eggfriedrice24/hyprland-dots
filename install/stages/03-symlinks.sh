@@ -28,6 +28,8 @@ declare -A symlinks=(
     ["fonts/Cartograph"]="$HOME/.local/share/fonts/Cartograph"
     ["fonts/Nunito"]="$HOME/.local/share/fonts/Nunito"
     ["fonts/AtkinsonHyperlegibleNext"]="$HOME/.local/share/fonts/AtkinsonHyperlegibleNext"
+    # one file, not the directory: conf.d also holds packages' own files (texlive's)
+    ["fontconfig/60-eggfriedrice-georgian.conf"]="$HOME/.config/fontconfig/conf.d/60-eggfriedrice-georgian.conf"
 )
 
 run mkdir -p "$HOME/.config"
@@ -45,13 +47,14 @@ for cmd in "${DOTFILES_DIR}"/bin/*; do
     link_path "$cmd" "$HOME/.local/bin/$(basename "$cmd")"
 done
 
-# Links into this repo whose target no longer exists (a config dir or command removed from the repo)
+# Links into this repo whose target no longer exists (a config dir, command or fontconfig file removed
+# from the repo)
 while IFS= read -r -d '' link; do
     target="$(readlink "$link")"
     if [[ "$target" == "$DOTFILES_DIR"/* && ! -e "$link" ]]; then
         info "Removing dangling link: $link -> $target"
         run rm "$link"
     fi
-done < <(find "$HOME" "$HOME/.config" "$HOME/.local/bin" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
+done < <(find "$HOME" "$HOME/.config" "$HOME/.local/bin" "$HOME/.config/fontconfig/conf.d" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
 
 success "=== Stage 3: Complete ==="
